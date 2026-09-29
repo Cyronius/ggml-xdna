@@ -40,6 +40,8 @@ if (-not (Test-Path $hdr)) {
     foreach ($f in "ggml-backend-impl.h", "ggml-impl.h", "ggml-common.h") {
         Copy-Item "$src\src\$f" (Join-Path $hdr "src")
     }
+    # llama.h too: the hybrid tools under hybrid/ drive llama.cpp as a library.
+    Copy-Item (Join-Path $tmp "llama.cpp-$Tag\include\llama.h") (Join-Path $hdr "include")
     Remove-Item $tmp -Recurse -Force
     Remove-Item $zip
 }
@@ -50,7 +52,7 @@ if (-not (Test-Path $vcvars)) {
     throw "vcvars64.bat not found at $vcvars"
 }
 
-foreach ($dll in "ggml-base", "ggml") {
+foreach ($dll in "ggml-base", "ggml", "llama") {
     $lib = Join-Path $tp "$dll.lib"
     if (Test-Path $lib) { continue }
 

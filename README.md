@@ -1,20 +1,58 @@
-# ggml-xdna — NPU prefill backend for llama.cpp
+# NPU prefill for llama.cpp, on AMD XDNA2
 
-A ggml backend that claims large-batch matmuls and runs them on the AMD XDNA2
-NPU, leaving decode to the CPU. It builds as a standalone DLL and loads into a
-stock llama.cpp release via `GGML_BACKEND_PATH` — no fork, no in-tree patch.
+The goal is to read prompts on the NPU in a Ryzen AI laptop and let llama.cpp
+do everything else, with no fork of llama.cpp and no patched build.
 
-The kernels come from [OpenFlowLM-Next](https://github.com/Cyronius/OpenFlowLM-Next)
-(`open_kernels/`). This repo is only the seam, and it builds standalone: the
-`extern "C"` XRT shim and the XRT headers it needs are vendored under
+Two pieces live here, and they are stages of one thing rather than two
+projects:
+
+- **`ggml-xdna`** ([src/](src/)) — a backend DLL that loads into a stock
+  llama.cpp release. This is where the work is meant to end up.
+- **`hybrid/`** — a prototype that uses llama.cpp as a library instead of
+  plugging into it. It exists so the NPU side can be built and measured
+  without also fighting ggml's scheduler. It is scaffolding, not a rival.
+
+The NPU kernels themselves are not here. They come from
+[OpenFlowLM-Next](https://github.com/Atomic-Germ/OpenFlowLM-Next) and are
+consumed as built artifacts. This repo is the seam, and it builds standalone:
+the XRT headers and the small `extern "C"` shim over them are vendored under
 [`vendor/`](vendor/), so no other checkout has to be present.
 
-Current state is in the Status section below.
+## Where this stands
 
-## How the prefill/decode split works
+**The weight path works on real hardware.** Qwen3-1.7B weights, read from a
+GGUF file, rearranged into the layout the NPU kernels expect, and dispatched
+through the vendored driver, come back correct — inside the kernel's own error
+budget, at 1.44 trillion operations per second.
 
-There is no phase handoff anywhere in this code. `ggml_backend_sched` picks, for
-each node, the highest-priority backend that supports **both** the weight's
+**The handoff works.** A prompt read by our own code outside llama.cpp can be
+pushed into a llama.cpp context, which then generates exactly what it would
+have generated had it read the prompt itself. Same first token, same 24-token
+continuation. Costs 2.3 ms for 58 MB of state.
+
+**What is missing is one kernel: batched attention.** Everything else is done
+or is routine porting. See [.claude/plans/hybrid-prefill-amd-design.md](.claude/plans/hybrid-prefill-amd-design.md).
+
+**The backend half is an unfinished first attempt at the wrong granularity.**
+It claims individual matrix multiplies. Everything else in a forward pass —
+attention, the norms — stays on the CPU, and that is roughly half of prompt
+reading. Measured in 2026-09, handing the NPU every matrix multiply for free
+still capped prompt reading below what the integrated GPU does on its own.
+
+That result is often quoted as "NPU prefill is dead." It is narrower than it
+sounds. It rules out *a backend that claims matrix multiplies*. It says
+nothing about a backend that claims a whole transformer block and fires one
+fused dispatch for it, which is what AMD's own hybrid mode does and what
+ggml's scheduler is perfectly capable of handing over — it groups neighbouring
+operations assigned to the same backend and passes them across in one call.
+Nobody has tried that here. Getting there needs the batched attention kernel
+first, which is why `hybrid/` exists and why the backend is parked rather than
+abandoned.
+
+## How the current backend claims work
+
+There is no phase handoff anywhere in this code. `ggml_backend_sched` picks,
+for each node, the highest-priority backend that supports **both** the weight's
 buffer type and the op (`ggml/src/ggml-backend.cpp`, `backend_from_buffer`). So:
 
 - Our buffer type reports `is_host = true`, which makes the CPU backend accept
@@ -44,19 +82,20 @@ build.cmd
 
 The DLL is copied next to the llama.cpp binaries so `ggml-base.dll` resolves.
 
-`bench-dispatch` additionally needs an XRT import lib, which XRT on Windows does
-not ship. `tools/gen-xrt-implib.ps1` reconstructs one from the export table of
-the driver's own `xrt_coreutil.dll`. Without it that one target is skipped and
+Targets that drive the NPU directly (`bench-dispatch`, `test-npu-gemm`)
+additionally need an XRT import lib, which XRT on Windows does not ship.
+`tools/gen-xrt-implib.ps1` reconstructs one from the export table of the
+driver's own `xrt_coreutil.dll`. Without it those targets are skipped and
 everything else still builds.
 
 ```
 powershell -File tools\gen-xrt-implib.ps1
 ```
 
-## Run
+## Run the backend
 
 ```
-set GGML_BACKEND_PATH=C:\code\ggml-xdna\third_party\llama-b10944\ggml-xdna.dll
+set GGML_BACKEND_PATH=C:\code\npu-prefill-engine\third_party\llama-b10944\ggml-xdna.dll
 third_party\llama-b10944\llama-cli.exe -m <model.gguf> -dev none -p "..."
 ```
 
@@ -70,14 +109,35 @@ them with the iGPU would mean a second copy.
 | `GGML_XDNA_N_THREADS` | hw concurrency | threads for the host reference matmul |
 | `GGML_SCHED_DEBUG` | 0 | set to 2 to print per-node backend assignments |
 
-## Status
+## Run the prototype
 
-The seam works and is the part worth keeping. The matmul is still a host
-reference implementation (dequantise, then dot) - it exists to prove
-scheduling and weight placement, and it is slow on purpose.
+All of these need a GGUF model and most need the GPU, so run them from the
+release directory where the DLLs live.
 
-The NPU kernel work lives in `open_kernels/designs/gemm_q4/`. The blocked
-batched q4 GEMM runs on all 32 compute tiles, eats Q4_K chunks as stored, and
-streams a host-quantised activation table; the best configuration measured so
-far carries 40 tokens per weight pass at 80.9 tok/ms. No kernel is wired into
-this backend yet.
+```
+third_party\llama-b10944\kv-handoff.exe   <model.gguf> [--repeat 34]
+third_party\llama-b10944\ref-handoff.exe  <qwen3.gguf> [--threads N]
+third_party\llama-b10944\test-q4-pack.exe <model.gguf> [--dump <dir>]
+third_party\llama-b10944\test-npu-gemm.exe <model.gguf> --build <kernel-build-dir>
+third_party\llama-b10944\gpu-prefill.exe  <model.gguf> --lens 256,512,1024,2048
+```
+
+The first four have a pass/fail and check the requirements in
+[specs/hybrid-prefill/spec.md](specs/hybrid-prefill/spec.md). `gpu-prefill` has
+no pass/fail — it is a measurement, and that spec says how to read it.
+
+## Measuring anything here
+
+Two traps on this machine, both of which have already produced a wrong number
+that had to be withdrawn:
+
+- **Prompt-reading speed on the GPU cannot be timed once.** A single run in a
+  fresh process can be off by more than ten times, because some launches
+  compile shaders first and the runs after that are still slow while clocks
+  ramp. Take the median of many runs in one process and throw the first
+  several away. `gpu-prefill.exe` does this.
+- **NPU dispatch timing needs at least 30 iterations.** At ten, warm-up still
+  moved the best time by 60%.
+
+Generation speed does not need either caveat; it was steady from the first
+reading.

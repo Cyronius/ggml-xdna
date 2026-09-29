@@ -121,7 +121,7 @@ static std::vector<double> reference(const case_spec & c,
 int main() {
     ggml_backend_load_all();
 
-    ggml_backend_dev_t dev_xdna = ggml_backend_dev_by_name("XDNA");
+    ggml_backend_dev_t dev_xdna = ggml_backend_dev_by_name("XDNA0");
     if (dev_xdna == NULL) {
         fprintf(stderr, "XDNA device not registered - is GGML_BACKEND_PATH set?\n");
         return 2;

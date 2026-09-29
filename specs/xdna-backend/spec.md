@@ -7,6 +7,16 @@ Kernels live in OpenFlowLM-Next (`open_kernels/`); this spec covers the seam
 only — how the backend presents itself to `ggml_backend_sched`, and what its
 matmul must produce. Requirements about the kernels themselves belong there.
 
+**Scope, revised 2026-09-29.** The backend now works next to the Vulkan GPU
+instead of the CPU (plan: `.claude/plans/backend-size-aware.md`). It
+registers as an integrated GPU, shares Vulkan's buffer type, and takes only
+the prompt work its size rules accept; Vulkan runs everything else, and every
+reply token. The earlier design (an accelerator device with its own host
+buffer, next to the CPU) could not coexist with the GPU: llama.cpp ranks
+accelerators below every GPU. XDNA-HOST-BUFT is retired for that reason.
+Claiming whole blocks rather than single matmuls is a requirement of the new
+design (the plan's step 0) and will add requirements here as it lands.
+
 Tests: `specs/xdna-backend/tests/` is empty by design — the test binaries are
 built by the top-level `CMakeLists.txt` from `tests/`, because they must link
 the same import libs as the backend. Run them with `GGML_BACKEND_PATH` set:
@@ -39,21 +49,47 @@ confirm the `XDNA` row and the `load_backend: loaded XDNA backend` line.
 
 ---
 
-### XDNA-HOST-BUFT: Weights stay readable by the CPU
+### XDNA-HOST-BUFT: Weights stay readable by the CPU — RETIRED 2026-09-29
+
+Retired with the move from working next to the CPU to working next to the
+Vulkan GPU. An ACCEL device ranks below every GPU in llama.cpp's scheduler,
+so it would never be handed an op. Replaced by XDNA-SHARED-BUFT.
+
+---
+
+### XDNA-SHARED-BUFT: Ops change hands with Vulkan without copies
 **Applies to:** ggml-xdna
 **Test category:** unit
 
-The backend's buffer type shall report `is_host`, and the device shall register
-as `GGML_BACKEND_DEVICE_TYPE_ACCEL`.
+The device shall register as `GGML_BACKEND_DEVICE_TYPE_IGPU`, report its
+buffer type as the Vulkan device's own, accept Vulkan's buffer type in
+`supports_buft`, and report no free memory (with a non-zero total).
 
-Together these are what keep a single copy of the weights: ACCEL puts our buffer
-type first in llama.cpp's CPU buffer-type list so the weights land in our
-memory, and `is_host` makes `ggml_backend_cpu_device_supports_buft` accept that
-same buffer, so decode reads it in place instead of copying.
+Together these put every weight in Vulkan's memory and let the scheduler hand
+an op to us or to Vulkan with no copies either way: we rank above Vulkan when
+listed first in `-dev`, we can read its buffers, and llama.cpp gives a device
+with no free memory no layers. Tensors in Vulkan buffers have no CPU pointer,
+so the backend reads them with `ggml_backend_tensor_get_async` (the GPU
+copies into host memory; the plain `ggml_backend_tensor_get` reads uncached
+memory at 0.2 GB/s on this machine) and writes them with
+`ggml_backend_tensor_set`.
+
+It shall also accept host buffer types in `supports_buft`, and read tensors
+in host memory directly. That is a correctness requirement, not a
+convenience. Before a graph piece with no scheduler-copied inputs,
+llama.cpp waits for the previous backend (Vulkan). Before a piece with
+copied inputs, it waits only for the backends those inputs came from. A
+piece whose one copied input came from the CPU (the token embeddings)
+started reading Vulkan's results before Vulkan had finished them, and gave
+plausible but wrong text (found 2026-09-29). Accepting host buffers means
+our pieces never have copied inputs.
 
 **Acceptance criteria:**
-- `ggml_backend_dev_type(dev) == GGML_BACKEND_DEVICE_TYPE_ACCEL`
-- `ggml_backend_buft_is_host(ggml_backend_dev_buffer_type(dev))` is true
+- `ggml_backend_dev_type(dev) == GGML_BACKEND_DEVICE_TYPE_IGPU`
+- `ggml_backend_dev_buffer_type(dev) == ggml_backend_dev_buffer_type(Vulkan0)`
+- `ggml_backend_dev_supports_buft(dev, Vulkan0's buffer type)` is true
+- `ggml_backend_dev_supports_buft(dev, the CPU's buffer type)` is true
+- `ggml_backend_dev_memory` reports free 0 and total above 0
 
 ---
 
@@ -61,23 +97,23 @@ same buffer, so decode reads it in place instead of copying.
 **Applies to:** ggml-xdna
 **Test category:** unit
 
-`supports_op` shall return false for `GGML_OP_MUL_MAT` whose batch dimension is
-below `GGML_XDNA_MIN_BATCH` (default 32), and true above it for supported quant
-types. Batch is `ne[1]` for `MUL_MAT` and `ne[2]` for `MUL_MAT_ID`, matching the
-Vulkan backend's convention.
+`supports_op` shall return false for `GGML_OP_MUL_MAT` whose batch dimension
+(`ne[1]`) is below `GGML_XDNA_MIN_BATCH` (default 1024), and true at or above
+it for the weights XDNA-SIZE-POLICY accepts.
 
-This is the whole prefill/decode split: decode's `n_tokens=1` matmuls fail the
-gate and the scheduler falls through to the CPU.
+This is the whole split between the NPU and the GPU for matmuls: reply
+generation (batch 1) and short prompts fail the gate, and Vulkan runs them.
+The default comes from the prototype, which beats the GPU from about 1,000
+tokens; the plan's step 3 tunes it.
 
 **Acceptance criteria:**
 - batch 1 → not claimed
-- batch 31 → not claimed
-- batch 512, q4_K, 2048x2048 → claimed
-- a quant type we cannot dequantise (e.g. `IQ2_XXS`) → not claimed at any batch
+- batch 1023 → not claimed
+- batch 1024, q4_K, 2048x2048 → claimed
 
 ---
 
-### XDNA-WORK-FLOOR: Small matmuls stay on the CPU
+### XDNA-WORK-FLOOR: Small matmuls stay on the GPU
 **Applies to:** ggml-xdna
 **Test category:** unit
 
@@ -85,14 +121,118 @@ gate and the scheduler falls through to the CPU.
 `GGML_XDNA_MIN_MFLOP` (default 256) MFLOP, computed as
 `2 * src0->ne[0] * src0->ne[1] * batch`.
 
-A dispatch costs a few milliseconds regardless of size, so a small matmul is
-cheaper left where it is. Without this the scheduler claimed the per-layer
+A dispatch costs something regardless of size, so a small matmul is cheaper
+left where it is. Without this the old design claimed the per-layer
 `ssm_alpha` / `ssm_beta` projections (36 KB weights), adding 80 dispatches per
 prefill graph for a few MFLOP of work.
 
 **Acceptance criteria:**
-- q4_K 512x64 at batch 512 (34 MFLOP) → not claimed
-- q4_K 2048x2048 at batch 512 (4.3 GFLOP) → claimed
+- q4_K 1024x64 at batch 1024 (134 MFLOP) → not claimed
+- q4_K 2048x2048 at batch 1024 (8.6 GFLOP) → claimed
+
+---
+
+### XDNA-SIZE-POLICY: Weight matmuls, and the small ops next to them
+**Applies to:** ggml-xdna
+**Test category:** unit (matmuls), manual (block claiming)
+
+Beyond the batch gate and the work floor, `supports_op` shall accept a
+`MUL_MAT` only when its left side is a weight: a plain 2D tensor that is
+neither a view nor computed, of a type ggml can unpack (any type with a
+`to_float`). With the NPU configured (`GGML_XDNA_KERNELS`), it shall also
+require the weight's shape to be built.
+
+With the NPU configured and block claiming on (`GGML_XDNA_BLOCKS`, default
+on), it shall also accept a small op when all of these hold: the backend's
+executor implements it in that variant (RMS_NORM; MUL by a scale row; ADD of
+two same-shape tensors; ROPE, normal or NeoX, with no YaRN ramp and no
+frequency factors; SwiGLU, split and not swapped; RESHAPE); it covers at
+least `GGML_XDNA_MIN_BATCH` tokens; and one of its inputs comes from an op
+the policy accepts. It shall decline every other op.
+
+Anything accepted is taken from Vulkan (the scheduler moves an op to the
+higher-priority backend sharing its buffer type). Accepting too much
+silently moves work, and accepting unrelated small ops would break Vulkan's
+graph into pieces for nothing. The "input from an accepted op" rule grows
+pieces out from the matmuls and stops there. Keys and values read from the
+cache are views, so attention's own matmuls never match.
+
+**Acceptance criteria (unit, NPU not configured):**
+- batch 2048, q4_0 2048x2048 → claimed
+- a matmul whose left side is a view of a larger tensor → not claimed
+- a matmul whose left side is the result of another op → not claimed
+- `ADD` of two leaf tensors at any size → not claimed
+
+**Verification (manual, block claiming):** run with `GGML_XDNA_DUMP=1` and
+check that each `xdna piece:` line on Qwen3-1.7B spans o-projection through
+the next layer's k rope, and no piece contains an op outside the list above
+other than views. Measured 2026-09-29: 29 pieces, each as described.
+
+---
+
+### XDNA-BLOCK-AGREES: Block claiming leaves the model's answer unchanged
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+With block claiming on, greedy generation after a prompt the backend reads
+shall produce the same tokens as the GPU alone, to within the NPU's 8-bit
+rounding. In practice that means the same continuation on a short prompt.
+
+This is the end-to-end check on everything block claiming adds: the
+executor's small ops, the fused SwiGLU, 16-bit outputs, the choice of which
+results to write back, and the handoffs with Vulkan. A mistake in any of
+them showed up as plausible but different text, never as a crash.
+
+**Verification (manual):**
+```
+set GGML_BACKEND_PATH=...\ggml-xdna.dll
+set GGML_XDNA_KERNELS=...\kernels\bfp16_gemm\build\whole_array_bfp_rtp_m_ct
+set GGML_XDNA_MIN_BATCH=32
+llama-completion -m Qwen3-1.7B-Q4_0.gguf -f <first 500 bytes of hybrid/prompts/prose.txt> -n 24 --temp 0 -no-cnv -fa on -b 2048 -ub 2048 -dev XDNA0,Vulkan0
+```
+and the same with `-dev Vulkan0`. The 24 generated tokens must match.
+
+**Measured 2026-09-29:** identical ("…ides, the town was to be abandoned. The
+people had to leave, and the quay was to be left as").
+
+---
+
+### XDNA-OPT-IN: Without being named, the backend changes nothing
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+With `GGML_BACKEND_PATH` set but without `-dev` naming `XDNA0`, llama.cpp
+shall run exactly as if the backend weren't loaded. llama.cpp keeps only the
+first integrated GPU it finds when no `-dev` is given, and Vulkan's
+registers first.
+
+**Verification (manual):** run `llama-completion` on the same prompt with
+`--temp 0` three ways: without `GGML_BACKEND_PATH`; with it and no `-dev`;
+with it and `-dev XDNA0,Vulkan0`. The first two must print "using device
+Vulkan0" only and produce the same text; the third must produce the same text
+too (XDNA-MUL-MAT-AGREES keeps it within rounding).
+
+**Measured 2026-09-29** (Qwen3-1.7B Q4_0, a 105-token prompt,
+`GGML_XDNA_MIN_BATCH=32`, `-b 2048 -ub 2048 -fa on`): the 24 generated tokens
+are identical with `-dev Vulkan0` and with `-dev XDNA0,Vulkan0`. Reply
+generation ran at 64–66 tok/s either way.
+
+---
+
+### XDNA-NO-WEIGHT-TRANSFER: No weight is copied between backends
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+During prompt reading, the scheduler shall insert no copies into the
+backend's graph pieces: every weight and activation it uses is read where it
+lives, in Vulkan's memory.
+
+**Verification (manual):** run with `GGML_SCHED_DEBUG=2 -v` and check that
+every `## SPLIT #n: XDNA0` line reports `# 0 inputs`.
+
+**Measured 2026-09-29** (same run as XDNA-OPT-IN): 984 ops assigned to XDNA0
+across the scheduling passes, every XDNA0 split with 0 inputs; all layers'
+weights assigned to Vulkan0.
 
 ---
 
@@ -131,6 +271,11 @@ less accurate of the two.
 - f32, f16, q8_0, q4_0, q4_K, q6_K, at shapes from 256x128x64 up to 2048x512x512
 - each case: `nrmse_xdna <= 1.5*nrmse_cpu + 1e-6` and `cos_xdna > 0.9999`
 
+**Passing 2026-09-29** with the tensors in Vulkan buffers (the new design):
+all seven cases, `nrmse_xdna` 3e-7 to 8e-7 against the CPU's 1e-7 to 7e-3.
+The matmul is still the host reference; the NPU replaces it in the plan's
+step 3.
+
 ---
 
 ---
@@ -161,4 +306,11 @@ sizes...>`; the three rows are new-run-each, reused-run, and runlist.
   detail; only XDNA-MUL-MAT-AGREES constrains it.
 - The exact default values of `GGML_XDNA_MIN_BATCH` and `GGML_XDNA_MIN_MFLOP`
   are tuning, not contract. The requirements fix the mechanism, not the numbers.
+- The backend's weight cache (step 1: raw bytes of each claimed weight, kept
+  for tensors in buffers llama.cpp marks as weights, keyed on buffer, offset,
+  type and shape) and the pinned host memory it reads activations into.
+- `GGML_XDNA_TRACE=1`: a diagnostic that records the inputs of every op the
+  backend declines and reports any of its own results no declined op was seen
+  reading. It is the basis for deciding which results block claiming must
+  write back.
 - Which llama.cpp release we pin.

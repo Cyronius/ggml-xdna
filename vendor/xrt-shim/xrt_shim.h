@@ -61,6 +61,9 @@ xrtsh_bo xrtsh_bo_create(xrtsh_dev dev, size_t size);
 void *xrtsh_bo_map(xrtsh_bo bo);
 /* dir: 1 = HOST->DEVICE, 0 = DEVICE->HOST. Returns 0 ok, <0 on failure. */
 int xrtsh_bo_sync(xrtsh_bo bo, int to_device);
+/* Sync only [off, off+n) of the BO. Syncing a whole large buffer for a small
+ * operand costs milliseconds (a cache flush or invalidate over all of it). */
+int xrtsh_bo_sync_range(xrtsh_bo bo, int to_device, size_t n, size_t off);
 /* memcpy helpers over the mapped pointer (no sync). Return 0 / <0. */
 int xrtsh_bo_write(xrtsh_bo bo, const void *src, size_t n, size_t off);
 int xrtsh_bo_read(xrtsh_bo bo, void *dst, size_t n, size_t off);
