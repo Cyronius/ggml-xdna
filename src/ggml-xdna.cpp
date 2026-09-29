@@ -372,7 +372,18 @@ static ggml_status ggml_backend_xdna_graph_compute(ggml_backend_t backend, ggml_
     } tm{ ctx, t_start };
 
 #ifdef XDNA_HAVE_NPU
-    if (xdna_blocks()) {
+    // Block claiming runs every matmul on the NPU. The policy only hands us
+    // matmuls it can run, but a caller computing a graph directly (a test)
+    // can pass others; those go op by op below, which falls back to the CPU.
+    bool npu_takes_all = true;
+    for (int i = 0; i < cgraph->n_nodes; i++) {
+        const ggml_tensor * n = cgraph->nodes[i];
+        if (n->op != GGML_OP_MUL_MAT) continue;
+        const ggml_tensor * w = n->src[0];
+        npu_takes_all &= w->buffer && ggml_backend_buffer_get_usage(w->buffer) == GGML_BACKEND_BUFFER_USAGE_WEIGHTS &&
+                         xdna_npu_has_shape(w->ne[0], w->ne[1]);
+    }
+    if (xdna_blocks() && npu_takes_all) {
         xdna_npu * npu = ctx.get_npu();
         if (!npu) return GGML_STATUS_FAILED;
         std::unordered_set<const ggml_tensor *> in_piece;

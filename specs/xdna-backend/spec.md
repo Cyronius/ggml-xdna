@@ -260,21 +260,28 @@ already in our buffer.
 For every claimed weight type, the backend's `MUL_MAT` result shall be no
 further from an fp64 reference — computed by dequantising the same weight bytes
 and accumulating in double — than the CPU backend's result is, within a factor
-of 1.5, and shall have cosine similarity above 0.9999 with that reference.
+of 2, and shall have cosine similarity above 0.9999 with that reference.
 
-Bit equality against the CPU backend is the wrong bar: ggml's CPU kernel
-quantises the activation to int8 and we do not, so the two disagree by roughly
-the activation quantisation error (~7e-3 NRMSE on q4_K) with the CPU being the
-less accurate of the two.
+Bit equality against the CPU backend is the wrong bar: both quantise the
+activation, differently. The CPU uses int8 blocks of 32 with a float scale;
+the NPU uses 8-bit blocks of 8 with a shared power-of-two exponent and also
+re-encodes the weight to 8 bits. The NPU's error comes out 1.3–1.7x the CPU's.
+The factor was 1.5 until 2026-09-29, when the test first reached the NPU and
+q4_0 measured 1.62x; the owner set 2 rather than pay for higher-precision
+inputs (about half the matmul speed). The model-level check is
+XDNA-BLOCK-AGREES.
 
 **Acceptance criteria:**
 - f32, f16, q8_0, q4_0, q4_K, q6_K, at shapes from 256x128x64 up to 2048x512x512
-- each case: `nrmse_xdna <= 1.5*nrmse_cpu + 1e-6` and `cos_xdna > 0.9999`
+  (sizes with no NPU build: the host fallback)
+- q4_0 2048x1024x512 and q4_K 2048x1024x600 with the weight in a weight
+  buffer: on the NPU when `GGML_XDNA_KERNELS` is set
+- each case: `nrmse_xdna <= 2*nrmse_cpu + 1e-6` and `cos_xdna > 0.9999`
 
-**Passing 2026-09-29** with the tensors in Vulkan buffers (the new design):
-all seven cases, `nrmse_xdna` 3e-7 to 8e-7 against the CPU's 1e-7 to 7e-3.
-The matmul is still the host reference; the NPU replaces it in the plan's
-step 3.
+**Passing 2026-09-29**, with and without `GGML_XDNA_KERNELS` and with block
+claiming on and off: the host cases at 1e-7 to 2e-7 against the CPU's 1e-7
+to 7e-3; on the NPU, q4_0 8.7e-3 against 5.4e-3 (1.62x) and q4_K 8.9e-3
+against 7.0e-3 (1.28x), cosine 0.99996.
 
 ---
 
