@@ -96,17 +96,27 @@ powershell -File tools\gen-xrt-implib.ps1
 
 ```
 set GGML_BACKEND_PATH=C:\code\npu-prefill-engine\third_party\llama-b10944\ggml-xdna.dll
-third_party\llama-b10944\llama-cli.exe -m <model.gguf> -dev none -p "..."
+set GGML_XDNA_KERNELS=C:\code\npu-prefill-engine\kernels\bfp16_gemm\prebuilt\bfp16_gemm.xclbin
+third_party\llama-b10944\llama-cli.exe -m <model.gguf> -dev XDNA0,Vulkan0 -fa on -b 2048 -ub 2048
 ```
 
-`-dev none` keeps Vulkan from taking the weights first. Vulkan's `supports_buft`
-only accepts its own buffers, so weights in ours are invisible to it — sharing
-them with the iGPU would mean a second copy.
+`-dev XDNA0,Vulkan0` opts in: the NPU takes the big prompt work (weight
+matmuls on long prompts, and the norms, rotary and adds between them), the
+GPU keeps the model's weights and everything else, including every reply
+token. Without `-dev` naming XDNA0, llama.cpp runs as if the backend weren't
+there. `-ub 2048` gives the backend chunks big enough to claim.
+
+The one xclbin serves every model: the backend makes each matrix size's NPU
+instructions itself, so no per-model kernel builds are needed.
 
 | env | default | |
 |---|---|---|
-| `GGML_XDNA_MIN_BATCH` | 32 | batch size at or above which we claim a matmul |
-| `GGML_XDNA_N_THREADS` | hw concurrency | threads for the host reference matmul |
+| `GGML_XDNA_KERNELS` | unset | the NPU kernel's xclbin (or a directory holding `final.xclbin`); unset, matmuls run on a CPU reference |
+| `GGML_XDNA_MIN_BATCH` | 1024 | prompt tokens at or above which work is claimed |
+| `GGML_XDNA_MIN_MFLOP` | 256 | smallest matmul claimed, in MFLOP |
+| `GGML_XDNA_BLOCKS` | 1 | claim whole blocks (0: matmuls only) |
+| `GGML_XDNA_STREAMS` | 2 | row streams per block, so host and NPU work overlap |
+| `GGML_XDNA_TRACE` | 0 | 1 prints where the time goes |
 | `GGML_SCHED_DEBUG` | 0 | set to 2 to print per-node backend assignments |
 
 ## Run the prototype

@@ -62,6 +62,7 @@ if(EXISTS "${XRT_LIB}")
         src/xdna-exec.cpp
         hybrid/npu_bfp16.cpp
         hybrid/bfp16_pack.cpp
+        hybrid/bfp16_insts.cpp
         "${XRT_SHIM}/xrt_shim.cpp"
     )
     target_include_directories(ggml-xdna PRIVATE hybrid "${XRT_SHIM}" "${XRT_INC}")
@@ -136,6 +137,12 @@ foreach(t test-mul-mat test-dispatch-gate)
         COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${t}> "${GGML_DIST}"
     )
 endforeach()
+
+# The NPU instruction streams made on the host, against the toolchain's
+# (no NPU or XRT needed)
+add_executable(test-insts-gen tests/test-insts-gen.cpp hybrid/bfp16_insts.cpp)
+target_include_directories(test-insts-gen PRIVATE hybrid)
+target_compile_definitions(test-insts-gen PRIVATE XDNA_INSTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/insts")
 
 # Stage 0 of the hybrid prefill plan (.claude/plans/hybrid-prefill-amd-design.md):
 # the prefill-to-decode handoff through llama.cpp's sequence-state API. This

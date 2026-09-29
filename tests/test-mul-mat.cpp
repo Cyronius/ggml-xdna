@@ -147,6 +147,10 @@ int main() {
         // keyed by where it lives, and a freed buffer's address comes back.
         { "q4_0 2048x1024 x 512 w", GGML_TYPE_Q4_0, 2048, 1024, 512, true },
         { "q4_K 2048x1024 x 600 w", GGML_TYPE_Q4_K, 2048, 1024, 600, true },
+        // widths the kernel runs padded to a multiple of 512
+        { "q4_0 1536x896 x 512 w",  GGML_TYPE_Q4_0, 1536, 896,  512, true },
+        { "q8_0 1536x256 x 512 w",  GGML_TYPE_Q8_0, 1536, 256,  512, true },
+        { "q4_K 1536x8960 x 520 w", GGML_TYPE_Q4_K, 1536, 8960, 520, true },
     };
 
     std::mt19937 rng(1234);

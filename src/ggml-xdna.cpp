@@ -161,11 +161,11 @@ struct xdna_context {
     int64_t matmuls = 0, pieces = 0;
 
 #ifdef XDNA_HAVE_NPU
-    // the NPU, started on first use when GGML_XDNA_KERNELS names the builds
+    // the NPU, started on first use when GGML_XDNA_KERNELS names the kernel
     std::unique_ptr<xdna_npu> npu;
     bool npu_failed = false;
     xdna_npu * get_npu() {
-        if (npu || npu_failed || xdna_kernels_dir().empty()) return npu.get();
+        if (npu || npu_failed || xdna_xclbin().empty()) return npu.get();
         npu = std::make_unique<xdna_npu>();
         std::string err;
         if (!npu->init(xdna_n_threads(), err)) {
@@ -628,7 +628,7 @@ static void xdna_trace_piece(const ggml_cgraph * cgraph) {
 static bool xdna_blocks() {
     static bool v = env_int("GGML_XDNA_BLOCKS", 1) != 0;
 #ifdef XDNA_HAVE_NPU
-    return v && !xdna_kernels_dir().empty();
+    return v && !xdna_xclbin().empty();
 #else
     return false;
 #endif
@@ -655,8 +655,8 @@ static bool xdna_claim_mul_mat(const ggml_tensor * op) {
     if (!ggml_is_contiguous(src1) || src1->ne[2] != 1 || src1->ne[3] != 1) return false;
     if (src0->ne[0] != src1->ne[0]) return false;
 #ifdef XDNA_HAVE_NPU
-    // with the NPU configured, only shapes it has builds for
-    if (!xdna_kernels_dir().empty() && !xdna_npu_has_shape(src0->ne[0], src0->ne[1])) return false;
+    // with the NPU configured, only sizes the kernel takes
+    if (!xdna_xclbin().empty() && !xdna_npu_has_shape(src0->ne[0], src0->ne[1])) return false;
 #endif
     const int64_t mflop = 2 * src0->ne[0] * src0->ne[1] * xdna_op_batch_size(op) / 1000000;
     return mflop >= xdna_min_mflop();

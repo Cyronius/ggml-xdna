@@ -1,5 +1,6 @@
 #include "xdna-npu.h"
 
+#include "bfp16_insts.h"
 #include "bfp16_pack.h"
 #include "thread_pool.h"
 
@@ -7,6 +8,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
 #include <tuple>
 
 namespace {
@@ -18,33 +20,17 @@ constexpr int64_t SMALL = 512, BIG = 1024;  // rows per call
 const bfp16_tiling TILE;                      // 128 x 64 x 64, 8 columns: what the builds use
 const uint8_t zero_block[BFP16_BLOCK_BYTES] = {};
 
-// A build's directory: <M>x<K>x<N>_128x64x64_c8, with _m<mode> for the 16-bit
-// output modes (kernels/bfp16_gemm/build.ps1 -OutMode).
-std::string build_dir(int64_t M, int64_t K, int64_t N, int mode = 0) {
-    return xdna_kernels_dir() + "/" + std::to_string(M) + "x" + std::to_string(K) + "x" + std::to_string(N) +
-           "_128x64x64_c8" + (mode ? "_m" + std::to_string(mode) : "");
+// The kernel takes this size at both row counts.
+bool fits(int64_t K, int64_t N) {
+    return !xdna_xclbin().empty() && bfp16_insts_fits(SMALL, K, N) && bfp16_insts_fits(BIG, K, N);
 }
 
-bool file_exists(const std::string & path) {
-    FILE * f = fopen(path.c_str(), "rb");
-    if (f) fclose(f);
-    return f != nullptr;
-}
-
-// Built at both row counts, in this mode. Cached; thread-safe.
-bool built(int64_t K, int64_t N, int mode) {
-    if (xdna_kernels_dir().empty()) return false;
-    static std::mutex mu;
-    static std::map<std::tuple<int64_t, int64_t, int>, bool> known;
-    std::lock_guard<std::mutex> lk(mu);
-    auto key = std::make_tuple(K, N, mode);
-    auto it = known.find(key);
-    if (it != known.end()) return it->second;
-    const bool ok =
-        file_exists(build_dir(SMALL, K, N, mode) + "/insts.bin") && file_exists(build_dir(BIG, K, N, mode) + "/insts.bin");
-    known[key] = ok;
-    return ok;
-}
+// The kernel's N comes in multiples of 512 (64 per core column). A weight of
+// another width gets zero rows up to the next multiple, and only its real
+// columns are read back. A fused gate/up pads F to a multiple of 256, so 2F
+// stays a multiple of 512.
+int64_t pad_n(int64_t N) { return (N + 511) / 512 * 512; }
+int64_t pad_f(int64_t F) { return (F + 255) / 256 * 256; }
 
 bool out16_enabled() {
     static const bool v = [] {
@@ -54,26 +40,43 @@ bool out16_enabled() {
     return v;
 }
 
-// One row of an NPU output, in its mode, into `row` (N values, or N/2 in mode 2).
-void read_row(const float * c, int64_t M, int64_t N, int mode, int64_t r, float * row) {
-    if (mode) bfp16_c16_row(c, M, N, TILE, mode, r, row);
-    else bfp16_c_row(c, M, N, TILE, r, N, row);
+// One row of an NPU output, in its mode, into `row` (N values, or N/2 in mode
+// 2), of which the first `n_out` are kept.
+void read_row(const float * c, int64_t M, int64_t N, int mode, int64_t r, int64_t n_out, float * row) {
+    const int64_t n_all = mode == 2 ? N / 2 : N;
+    float * dst = row;
+    thread_local std::vector<float> padded;
+    if (n_out < n_all) {
+        padded.resize((size_t) n_all);
+        dst = padded.data();
+    }
+    if (mode) bfp16_c16_row(c, M, N, TILE, mode, r, dst);
+    else bfp16_c_row(c, M, N, TILE, r, N, dst);
+    if (dst != row) memcpy(row, dst, (size_t) n_out * sizeof(float));
 }
 
 } // namespace
 
-const std::string & xdna_kernels_dir() {
-    static const std::string dir = [] {
+const std::string & xdna_xclbin() {
+    static const std::string path = []() -> std::string {
+        namespace fs = std::filesystem;
         const char * s = getenv("GGML_XDNA_KERNELS");
-        std::string d = s ? s : "";
-        while (!d.empty() && (d.back() == '/' || d.back() == '\\')) d.pop_back();
-        return d;
+        if (!s || !*s) return {};
+        std::error_code ec;
+        const fs::path p = fs::u8path(s);
+        if (fs::is_regular_file(p, ec)) return p.u8string();
+        if (fs::is_regular_file(p / "final.xclbin", ec)) return (p / "final.xclbin").u8string();
+        // a directory of per-size builds: every one holds the same program
+        for (const auto & e : fs::directory_iterator(p, ec))
+            if (fs::is_regular_file(e.path() / "final.xclbin", ec)) return (e.path() / "final.xclbin").u8string();
+        fprintf(stderr, "xdna: GGML_XDNA_KERNELS=%s names no xclbin; the NPU is off\n", s);
+        return {};
     }();
-    return dir;
+    return path;
 }
 
-bool xdna_npu_has_shape(int64_t K, int64_t N) { return built(K, N, 0); }
-bool xdna_npu::has_fused_shape(int64_t K, int64_t F) { return out16_enabled() && built(K, 2 * F, 2); }
+bool xdna_npu_has_shape(int64_t K, int64_t N) { return fits(K, pad_n(N)); }
+bool xdna_npu::has_fused_shape(int64_t K, int64_t F) { return out16_enabled() && fits(K, 2 * pad_f(F)); }
 
 bool xdna_npu::wkey::operator<(const wkey & o) const {
     if (buffer != o.buffer) return buffer < o.buffer;
@@ -91,25 +94,30 @@ xdna_npu::~xdna_npu() {
 }
 
 bool xdna_npu::init(int n_threads, std::string & err) {
-    if (xdna_kernels_dir().empty()) { err = "GGML_XDNA_KERNELS is not set"; return false; }
+    if (xdna_xclbin().empty()) { err = "GGML_XDNA_KERNELS names no xclbin"; return false; }
     npu_ = std::make_unique<npu_bfp16>();
     pool_ = std::make_unique<thread_pool>(n_threads);
     batch_ = std::make_unique<npu_bfp16::batch>(*npu_);
     return true;
 }
 
-// A build's instruction stream, loaded once. The first build loaded also
-// opens the device with its xclbin; every build shares that core program.
+// A size's instruction stream, made once. The first also opens the device
+// with the xclbin.
 int xdna_npu::shape(int64_t M, int64_t K, int64_t N, int mode, std::string & err) {
-    const std::string dir = build_dir(M, K, N, mode);
-    auto it = shapes_.find(dir);
+    const auto key = std::make_tuple(M, K, N, mode);
+    auto it = shapes_.find(key);
     if (it != shapes_.end()) return it->second;
     if (!opened_) {
-        if (!npu_->open(dir + "/final.xclbin", err)) return -1;
+        if (!npu_->open(xdna_xclbin(), err)) return -1;
         opened_ = true;
     }
-    const int h = npu_->add_shape(dir + "/insts.bin", M, K, N, err);
-    if (h >= 0) shapes_[dir] = h;
+    const std::vector<uint32_t> words = bfp16_insts(M, K, N, mode);
+    if (words.empty()) {
+        err = "the kernel doesn't take " + std::to_string(M) + "x" + std::to_string(K) + "x" + std::to_string(N);
+        return -1;
+    }
+    const int h = npu_->add_shape(words, M, K, N, err);
+    if (h >= 0) shapes_[key] = h;
     return h;
 }
 
@@ -124,18 +132,19 @@ void xdna_npu::unpack(const void * raw, ggml_type type, int64_t N, int64_t K, fl
     });
 }
 
-// f: N x K float32 rows, encoded and laid out for the kernel.
-bool xdna_npu::add_packed(const wkey & key, std::vector<float> & f, int mode, std::string & err) {
+// f: N x K float32 rows (N padded), encoded and laid out for the kernel;
+// n_out of each output row's values are real.
+bool xdna_npu::add_packed(const wkey & key, std::vector<float> & f, int64_t N, int64_t n_out, int mode, std::string & err) {
     weight w;
     w.K = key.K;
-    w.N = key.N;
+    w.N = N;
     w.mode = mode;
-    w.N_out = mode == 2 ? key.N / 2 : key.N;
-    w.shape_small = shape(SMALL, key.K, key.N, mode, err);
-    w.shape_big = shape(BIG, key.K, key.N, mode, err);
+    w.N_out = n_out;
+    w.shape_small = shape(SMALL, key.K, N, mode, err);
+    w.shape_big = shape(BIG, key.K, N, mode, err);
     if (w.shape_small < 0 || w.shape_big < 0) return false;
     std::vector<uint8_t> packed;
-    bfp16_pack_b(f.data(), key.N, key.K, TILE, packed, pool_->size());
+    bfp16_pack_b(f.data(), N, key.K, TILE, packed, pool_->size());
     w.handle = npu_->add_weights(packed, err);
     if (w.handle < 0) return false;
     weights_[key] = w;
@@ -144,22 +153,23 @@ bool xdna_npu::add_packed(const wkey & key, std::vector<float> & f, int mode, st
 
 bool xdna_npu::add_weight(const wkey & key, const void * raw, std::string & err) {
     const clk::time_point t0 = clk::now();
-    std::vector<float> f((size_t) (key.N * key.K));
+    const int64_t N = pad_n(key.N);
+    std::vector<float> f((size_t) (N * key.K), 0.0f);
     unpack(raw, (ggml_type) key.type, key.N, key.K, f.data());
-    const int mode = out16_enabled() && built(key.K, key.N, 1) ? 1 : 0;
-    const bool ok = add_packed(key, f, mode, err);
+    const int mode = out16_enabled() ? 1 : 0;
+    const bool ok = add_packed(key, f, N, key.N, mode, err);
     times_.pack_ms += ms_since(t0);
     return ok;
 }
 
 bool xdna_npu::add_fused(const wkey & gate, const void * gate_raw, const void * up_raw, std::string & err) {
     const clk::time_point t0 = clk::now();
-    const int64_t F = gate.N, K = gate.K;
-    std::vector<float> g((size_t) (F * K)), u((size_t) (F * K)), f((size_t) (2 * F * K));
+    const int64_t F = gate.N, K = gate.K, Fp = pad_f(F);
+    std::vector<float> g((size_t) (Fp * K), 0.0f), u((size_t) (Fp * K), 0.0f), f((size_t) (2 * Fp * K));
     unpack(gate_raw, (ggml_type) gate.type, F, K, g.data());
     unpack(up_raw, (ggml_type) gate.type, F, K, u.data());
-    bfp16_interleave_gate_up(g.data(), u.data(), F, K, f.data());
-    const bool ok = add_packed(fused_key(gate), f, 2, err);
+    bfp16_interleave_gate_up(g.data(), u.data(), Fp, K, f.data());
+    const bool ok = add_packed(fused_key(gate), f, 2 * Fp, F, 2, err);
     times_.pack_ms += ms_since(t0);
     return ok;
 }
@@ -204,7 +214,7 @@ bool xdna_npu::mul_mat(const wkey & key, const float * x, int64_t T, float * y, 
     pool_->parallel_for(T, [&](int64_t t0r, int64_t t1r) {
         for (int64_t t = t0r; t < t1r; t++) {
             const int j = (int) (t / BIG);
-            read_row(batch_->c(j), m_of(j), N, w.mode, t % BIG, y + t * w.N_out);
+            read_row(batch_->c(j), m_of(j), N, w.mode, t % BIG, w.N_out, y + t * w.N_out);
         }
     });
     times_.decode_ms += ms_since(t0);
@@ -311,7 +321,7 @@ bool xdna_npu::wait(int stream, std::string & err) {
 void xdna_npu::decode_row(int stream, int k, int64_t r, float * row) const {
     const flight & f = flights_[stream];
     const weight & w = *f.w_out[k];
-    read_row(f.batch->c(k), f.M_out, w.N, w.mode, r, row);
+    read_row(f.batch->c(k), f.M_out, w.N, w.mode, r, w.N_out, row);
 }
 
 xdna_npu::times xdna_npu::take_times() {

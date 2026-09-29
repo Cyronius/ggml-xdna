@@ -1,13 +1,14 @@
 // The NPU side of the backend (plan: .claude/plans/backend-size-aware.md,
-// steps 2 and 3): the kernel builds, each claimed weight's private 8-bit copy,
-// and the matmul itself, on the bfp16 kernel the prototype uses
-// (hybrid/npu_bfp16.h, kernels/bfp16_gemm).
+// steps 2 and 3): each claimed weight's private 8-bit copy, and the matmul
+// itself, on the bfp16 kernel the prototype uses (hybrid/npu_bfp16.h,
+// kernels/bfp16_gemm).
 //
-// Kernel builds come from GGML_XDNA_KERNELS: a directory of
-// <M>x<K>x<N>_128x64x64_c8/ builds of whole_array_bfp_rtp (built --c-tiled),
-// all sharing one core program. A weight shape is usable when it's built at
-// both M = 512 and M = 1024: a call covers 1024 prompt rows, or 512 for a
-// short remainder.
+// The kernel is one core program (an xclbin of whole_array_bfp_rtp) that
+// serves every size; each size's instruction stream is made here
+// (hybrid/bfp16_insts.h, plan: .claude/plans/any-model-sizes.md).
+// GGML_XDNA_KERNELS names the xclbin: the file itself, a directory holding
+// final.xclbin, or a directory of per-size builds (any one's final.xclbin).
+// A call covers 1024 prompt rows, or 512 for a short remainder.
 #pragma once
 
 #include "ggml.h"
@@ -18,13 +19,15 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <tuple>
 #include <vector>
 
 class thread_pool;
 
-// The kernel builds' directory, or empty when GGML_XDNA_KERNELS is unset.
-const std::string & xdna_kernels_dir();
-// Whether a weight of K x N is built at both row counts. Cached; thread-safe.
+// The kernel's xclbin, from GGML_XDNA_KERNELS; empty when that's unset or
+// names no xclbin.
+const std::string & xdna_xclbin();
+// Whether the kernel takes a weight of K x N at both row counts.
 bool xdna_npu_has_shape(int64_t K, int64_t N);
 
 class xdna_npu {
@@ -94,11 +97,11 @@ private:
     struct weight {
         int handle = -1;
         int shape_small = -1, shape_big = -1;  // M = 512 and M = 1024
-        int64_t K = 0, N = 0, N_out = 0;
+        int64_t K = 0, N = 0, N_out = 0;       // N as the kernel runs it (padded); N_out real values a row
         int mode = 0;                          // output mode: 0 float32, 1 bf16, 2 SiLU(gate) * up in bf16
     };
     int shape(int64_t M, int64_t K, int64_t N, int mode, std::string & err);
-    bool add_packed(const wkey & key, std::vector<float> & f, int mode, std::string & err);
+    bool add_packed(const wkey & key, std::vector<float> & f, int64_t N, int64_t n_out, int mode, std::string & err);
     void unpack(const void * raw, ggml_type type, int64_t N, int64_t K, float * dst);
 
     std::unique_ptr<npu_bfp16> npu_;
@@ -114,7 +117,7 @@ private:
     std::vector<flight> flights_;  // by stream
     std::unique_ptr<thread_pool> pool_;
     std::map<wkey, weight> weights_;
-    std::map<std::string, int> shapes_;  // build directory -> handle
+    std::map<std::tuple<int64_t, int64_t, int64_t, int>, int> shapes_;  // (M, K, N, mode) -> handle
     bool opened_ = false;
     times times_;
 };

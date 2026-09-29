@@ -61,12 +61,19 @@ bool npu_bfp16::open(const std::string & xclbin_path, std::string & err) {
 int npu_bfp16::add_shape(const std::string & insts_path, int64_t M, int64_t K, int64_t N, std::string & err) {
     std::vector<uint8_t> instr;
     if (!read_file(insts_path, instr, err)) return -1;
+    std::vector<uint32_t> words(instr.size() / 4);
+    memcpy(words.data(), instr.data(), words.size() * 4);
+    return add_shape(words, M, K, N, err);
+}
+
+int npu_bfp16::add_shape(const std::vector<uint32_t> & instr, int64_t M, int64_t K, int64_t N, std::string & err) {
     shape s;
     s.M = M; s.K = K; s.N = N;
-    s.n_words = (int) (instr.size() / 4);
-    s.ibo = xrtsh_bo_create_instr(dev_, kern_, instr.size());
+    const size_t bytes = instr.size() * sizeof(uint32_t);
+    s.n_words = (int) instr.size();
+    s.ibo = xrtsh_bo_create_instr(dev_, kern_, bytes);
     if (!s.ibo) { err = shim_error("cannot allocate an instruction buffer"); return -1; }
-    if (xrtsh_bo_write(s.ibo, instr.data(), instr.size(), 0) < 0 || xrtsh_bo_sync(s.ibo, 1) < 0) {
+    if (xrtsh_bo_write(s.ibo, instr.data(), bytes, 0) < 0 || xrtsh_bo_sync(s.ibo, 1) < 0) {
         err = shim_error("instruction upload");
         xrtsh_bo_free(s.ibo);
         return -1;

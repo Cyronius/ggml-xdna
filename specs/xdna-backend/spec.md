@@ -3,9 +3,11 @@
 Canonical spec for the ggml backend that offloads prefill matmuls to the AMD
 XDNA2 NPU. Home repo: `ggml-xdna`.
 
-Kernels live in OpenFlowLM-Next (`open_kernels/`); this spec covers the seam
-only — how the backend presents itself to `ggml_backend_sched`, and what its
-matmul must produce. Requirements about the kernels themselves belong there.
+The NPU kernel is `kernels/bfp16_gemm` in this repo: one core program
+(`kernels/bfp16_gemm/prebuilt/bfp16_gemm.xclbin`) that serves every matrix
+size, driven by an instruction stream the backend makes per size
+(XDNA-INSTS-GEN). This spec covers how the backend presents itself to
+`ggml_backend_sched`, what its matmul must produce, and that stream.
 
 **Scope, revised 2026-09-29.** The backend now works next to the Vulkan GPU
 instead of the CPU (plan: `.claude/plans/backend-size-aware.md`). It
@@ -26,6 +28,7 @@ build.cmd
 set GGML_BACKEND_PATH=...\third_party\llama-b10944\ggml-xdna.dll
 third_party\llama-b10944\test-dispatch-gate.exe
 third_party\llama-b10944\test-mul-mat.exe
+build\test-insts-gen.exe
 ```
 
 ---
@@ -140,7 +143,10 @@ Beyond the batch gate and the work floor, `supports_op` shall accept a
 `MUL_MAT` only when its left side is a weight: a plain 2D tensor that is
 neither a view nor computed, of a type ggml can unpack (any type with a
 `to_float`). With the NPU configured (`GGML_XDNA_KERNELS`), it shall also
-require the weight's shape to be built.
+require the weight's shape to fit the kernel: K a multiple of 64 and at
+least 128, and N at most 32,768 once padded up to a multiple of 512 (the
+backend pads the weight's NPU copy with zero rows and reads back only the
+real columns).
 
 With the NPU configured and block claiming on (`GGML_XDNA_BLOCKS`, default
 on), it shall also accept a small op when all of these hold: the backend's
@@ -186,7 +192,7 @@ them showed up as plausible but different text, never as a crash.
 **Verification (manual):**
 ```
 set GGML_BACKEND_PATH=...\ggml-xdna.dll
-set GGML_XDNA_KERNELS=...\kernels\bfp16_gemm\build\whole_array_bfp_rtp_m_ct
+set GGML_XDNA_KERNELS=...\kernels\bfp16_gemm\prebuilt\bfp16_gemm.xclbin
 set GGML_XDNA_MIN_BATCH=32
 llama-completion -m Qwen3-1.7B-Q4_0.gguf -f <first 500 bytes of hybrid/prompts/prose.txt> -n 24 --temp 0 -no-cnv -fa on -b 2048 -ub 2048 -dev XDNA0,Vulkan0
 ```
@@ -276,12 +282,40 @@ XDNA-BLOCK-AGREES.
   (sizes with no NPU build: the host fallback)
 - q4_0 2048x1024x512 and q4_K 2048x1024x600 with the weight in a weight
   buffer: on the NPU when `GGML_XDNA_KERNELS` is set
+- the same at widths the kernel runs padded: q4_0 1536x896x512, q8_0
+  1536x256x512, q4_K 1536x8960x520
 - each case: `nrmse_xdna <= 2*nrmse_cpu + 1e-6` and `cos_xdna > 0.9999`
 
 **Passing 2026-09-29**, with and without `GGML_XDNA_KERNELS` and with block
 claiming on and off: the host cases at 1e-7 to 2e-7 against the CPU's 1e-7
 to 7e-3; on the NPU, q4_0 8.7e-3 against 5.4e-3 (1.62x) and q4_K 8.9e-3
-against 7.0e-3 (1.28x), cosine 0.99996.
+against 7.0e-3 (1.28x), cosine 0.99996. The padded cases, added the same
+day, land at the same errors (8.7e-3 to 9.0e-3).
+
+---
+
+### XDNA-INSTS-GEN: The backend's NPU instruction streams match the toolchain's
+**Applies to:** ggml-xdna
+**Test category:** unit
+
+For every size the kernel takes, the instruction stream the backend makes
+(`hybrid/bfp16_insts.cpp`) shall equal, word for word, the `insts.bin` the
+IRON toolchain builds from `kernels/bfp16_gemm/designs/whole_array_bfp_rtp.py`
+(`-Tm 128 -Tk 64 -Tn 64 --c-tiled`, 8 columns) at that size and output mode.
+Sizes the design can't take (M not a multiple of 512, N not a multiple of
+512 or over 32,768, K not a multiple of 64 or under 128) shall be refused.
+
+This is what lets the backend ship one ~200 KB xclbin and run any model's
+sizes with no toolchain: the core program is the same for every size, and
+only this stream changes. A wrong transfer descriptor can give plausible
+wrong output rather than a crash, so it is checked word for word.
+
+**Acceptance criteria:** `tests/test-insts-gen.cpp` against the reference
+streams in `tests/insts/` (30 sizes: M 512 and 1,024; K 128 to 9,728; N 512
+to 18,432; modes 0, 1 and 2), and five refused sizes. To add a size, build it
+with `kernels/bfp16_gemm/build.ps1` and copy its `insts.bin` there.
+
+**Passing 2026-09-29:** 30 of 30 identical, 5 of 5 refused.
 
 ---
 

@@ -26,6 +26,8 @@ public:
     // One shape's instruction stream (a build directory's insts.bin). Returns
     // its handle, or -1.
     int add_shape(const std::string & insts_path, int64_t M, int64_t K, int64_t N, std::string & err);
+    // The same from the stream's words (hybrid/bfp16_insts.h).
+    int add_shape(const std::vector<uint32_t> & insts, int64_t M, int64_t K, int64_t N, std::string & err);
 
     // A weight operand already in the kernel's layout (bfp16_pack_b), copied
     // into its own device buffer. Returns its handle, or -1.
