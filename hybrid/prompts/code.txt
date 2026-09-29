@@ -1,0 +1,61 @@
+import heapq
+from dataclasses import dataclass, field
+
+
+@dataclass(order=True)
+class Task:
+    priority: int
+    name: str = field(compare=False)
+    deadline: float = field(compare=False, default=float("inf"))
+    retries: int = field(compare=False, default=0)
+
+
+class Scheduler:
+    """Runs the most urgent task first, retrying failures with a penalty."""
+
+    def __init__(self, max_retries=3, penalty=5):
+        self._heap = []
+        self.max_retries = max_retries
+        self.penalty = penalty
+        self.completed = []
+        self.dropped = []
+
+    def submit(self, task):
+        heapq.heappush(self._heap, task)
+
+    def run(self, handler, now=0.0):
+        while self._heap:
+            task = heapq.heappop(self._heap)
+            if now > task.deadline:
+                self.dropped.append((task.name, "missed deadline"))
+                continue
+            try:
+                elapsed = handler(task)
+            except Exception as exc:  # the handler decides what counts as failure
+                if task.retries + 1 >= self.max_retries:
+                    self.dropped.append((task.name, repr(exc)))
+                else:
+                    task.retries += 1
+                    task.priority += self.penalty
+                    heapq.heappush(self._heap, task)
+                continue
+            now += elapsed
+            self.completed.append((task.name, now))
+        return self.completed, self.dropped
+
+
+def flaky_handler(task):
+    if task.name.startswith("net") and task.retries < 1:
+        raise TimeoutError("connection reset")
+    return 0.5 if task.priority < 10 else 1.5
+
+
+if __name__ == "__main__":
+    s = Scheduler()
+    for i, name in enumerate(["net-fetch", "parse", "index", "net-upload", "report"]):
+        s.submit(Task(priority=i * 3, name=name, deadline=6.0))
+    done, dropped = s.run(flaky_handler)
+    for name, t in done:
+        print(f"{name:12s} finished at {t:4.1f}")
+    for name, why in dropped:
+        print(f"{name:12s} dropped: {why}")

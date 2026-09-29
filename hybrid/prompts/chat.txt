@@ -1,0 +1,5 @@
+<|im_start|>system
+You are a careful assistant who explains trade-offs plainly and says when something is uncertain.<|im_end|>
+<|im_start|>user
+I run a small bakery and I'm deciding between two ovens. The first is a deck oven that costs 14,000 dollars, bakes 48 loaves per load, takes 40 minutes per load including loading and unloading, and uses about 11 kilowatt-hours per load. The second is a convection rack oven that costs 21,500 dollars, bakes 72 loaves per load, takes 35 minutes per load, and uses about 15 kilowatt-hours per load. Electricity costs me 0.19 dollars per kilowatt-hour. I bake six days a week and currently sell about 400 loaves a day, but my landlord says the shop next door may become available next year, which could double my foot traffic. My baker says deck ovens give a better crust on sourdough, which is about a third of what I sell. Which oven should I buy, and what questions should I be asking that I haven't thought of yet? Please show the arithmetic for daily running time and energy cost for both ovens at today's volume and at double the volume.<|im_end|>
+<|im_start|>assistant
