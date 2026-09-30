@@ -2,10 +2,12 @@ MIT License
 
 Copyright (c) 2026 Cyrus Attoun
 
-This license covers the ggml backend in this repository. Third-party source
-carried under vendor/ keeps its own license: the XRT headers in
-vendor/xrt/include/ are Apache-2.0, see vendor/xrt/LICENSE and vendor/xrt/NOTICE.
-See vendor/PROVENANCE.md for what is carried and where it came from.
+This license covers the ggml backend in this repository. Code carried from or
+derived from other projects keeps its own license (see NOTICE): the XRT
+headers in vendor/xrt/include/ are Apache-2.0 (vendor/xrt/LICENSE), and the
+NPU kernel in kernels/bfp16_gemm/ is Apache-2.0 with LLVM exceptions
+(kernels/bfp16_gemm/LICENSE). See vendor/PROVENANCE.md for what is carried
+and where it came from.
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

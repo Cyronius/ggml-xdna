@@ -1,176 +1,195 @@
-# NPU prefill for llama.cpp, on AMD XDNA2
+# ggml-xdna: llama.cpp prompt reading on the AMD Ryzen AI NPU
 
-The goal is to read prompts on the NPU in a Ryzen AI laptop and let llama.cpp
-do everything else, with no fork of llama.cpp and no patched build.
+ggml-xdna is an add-on for llama.cpp that reads prompts on the NPU of an
+AMD Ryzen AI 300 laptop, next to the integrated GPU. It loads into an
+unmodified llama.cpp Windows build. The GPU keeps doing everything else,
+including writing the reply.
 
-Two pieces live here, and they are stages of one thing rather than two
-projects:
+## Requirements
 
-- **`ggml-xdna`** ([src/](src/)) — a backend DLL that loads into a stock
-  llama.cpp release. This is where the work is meant to end up.
-- **`hybrid/`** — a prototype that uses llama.cpp as a library instead of
-  plugging into it. It exists so the NPU side can be built and measured
-  without also fighting ggml's scheduler. It is scaffolding, not a rival.
+- Windows 11
+- A Ryzen AI 300 series processor (Strix Point). Tested on the Ryzen AI 9
+  HX 370 with Radeon 890M graphics. Other chips are turned down at start
+  (see [Troubleshooting](#troubleshooting)).
+- The AMD NPU driver. Tested with 32.0.20102.3930.
+- A GPU driver with Vulkan. Tested with Radeon driver 32.0.31041.1004.
+- llama.cpp release **b10944**, Windows Vulkan build
+  (`llama-b10944-bin-win-vulkan-x64.zip`). The add-on is built against that
+  release and must run with it.
 
-The NPU kernels themselves are not here. They come from
-[OpenFlowLM-Next](https://github.com/Atomic-Germ/OpenFlowLM-Next) and are
-consumed as built artifacts. This repo is the seam, and it builds standalone:
-the XRT headers and the small `extern "C"` shim over them are vendored under
-[`vendor/`](vendor/), so no other checkout has to be present.
+## Quick start
 
-## Where this stands
+There's no release zip yet. [Build from source](#building-from-source):
+`build.cmd` downloads llama.cpp b10944 into `third_party\llama-b10944` and
+puts `ggml-xdna.dll` and the NPU kernel, `bfp16_gemm.xclbin`, next to it.
 
-**The weight path works on real hardware.** Qwen3-1.7B weights, read from a
-GGUF file, rearranged into the layout the NPU kernels expect, and dispatched
-through the vendored driver, come back correct — inside the kernel's own error
-budget, at 1.44 trillion operations per second.
-
-**The handoff works.** A prompt read by our own code outside llama.cpp can be
-pushed into a llama.cpp context, which then generates exactly what it would
-have generated had it read the prompt itself. Same first token, same 24-token
-continuation. Costs 2.3 ms for 58 MB of state.
-
-**What is missing is one kernel: batched attention.** Everything else is done
-or is routine porting. See [.claude/plans/hybrid-prefill-amd-design.md](.claude/plans/hybrid-prefill-amd-design.md).
-
-**The backend half is an unfinished first attempt at the wrong granularity.**
-It claims individual matrix multiplies. Everything else in a forward pass —
-attention, the norms — stays on the CPU, and that is roughly half of prompt
-reading. Measured in 2026-09, handing the NPU every matrix multiply for free
-still capped prompt reading below what the integrated GPU does on its own.
-
-That result is often quoted as "NPU prefill is dead." It is narrower than it
-sounds. It rules out *a backend that claims matrix multiplies*. It says
-nothing about a backend that claims a whole transformer block and fires one
-fused dispatch for it, which is what AMD's own hybrid mode does and what
-ggml's scheduler is perfectly capable of handing over — it groups neighbouring
-operations assigned to the same backend and passes them across in one call.
-Nobody has tried that here. Getting there needs the batched attention kernel
-first, which is why `hybrid/` exists and why the backend is parked rather than
-abandoned.
-
-## How the current backend claims work
-
-There is no phase handoff anywhere in this code. `ggml_backend_sched` picks,
-for each node, the highest-priority backend that supports **both** the weight's
-buffer type and the op (`ggml/src/ggml-backend.cpp`, `backend_from_buffer`). So:
-
-- Our buffer type reports `is_host = true`, which makes the CPU backend accept
-  it too (`ggml_backend_cpu_device_supports_buft` takes any host buft).
-- We register as an ACCEL device, so llama.cpp puts our buffer type first in the
-  CPU buffer-type list and the weights land in our memory.
-- `supports_op` claims `MUL_MAT` only at batch >= `GGML_XDNA_MIN_BATCH`
-  (default 512).
-
-Prefill matmuls come to us. Decode's `n_tokens=1` matmuls fail the batch gate
-and fall through to the CPU, reading the same bytes. One copy of the weights,
-no cross-backend transfers.
-
-`offload_op` is deliberately not implemented — that path copies the weight into
-our buffer per op, which is how OllamaAMDNPU ended up at 0.65 tok/s.
-
-## Build
-
-Needs MSVC (BuildTools 2022) and CMake. `tools/fetch-llama.ps1` downloads the
-pinned llama.cpp release plus matching headers and generates import libs from
-the release DLLs.
+Then point llama.cpp at the add-on and name the NPU first in the device list:
 
 ```
-powershell -File tools\fetch-llama.ps1
-build.cmd
+set GGML_BACKEND_PATH=C:\path\to\llama-b10944\ggml-xdna.dll
+llama-server -m model.gguf -dev XDNA0,Vulkan0
 ```
 
-The DLL is copied next to the llama.cpp binaries so `ggml-base.dll` resolves.
+`-dev XDNA0,Vulkan0` is what turns it on. Without it, llama.cpp runs exactly
+as if the add-on weren't there.
 
-Targets that drive the NPU directly (`bench-dispatch`, `test-npu-gemm`)
-additionally need an XRT import lib, which XRT on Windows does not ship.
-`tools/gen-xrt-implib.ps1` reconstructs one from the export table of the
-driver's own `xrt_coreutil.dll`. Without it those targets are skipped and
-everything else still builds.
+For longer prompts, `-ub 2048` is faster (below): llama.cpp then hands over
+the prompt in bigger pieces. `-b` must be at least `-ub`; its default, 2048,
+is.
 
-```
-powershell -File tools\gen-xrt-implib.ps1
-```
+## Results
 
-## Run the backend
+Qwen3-1.7B, Q4_0. Prompt reading speed with the add-on, against the GPU
+alone at the same settings. Measured 2026-09-30.
 
-```
-set GGML_BACKEND_PATH=C:\code\npu-prefill-engine\third_party\llama-b10944\ggml-xdna.dll
-third_party\llama-b10944\llama-cli.exe -m <model.gguf> -dev XDNA0,Vulkan0 -fa on -b 2048 -ub 2048
-```
-
-**Recommended: `-ub 2048`.** llama.cpp reads a prompt in chunks of `-ub`
-tokens, 512 by default, and the NPU takes chunks of 512 tokens or more
-(`GGML_XDNA_MIN_BATCH`). At the default it runs about level with the GPU;
-bigger chunks are where it pulls ahead (Qwen3-1.7B Q4_0, prompt speed
-against the GPU alone at the same `-ub`, idle machine, 2026-09-30):
-
-| prompt tokens | `-ub 512` (default) | `-ub 2048` |
+| prompt tokens | default settings (`-ub 512`) | `-ub 2048` |
 |---|---|---|
+| 512 | 1.07x | (one piece either way; not measured) |
 | 1,024 | 1.00x | 1.16x |
 | 2,048 | 0.98x | 1.13x |
 | 4,096 | 1.02x | 1.18x |
 
-`-b` (2,048 by default) must be at least `-ub`. Prompts shorter than 512
-tokens always run on the GPU.
+At default settings the NPU about ties the GPU. With 2,048-token pieces it
+reads prompts 13–18% faster. The GPU alone read 512 tokens at about 1,700
+tokens a second.
 
-The NPU kernel, `bfp16_gemm.xclbin`, sits next to `ggml-xdna.dll` (the
-build copies it there). If the NPU can't run it (no NPU, a chip the backend
-hasn't been tested on, a missing file), XDNA0 isn't offered and one log line
-says why. llama.cpp then runs on the GPU as usual. If the NPU fails in the
-middle of a run, the backend finishes that step on the CPU, logs it, and
-hands everything to the GPU after that.
+**How it was measured:** `llama-bench -r 3`, run alternately with
+`-dev Vulkan0` and `-dev XDNA0,Vulkan0`, five rounds each; the table gives
+the median of the five per-round ratios. The machine was otherwise idle.
+Single timings on this machine vary by more than the differences above, so
+compare only paired, repeated runs like these.
 
-`-dev XDNA0,Vulkan0` opts in: the NPU takes the big prompt work (weight
-matmuls on long prompts, and the norms, rotary and adds between them), the
-GPU keeps the model's weights and everything else, including every reply
-token. Without `-dev` naming XDNA0, llama.cpp runs as if the backend weren't
-there. `-ub 2048` gives the backend chunks big enough to claim.
+## Accuracy
 
-The one xclbin serves every model: the backend makes each matrix size's NPU
-instructions itself, so no per-model kernel builds are needed.
+The NPU works in 8-bit blocks, so its results differ from the GPU's by
+rounding. Measured with `llama-perplexity --kl-divergence` against the GPU
+alone, on Qwen3-1.7B, Qwen3-4B and Qwen2.5-1.5B:
 
-| env | default | |
+- mean KL divergence 0.004–0.008;
+- the same most likely next token about 95% of the time.
+
+The GPU agrees with itself across llama.cpp builds about as well. Short
+greedy replies usually come out word for word the same.
+
+The same holds with llama-server's parallel slots, cached conversations,
+contexts of 32,768 tokens, and two models served at once by its router.
+
+## Limitations
+
+- **Windows only.** Linux is planned for later.
+- **Ryzen AI 300 only.** `GGML_XDNA_ANY_NPU=1` tries another NPU, untested.
+- **Prompt reading only.** Replies are written one token at a time, and that
+  stays on the GPU.
+- **Pieces under 512 tokens stay on the GPU**, so short prompts don't use
+  the NPU.
+- **Memory:** the NPU keeps its own 8-bit copy of each weight it uses,
+  about 1.1 GB per billion parameters, on top of llama.cpp's. It's built
+  during the first prompt, which takes a few seconds (4.4 s for Qwen3-4B).
+- **Some layers stay on the GPU:** mixture-of-experts layers, and a few
+  variants the NPU side doesn't implement yet (bias adds, some rotary
+  settings). Output is still correct; less of the work moves.
+- If the NPU fails during a run, the add-on finishes that step on the CPU
+  and hands everything to the GPU from then on. The rest of that prompt is
+  slow.
+
+## How it works
+
+```mermaid
+flowchart LR
+    S[llama.cpp scheduler] -->|big prompt pieces:<br/>weight multiplies and the<br/>norms, rotary and adds between| X[XDNA0: the NPU]
+    S -->|everything else:<br/>attention, short prompts,<br/>every reply token| V[Vulkan0: the GPU]
+    X -. reads and writes .-> M[(GPU memory:<br/>weights and activations)]
+    V --- M
+```
+
+The add-on registers a device, XDNA0, that shares the GPU's memory. llama.cpp
+keeps every weight in GPU memory as usual, so work can move between the two
+without copies. The add-on accepts only large prompt work: a model's weight
+multiplies on pieces of 512 tokens or more, and the small steps between them,
+so each hand-over covers most of a transformer block.
+
+On the NPU, one kernel program serves every model: the add-on makes the NPU
+instructions for each matrix size itself, so there's nothing to build per
+model. The kernel works in bfp16, blocks of eight 8-bit values sharing one
+exponent. Each weight is converted once, on first use. While the NPU runs one
+part of the prompt, the CPU prepares the next.
+
+## Troubleshooting
+
+When the add-on can't use the NPU, it offers no XDNA0 device and logs one
+line:
+
+```
+xdna: not offering XDNA0: <reason>
+```
+
+A command that names `-dev XDNA0,Vulkan0` then stops with
+`invalid device: XDNA0`. Until the reason is fixed, use `-dev Vulkan0`, or
+leave `-dev` out.
+
+| reason | what to do |
+|---|---|
+| no bfp16_gemm.xclbin next to ggml-xdna.dll | copy it there, or set `GGML_XDNA_KERNELS` to it |
+| GGML_XDNA_KERNELS=... names no xclbin | fix the path |
+| no NPU driver (xrt_coreutil.dll not found) | install the AMD NPU driver |
+| the NPU driver's xrt_coreutil.dll lacks a function this backend uses | the driver is older or newer than the add-on was built for; report it |
+| no NPU found (...) | the driver doesn't see an NPU |
+| the NPU "..." hasn't been tested with this backend | a chip other than Ryzen AI 300; `GGML_XDNA_ANY_NPU=1` tries it |
+| the NPU won't load ... | another program may be holding the whole NPU |
+
+If llama.cpp says `invalid device: XDNA0` and no `xdna:` line appears,
+`GGML_BACKEND_PATH` doesn't point at `ggml-xdna.dll`.
+
+**Is it doing anything?** `GGML_XDNA_TRACE=1` prints where the time goes
+every few hundred multiplies. With default settings, a prompt under 512
+tokens never reaches the NPU.
+
+**Reporting a problem:** open an issue with your chip, the NPU and GPU driver
+versions, the model, the command, and the output with `GGML_XDNA_TRACE=1`.
+
+## Settings
+
+All optional. An empty value counts as unset.
+
+| variable | default | |
 |---|---|---|
-| `GGML_XDNA_KERNELS` | `bfp16_gemm.xclbin` next to the DLL | another xclbin, or a directory holding `final.xclbin` |
-| `GGML_XDNA_ANY_NPU` | 0 | 1 tries an NPU the backend hasn't been tested on (tested: Strix Point) |
-| `GGML_XDNA_HOST_ONLY` | 0 | 1 runs claimed matmuls on a CPU reference, never the NPU: for tests without an NPU |
-| `GGML_XDNA_MIN_BATCH` | 512 | prompt tokens at or above which work is claimed |
-| `GGML_XDNA_MIN_MFLOP` | 256 | smallest matmul claimed, in MFLOP |
-| `GGML_XDNA_BLOCKS` | 1 | claim whole blocks (0: matmuls only) |
-| `GGML_XDNA_STREAMS` | 2 | row streams per block, so host and NPU work overlap |
+| `GGML_XDNA_KERNELS` | `bfp16_gemm.xclbin` next to the DLL | another xclbin |
+| `GGML_XDNA_ANY_NPU` | 0 | 1 tries an NPU the add-on hasn't been tested on |
+| `GGML_XDNA_MIN_BATCH` | 512 | the smallest piece of a prompt, in tokens, the NPU takes |
+| `GGML_XDNA_MIN_MFLOP` | 256 | the smallest multiply the NPU takes, in millions of operations |
+| `GGML_XDNA_BLOCKS` | 1 | 0 takes only the multiplies, not the steps between them |
+| `GGML_XDNA_STREAMS` | 2 | how many parts a piece is split into, so the CPU and NPU overlap |
+| `GGML_XDNA_N_THREADS` | all cores | CPU threads for the add-on's own work |
 | `GGML_XDNA_TRACE` | 0 | 1 prints where the time goes |
-| `GGML_SCHED_DEBUG` | 0 | set to 2 to print per-node backend assignments |
+| `GGML_XDNA_HOST_ONLY` | 0 | 1 runs the NPU's share on the CPU instead: for tests without an NPU |
 
-## Run the prototype
+## Building from source
 
-All of these need a GGUF model and most need the GPU, so run them from the
-release directory where the DLLs live.
+Needs Visual Studio 2022 or its Build Tools, with the C++ tools (they bring
+CMake and Ninja). Then, from the repository:
 
 ```
-third_party\llama-b10944\kv-handoff.exe   <model.gguf> [--repeat 34]
-third_party\llama-b10944\ref-handoff.exe  <qwen3.gguf> [--threads N]
-third_party\llama-b10944\test-q4-pack.exe <model.gguf> [--dump <dir>]
-third_party\llama-b10944\test-npu-gemm.exe <model.gguf> --build <kernel-build-dir>
-third_party\llama-b10944\gpu-prefill.exe  <model.gguf> --lens 256,512,1024,2048
+build.cmd
 ```
 
-The first four have a pass/fail and check the requirements in
-[specs/hybrid-prefill/spec.md](specs/hybrid-prefill/spec.md). `gpu-prefill` has
-no pass/fail — it is a measurement, and that spec says how to read it.
+It downloads llama.cpp b10944 and its matching headers into `third_party\`,
+builds the add-on and its tests, copies the DLL and the kernel next to the
+llama.cpp binaries, and runs the tests. The NPU tests run only where the NPU
+driver is installed; the others need a Vulkan GPU. `build.cmd notest` skips
+the tests.
 
-## Measuring anything here
+The build needs no NPU driver: the list of driver functions the add-on uses
+is in [vendor/xrt-implib](vendor/xrt-implib/xrt_coreutil.def).
+`tools\check-xrt-driver.ps1` checks an installed driver against it.
 
-Two traps on this machine, both of which have already produced a wrong number
-that had to be withdrawn:
+The NPU kernel ships prebuilt
+([kernels/bfp16_gemm/prebuilt](kernels/bfp16_gemm/prebuilt)). Rebuilding it
+needs AMD's IRON toolchain; see [kernels/bfp16_gemm/build.ps1](kernels/bfp16_gemm/build.ps1).
 
-- **Prompt-reading speed on the GPU cannot be timed once.** A single run in a
-  fresh process can be off by more than ten times, because some launches
-  compile shaders first and the runs after that are still slow while clocks
-  ramp. Take the median of many runs in one process and throw the first
-  several away. `gpu-prefill.exe` does this.
-- **NPU dispatch timing needs at least 30 iterations.** At ten, warm-up still
-  moved the best time by 60%.
+What the add-on must do, and how each part is checked, is in
+[specs/xdna-backend/spec.md](specs/xdna-backend/spec.md).
 
-Generation speed does not need either caveat; it was steady from the first
-reading.
+## License
+
+MIT ([LICENSE](LICENSE)). The vendored XRT headers and the NPU kernel keep
+their own licenses; see [NOTICE](NOTICE).
