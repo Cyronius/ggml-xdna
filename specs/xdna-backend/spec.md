@@ -106,43 +106,34 @@ our pieces never have copied inputs.
 **Test category:** unit
 
 `supports_op` shall return false for `GGML_OP_MUL_MAT` whose batch dimension
-(`ne[1]`) is below `GGML_XDNA_MIN_BATCH` (default 1024), and true at or above
+(`ne[1]`) is below `GGML_XDNA_MIN_BATCH` (default 512), and true at or above
 it for the weights XDNA-SIZE-POLICY accepts.
 
 This is the whole split between the NPU and the GPU for matmuls: reply
 generation (batch 1) and short prompts fail the gate, and Vulkan runs them.
-The default comes from the prototype, which beats the GPU from about 1,000
-tokens; the plan's step 3 tunes it.
+The default is llama.cpp's default prompt chunk (`-ub 512`). On an idle
+machine the NPU ties the GPU there (0.98–1.07x) and leads by 13–18% at
+`-ub 2048`, and the owner prefers the NPU on ties (2026-09-30; it was 1,024
+until then). The kernel's smallest call is 512 rows.
 
 **Acceptance criteria:**
 - batch 1 → not claimed
-- batch 1023 → not claimed
-- batch 1024, q4_K, 2048x2048 → claimed
+- batch 511 → not claimed
+- batch 512, q4_K, 2048x2048 → claimed
 
 ---
 
-### XDNA-CHUNK-WARNING: A warning when llama.cpp's chunks are too small
+### XDNA-CHUNK-WARNING: A warning when llama.cpp's chunks are too small — RETIRED 2026-09-30
 **Applies to:** ggml-xdna
-**Test category:** manual
 
-On the NPU, when llama.cpp's prompt chunk (`-ub`, 512 by default) is below
-`GGML_XDNA_MIN_BATCH`, the backend shall log one warning naming the chunk
-size and the flag to change (`-ub 2048`). Otherwise the backend silently
-does nothing. The chunk size is read from the first matmul on loaded
-weights with more than one row: llama.cpp lays out a prompt step at its
-full chunk size before running anything. Matmuls on weights with no data
-don't count; llama.cpp's memory fitting sets up a trial context that way,
-with warnings hidden.
-
-**Verification (manual):** Qwen3-1.7B, `-dev XDNA0,Vulkan0`:
-- `llama-completion` and `llama-server` with the default `-ub` print the
-  warning once;
-- `-ub 2048` prints nothing;
-- `-dev Vulkan0` prints nothing.
-
-`llama-cli` hides all warnings unless `-v`, which the README says.
-
-**Measured 2026-09-30:** as above.
+Added and retired the same day. The backend warned once when llama.cpp's
+prompt chunk (`-ub`, 512 by default) was below `GGML_XDNA_MIN_BATCH`. The
+owner dropped it in favour of README guidance (recommend `-ub 2048`). On an
+idle machine the NPU only tied the GPU at 512-token chunks (0.98–1.07x), so
+the default costs nothing; it just forgoes the 13–18% that 2,048-token chunks
+give. Lesson kept for any future message of this kind: llama.cpp's memory
+fitting sets up a trial context with warnings hidden and no weight data, and
+a once-only message fired there is never seen.
 
 ---
 

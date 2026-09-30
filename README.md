@@ -60,7 +60,7 @@ buffer type and the op (`ggml/src/ggml-backend.cpp`, `backend_from_buffer`). So:
 - We register as an ACCEL device, so llama.cpp puts our buffer type first in the
   CPU buffer-type list and the weights land in our memory.
 - `supports_op` claims `MUL_MAT` only at batch >= `GGML_XDNA_MIN_BATCH`
-  (default 32).
+  (default 512).
 
 Prefill matmuls come to us. Decode's `n_tokens=1` matmuls fail the batch gate
 and fall through to the CPU, reading the same bytes. One copy of the weights,
@@ -99,13 +99,20 @@ set GGML_BACKEND_PATH=C:\code\npu-prefill-engine\third_party\llama-b10944\ggml-x
 third_party\llama-b10944\llama-cli.exe -m <model.gguf> -dev XDNA0,Vulkan0 -fa on -b 2048 -ub 2048
 ```
 
-**Pass `-ub 2048`.** llama.cpp reads a prompt in chunks of `-ub` tokens,
-512 by default, and the NPU only takes chunks of 1,024 or more
-(`GGML_XDNA_MIN_BATCH`): below that, handing work to the NPU costs more
-than it saves. With the default, every prompt runs on the GPU and the
-backend does nothing. `llama-completion` and `llama-server` print a
-warning when that happens. `llama-cli`'s chat screen hides all warnings
-unless run with `-v`.
+**Recommended: `-ub 2048`.** llama.cpp reads a prompt in chunks of `-ub`
+tokens, 512 by default, and the NPU takes chunks of 512 tokens or more
+(`GGML_XDNA_MIN_BATCH`). At the default it runs about level with the GPU;
+bigger chunks are where it pulls ahead (Qwen3-1.7B Q4_0, prompt speed
+against the GPU alone at the same `-ub`, idle machine, 2026-09-30):
+
+| prompt tokens | `-ub 512` (default) | `-ub 2048` |
+|---|---|---|
+| 1,024 | 1.00x | 1.16x |
+| 2,048 | 0.98x | 1.13x |
+| 4,096 | 1.02x | 1.18x |
+
+`-b` (2,048 by default) must be at least `-ub`. Prompts shorter than 512
+tokens always run on the GPU.
 
 The NPU kernel, `bfp16_gemm.xclbin`, sits next to `ggml-xdna.dll` (the
 build copies it there). If the NPU can't run it (no NPU, a chip the backend
@@ -128,7 +135,7 @@ instructions itself, so no per-model kernel builds are needed.
 | `GGML_XDNA_KERNELS` | `bfp16_gemm.xclbin` next to the DLL | another xclbin, or a directory holding `final.xclbin` |
 | `GGML_XDNA_ANY_NPU` | 0 | 1 tries an NPU the backend hasn't been tested on (tested: Strix Point) |
 | `GGML_XDNA_HOST_ONLY` | 0 | 1 runs claimed matmuls on a CPU reference, never the NPU: for tests without an NPU |
-| `GGML_XDNA_MIN_BATCH` | 1024 | prompt tokens at or above which work is claimed |
+| `GGML_XDNA_MIN_BATCH` | 512 | prompt tokens at or above which work is claimed |
 | `GGML_XDNA_MIN_MFLOP` | 256 | smallest matmul claimed, in MFLOP |
 | `GGML_XDNA_BLOCKS` | 1 | claim whole blocks (0: matmuls only) |
 | `GGML_XDNA_STREAMS` | 2 | row streams per block, so host and NPU work overlap |

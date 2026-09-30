@@ -59,10 +59,13 @@ static int64_t xdna_op_batch_size(const ggml_tensor * op) {
 
 static int64_t env_int(const char * name, int64_t def) { return xdna_env_int(name, def); }
 
-// Batch size at or above which a matmul is ours. The prototype (hybrid/)
-// beats the GPU from about 1,000 tokens; step 3 of the plan tunes this.
+// Batch size at or above which a matmul is ours: llama.cpp's default prompt
+// chunk (-ub 512). There the NPU ties the GPU (0.98-1.07x, idle machine,
+// 2026-09-30), and ties go to the NPU; at -ub 2048 it leads by 13-18%.
+// The kernel's smallest call is 512 rows, so smaller chunks would be mostly
+// padding.
 static int64_t xdna_min_batch() {
-    static int64_t v = env_int("GGML_XDNA_MIN_BATCH", 1024);
+    static int64_t v = env_int("GGML_XDNA_MIN_BATCH", 512);
     return v;
 }
 
@@ -699,29 +702,7 @@ static int64_t xdna_tokens(const ggml_tensor * t) {
 
 static bool xdna_supports_op_policy(const ggml_tensor * op, int depth = 0);
 
-// Warns once when llama.cpp's prompt chunk (-ub) is too small for us to take
-// anything. Before running, llama.cpp lays out a prompt step at its full
-// chunk size, so the first weight matmul we're asked about with more than
-// one row shows it. Only weights llama.cpp has loaded count. While loading it
-// also asks about stand-in matmuls of 512 rows on placeholder buffers, and its
-// memory fitting (common/fit.cpp) sets up a trial model and context with no
-// weight data, with warnings turned into debug output: warning there would
-// use up the one warning where nobody sees it.
-static void xdna_check_chunk_size(const ggml_tensor * op) {
-    if (op->op != GGML_OP_MUL_MAT || op->ne[1] <= 1) return;
-    const ggml_tensor * w = op->src[0];
-    if (!w->buffer || !w->data || ggml_backend_buffer_get_usage(w->buffer) != GGML_BACKEND_BUFFER_USAGE_WEIGHTS) return;
-    static std::once_flag once;
-    std::call_once(once, [&] {
-        if (op->ne[1] >= xdna_min_batch()) return;
-        GGML_LOG_WARN("xdna: llama.cpp reads prompts in chunks of %lld tokens (-ub); the NPU only takes chunks of %lld or "
-                      "more (GGML_XDNA_MIN_BATCH), so prompts will run on the GPU. Pass -ub 2048 to use the NPU.\n",
-                      (long long) op->ne[1], (long long) xdna_min_batch());
-    });
-}
-
 static bool ggml_backend_xdna_device_supports_op(ggml_backend_dev_t dev, const ggml_tensor * op) {
-    if (xdna_run_mode() == xdna_mode::npu) xdna_check_chunk_size(op);
     if (xdna_blocks() || xdna_trace()) xdna_note_readers(op);
     return xdna_supports_op_policy(op);
     GGML_UNUSED(dev);
