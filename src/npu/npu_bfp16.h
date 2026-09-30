@@ -1,13 +1,12 @@
-// The NPU's bfp16 matmul (kernels/bfp16_gemm, whole_array_bfp_acc with
-// float32 running sums and float32 output) driven through the vendored XRT
-// shim. Plan: .claude/plans/npu-prefill-beats-gpu.md, stage 3b.
+// The NPU's bfp16 matmul (kernels/bfp16_gemm, with float32 running sums)
+// driven through the vendored XRT shim.
 //
 // One hardware context for everything. Switching contexts costs about 2.4 ms
 // on this NPU against about 0.1 ms for a dispatch, so every shape runs as its
 // own instruction stream under the one xclbin (one xclbin serves any M and N
 // at the K it was built for). Weights are packed once and stay resident in
 // their own buffers; each call packs nothing, it takes operands already in the
-// kernel's layout (hybrid/bfp16_pack.h).
+// kernel's layout (bfp16_pack.h).
 #pragma once
 
 #include "bfp16_pack.h"
@@ -26,7 +25,7 @@ public:
     // One shape's instruction stream (a build directory's insts.bin). Returns
     // its handle, or -1.
     int add_shape(const std::string & insts_path, int64_t M, int64_t K, int64_t N, std::string & err);
-    // The same from the stream's words (hybrid/bfp16_insts.h).
+    // The same from the stream's words (bfp16_insts.h).
     int add_shape(const std::vector<uint32_t> & insts, int64_t M, int64_t K, int64_t N, std::string & err);
 
     // A weight operand already in the kernel's layout (bfp16_pack_b), copied

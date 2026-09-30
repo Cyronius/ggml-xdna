@@ -6,15 +6,20 @@
 // tests on machines without an NPU; it's cleared here so it can't hide the
 // failure.
 //
+// --no-driver, on a machine without the NPU driver (CI): keeps the real
+// kernel, so the driver check is the one that fails. The backend must still
+// load, although the driver's DLL it links is missing.
+//
 // Traces: XDNA-SAFE-START
 
 #include "ggml-backend.h"
 
 #include <cstdio>
 #include <cstdlib>
+#include <cstring>
 
-int main() {
-    _putenv("GGML_XDNA_KERNELS=Z:\\no\\such\\kernel.xclbin");
+int main(int argc, char ** argv) {
+    if (argc < 2 || strcmp(argv[1], "--no-driver") != 0) _putenv("GGML_XDNA_KERNELS=Z:\\no\\such\\kernel.xclbin");
     _putenv("GGML_XDNA_HOST_ONLY=");
     ggml_backend_load_all();
 

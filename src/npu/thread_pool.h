@@ -1,10 +1,9 @@
-// A fixed set of worker threads for the prefill driver's host work. Starting
-// threads on every call costs tens of microseconds each; the driver makes
-// hundreds of parallel calls per prefill, so the threads are started once.
+// A fixed set of worker threads for the backend's host work. Starting threads
+// on every call costs tens of microseconds each; the backend makes hundreds
+// of parallel calls per prompt, so the threads are started once.
 //
 // The workers sleep on a condition variable between jobs rather than spin:
-// spinning CPU threads slow the NPU (plan: "What openflowlm-next #107 changes
-// here"; measured 30-50% under a busy CPU in stage 2).
+// spinning CPU threads slow the NPU (measured 30-50% under a busy CPU).
 #pragma once
 
 #include <algorithm>

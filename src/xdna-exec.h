@@ -1,11 +1,10 @@
-// Block claiming (plan: .claude/plans/backend-size-aware.md, step 5): runs one
-// graph piece the scheduler handed us, the matmuls on the NPU and the small
-// ops between them on the host.
+// Block claiming: runs one graph piece the scheduler handed us, the matmuls on
+// the NPU and the small ops between them on the host.
 //
 // Every op in a claimed piece works row by row (one row per prompt token), so
 // the piece's rows are split into streams and the streams take turns: the host
-// runs one stream's small ops while the NPU runs another's matmuls, as in the
-// prototype (hybrid/npu_prefill.cpp). Between two matmuls the host makes one
+// runs one stream's small ops while the NPU runs another's matmuls. Between
+// two matmuls the host makes one
 // pass over the rows, a few at a time: it reads the NPU's output, runs the
 // small ops, and encodes the next matmul's input. Results used only inside
 // that pass never leave the cache; the rest stay in host memory, and only

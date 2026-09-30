@@ -1,6 +1,5 @@
 // The NPU instruction stream (insts.bin) for one size of the bfp16 matmul,
-// made on the host instead of by the IRON toolchain. Plan:
-// .claude/plans/any-model-sizes.md.
+// made on the host instead of by the IRON toolchain.
 //
 // kernels/bfp16_gemm/designs/whole_array_bfp_rtp.py builds one core program
 // that serves every size: its xclbin is the same whatever M, K, N and output

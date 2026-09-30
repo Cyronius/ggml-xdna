@@ -18,6 +18,7 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include <delayimp.h>
 
 namespace {
 
@@ -114,6 +115,22 @@ const std::string & xdna_xclbin() {
 // Point (Ryzen AI 300, e.g. the HX 370).
 static const char * const TESTED_NPUS[] = { "NPU Strix" };
 
+// The NPU driver's xrt_coreutil.dll is delay-loaded, so this DLL loads on a
+// machine without the driver. Before the first call into it, bind every
+// function the backend uses: a missing DLL or function then fails here, with
+// a reason, instead of at a call. 0 when all bind.
+static DWORD xrt_bind_failure() {
+    __try {
+        return SUCCEEDED(__HrLoadAllImportsForDll("xrt_coreutil.dll")) ? 0 : (DWORD) ERROR_MOD_NOT_FOUND;
+    } __except (GetExceptionCode() == VcppException(ERROR_SEVERITY_ERROR, ERROR_MOD_NOT_FOUND) ||
+                        GetExceptionCode() == VcppException(ERROR_SEVERITY_ERROR, ERROR_PROC_NOT_FOUND)
+                    ? EXCEPTION_EXECUTE_HANDLER
+                    : EXCEPTION_CONTINUE_SEARCH) {
+        return GetExceptionCode() == VcppException(ERROR_SEVERITY_ERROR, ERROR_PROC_NOT_FOUND) ? ERROR_PROC_NOT_FOUND
+                                                                                              : ERROR_MOD_NOT_FOUND;
+    }
+}
+
 bool xdna_npu_usable(std::string & why) {
     static std::string reason;
     static const bool ok = [] {
@@ -122,6 +139,15 @@ bool xdna_npu_usable(std::string & why) {
             reason = s && *s ? std::string("GGML_XDNA_KERNELS=") + s + " names no xclbin"
                              : "no bfp16_gemm.xclbin next to ggml-xdna.dll";
             return false;
+        }
+        switch (xrt_bind_failure()) {
+            case 0: break;
+            case ERROR_PROC_NOT_FOUND:
+                reason = "the NPU driver's xrt_coreutil.dll lacks a function this backend uses (a driver it wasn't built for)";
+                return false;
+            default:
+                reason = "no NPU driver (xrt_coreutil.dll not found)";
+                return false;
         }
         xrtsh_dev dev = xrtsh_device_open(0);
         if (!dev) {

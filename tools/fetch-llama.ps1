@@ -40,19 +40,22 @@ if (-not (Test-Path $hdr)) {
     foreach ($f in "ggml-backend-impl.h", "ggml-impl.h", "ggml-common.h") {
         Copy-Item "$src\src\$f" (Join-Path $hdr "src")
     }
-    # llama.h too: the hybrid tools under hybrid/ drive llama.cpp as a library.
-    Copy-Item (Join-Path $tmp "llama.cpp-$Tag\include\llama.h") (Join-Path $hdr "include")
     Remove-Item $tmp -Recurse -Force
     Remove-Item $zip
 }
 
-# Import libs from the release DLLs' export tables.
-$vcvars = "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
-if (-not (Test-Path $vcvars)) {
-    throw "vcvars64.bat not found at $vcvars"
+# Import libs from the release DLLs' export tables, with the MSVC tools of
+# whichever Visual Studio has them.
+$vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+$vs = if (Test-Path $vswhere) {
+    & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+}
+$vcvars = if ($vs) { Join-Path $vs "VC\Auxiliary\Build\vcvars64.bat" }
+if (-not $vcvars -or -not (Test-Path $vcvars)) {
+    throw "no Visual Studio with the C++ tools found"
 }
 
-foreach ($dll in "ggml-base", "ggml", "llama") {
+foreach ($dll in "ggml-base", "ggml") {
     $lib = Join-Path $tp "$dll.lib"
     if (Test-Path $lib) { continue }
 

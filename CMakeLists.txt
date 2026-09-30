@@ -11,6 +11,10 @@ set(GGML_DIST "${CMAKE_SOURCE_DIR}/third_party/llama-b10944" CACHE PATH "llama.c
 set(GGML_HEADERS "${CMAKE_SOURCE_DIR}/third_party/ggml-b10944" CACHE PATH "matching ggml headers")
 set(GGML_IMPLIB_DIR "${CMAKE_SOURCE_DIR}/third_party" CACHE PATH "generated ggml import libs")
 
+# Without the NPU path the backend runs its claimed matmuls on a CPU
+# reference only, like GGML_XDNA_HOST_ONLY=1.
+option(GGML_XDNA_NPU "build the NPU path" ON)
+
 add_library(ggml-xdna SHARED
     src/ggml-xdna.cpp
     src/xdna-ref.cpp
@@ -48,86 +52,46 @@ add_custom_command(TARGET ggml-xdna POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different "${XDNA_XCLBIN}" $<TARGET_FILE_DIR:ggml-xdna>
 )
 
-# XRT is vendored: headers under vendor/xrt (Apache-2.0, see vendor/xrt/LICENSE)
-# and our extern "C" shim over XRT's C++ API under vendor/xrt-shim. XRT ships no
-# import lib on Windows, so tools/gen-xrt-implib.ps1 reconstructs one from the
-# export table of the driver's own xrt_coreutil.dll.
-set(XRT_INC "${CMAKE_SOURCE_DIR}/vendor/xrt/include")
-set(XRT_SHIM "${CMAKE_SOURCE_DIR}/vendor/xrt-shim")
-set(XRT_LIB "${CMAKE_SOURCE_DIR}/third_party/xrt_coreutil.lib" CACHE FILEPATH "XRT import lib")
+# The NPU path. XRT is vendored: headers under vendor/xrt (Apache-2.0, see
+# vendor/xrt/LICENSE) and our extern "C" shim over XRT's C++ API under
+# vendor/xrt-shim. XRT ships no import lib on Windows, so one is built here
+# from the list of functions the backend imports (vendor/xrt-implib). The
+# driver's DLL is delay-loaded: the backend then loads on a machine without
+# the driver, and says so instead of failing to load.
+if(GGML_XDNA_NPU)
+    set(XRT_DEF "${CMAKE_SOURCE_DIR}/vendor/xrt-implib/xrt_coreutil.def")
+    set(XRT_LIB "${CMAKE_BINARY_DIR}/xrt_coreutil.lib")
+    add_custom_command(OUTPUT "${XRT_LIB}"
+        COMMAND "${CMAKE_AR}" /nologo "/def:${XRT_DEF}" /machine:x64 "/out:${XRT_LIB}"
+        DEPENDS "${XRT_DEF}"
+        VERBATIM
+    )
+    add_custom_target(xrt-implib DEPENDS "${XRT_LIB}")
+    add_dependencies(ggml-xdna xrt-implib)
 
-# The backend's NPU path (plan: .claude/plans/backend-size-aware.md, steps 2
-# and 3): the prototype's bfp16 dispatch and packing, compiled into the DLL.
-# Without the XRT import lib the backend still builds, running its claimed
-# matmuls on the host reference.
-if(EXISTS "${XRT_LIB}")
     target_sources(ggml-xdna PRIVATE
         src/xdna-npu.cpp
         src/xdna-exec.cpp
-        hybrid/npu_bfp16.cpp
-        hybrid/bfp16_pack.cpp
-        hybrid/bfp16_insts.cpp
-        "${XRT_SHIM}/xrt_shim.cpp"
+        src/npu/npu_bfp16.cpp
+        src/npu/bfp16_pack.cpp
+        src/npu/bfp16_insts.cpp
+        vendor/xrt-shim/xrt_shim.cpp
     )
-    target_include_directories(ggml-xdna PRIVATE hybrid "${XRT_SHIM}" "${XRT_INC}")
+    target_include_directories(ggml-xdna PRIVATE src/npu vendor/xrt-shim vendor/xrt/include)
     target_compile_definitions(ggml-xdna PRIVATE XDNA_HAVE_NPU)
-    target_compile_options(ggml-xdna PRIVATE /Zc:__cplusplus /arch:AVX2 /fp:fast)  # vectorized host ops, as hybrid/
-    target_link_libraries(ggml-xdna PRIVATE "${XRT_LIB}")
+    # /Zc:__cplusplus: XRT's headers pick std::any over boost::any only when
+    # __cplusplus is reported honestly. /arch:AVX2 /fp:fast: the host's small
+    # ops vectorize.
+    target_compile_options(ggml-xdna PRIVATE /Zc:__cplusplus /arch:AVX2 /fp:fast)
+    target_link_libraries(ggml-xdna PRIVATE "${XRT_LIB}" delayimp)
+    target_link_options(ggml-xdna PRIVATE /DELAYLOAD:xrt_coreutil.dll)
 endif()
 
-if(EXISTS "${XRT_LIB}")
-    add_executable(bench-dispatch
-        tools/bench-dispatch.cpp
-        "${XRT_SHIM}/xrt_shim.cpp"
-    )
-    target_include_directories(bench-dispatch PRIVATE
-        "${XRT_SHIM}"
-        "${XRT_INC}"
-    )
-    # XRT's headers pick std::any over boost::any only when __cplusplus is
-    # reported honestly, which MSVC does not do without this.
-    target_compile_options(bench-dispatch PRIVATE /Zc:__cplusplus)
-    target_link_libraries(bench-dispatch PRIVATE "${XRT_LIB}")
+#
+# tests
+#
 
-    # Real GGUF weights through our packer onto the NPU, against a kernel
-    # built in openflowlm-next. Needs the driver, so it sits behind the same
-    # guard as bench-dispatch.
-    add_executable(test-npu-gemm
-        hybrid/test-npu-gemm.cpp
-        hybrid/npu_gemm.cpp
-        hybrid/q4_pack.cpp
-        "${XRT_SHIM}/xrt_shim.cpp"
-    )
-    target_include_directories(test-npu-gemm PRIVATE
-        hybrid "${GGML_HEADERS}/include" "${XRT_SHIM}" "${XRT_INC}"
-    )
-    target_compile_definitions(test-npu-gemm PRIVATE GGML_SHARED GGML_BACKEND_SHARED _CRT_SECURE_NO_WARNINGS)
-    target_compile_options(test-npu-gemm PRIVATE /Zc:__cplusplus)
-    target_link_libraries(test-npu-gemm PRIVATE "${XRT_LIB}" "${GGML_IMPLIB_DIR}/ggml-base.lib")
-    add_custom_command(TARGET test-npu-gemm POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:test-npu-gemm> "${GGML_DIST}"
-    )
-
-    # Stage 3b of .claude/plans/npu-prefill-beats-gpu.md: one layer's real
-    # weights, packed by our code, through the bfp16 kernel on the NPU.
-    add_executable(test-npu-bfp16
-        hybrid/test-npu-bfp16.cpp
-        hybrid/npu_bfp16.cpp
-        hybrid/bfp16_pack.cpp
-        "${XRT_SHIM}/xrt_shim.cpp"
-    )
-    target_include_directories(test-npu-bfp16 PRIVATE
-        hybrid "${GGML_HEADERS}/include" "${XRT_SHIM}" "${XRT_INC}"
-    )
-    target_compile_definitions(test-npu-bfp16 PRIVATE GGML_SHARED GGML_BACKEND_SHARED _CRT_SECURE_NO_WARNINGS)
-    target_compile_options(test-npu-bfp16 PRIVATE /Zc:__cplusplus /arch:AVX2)
-    target_link_libraries(test-npu-bfp16 PRIVATE "${XRT_LIB}" "${GGML_IMPLIB_DIR}/ggml-base.lib")
-    add_custom_command(TARGET test-npu-bfp16 POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:test-npu-bfp16> "${GGML_DIST}"
-    )
-else()
-    message(STATUS "${XRT_LIB} missing - run tools/gen-xrt-implib.ps1; skipping bench-dispatch")
-endif()
+enable_testing()
 
 foreach(t test-mul-mat test-dispatch-gate test-safe-start)
     add_executable(${t} tests/${t}.cpp)
@@ -137,176 +101,38 @@ foreach(t test-mul-mat test-dispatch-gate test-safe-start)
         "${GGML_IMPLIB_DIR}/ggml-base.lib"
         "${GGML_IMPLIB_DIR}/ggml.lib"
     )
+    # they run next to the llama.cpp DLLs
     add_custom_command(TARGET ${t} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${t}> "${GGML_DIST}"
     )
 endforeach()
 
-# The NPU instruction streams made on the host, against the toolchain's
-# (no NPU or XRT needed)
-add_executable(test-insts-gen tests/test-insts-gen.cpp hybrid/bfp16_insts.cpp)
-target_include_directories(test-insts-gen PRIVATE hybrid)
+# The NPU instruction streams made on the host, against the toolchain's (no
+# NPU or XRT needed).
+add_executable(test-insts-gen tests/test-insts-gen.cpp src/npu/bfp16_insts.cpp)
+target_include_directories(test-insts-gen PRIVATE src/npu)
 target_compile_definitions(test-insts-gen PRIVATE XDNA_INSTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/insts")
 
-# Stage 0 of the hybrid prefill plan (.claude/plans/hybrid-prefill-amd-design.md):
-# the prefill-to-decode handoff through llama.cpp's sequence-state API. This
-# drives llama.cpp as a library rather than living inside it as a backend, so
-# it links llama.lib (tools/fetch-llama.ps1 makes it) and needs llama.h beside
-# the ggml headers.
-add_executable(kv-handoff
-    hybrid/kv-handoff.cpp
-    hybrid/kv_state.cpp
-)
-target_include_directories(kv-handoff PRIVATE hybrid "${GGML_HEADERS}/include")
-target_compile_definitions(kv-handoff PRIVATE GGML_SHARED GGML_BACKEND_SHARED LLAMA_SHARED _CRT_SECURE_NO_WARNINGS)
-target_link_libraries(kv-handoff PRIVATE
-    "${GGML_IMPLIB_DIR}/ggml-base.lib"
-    "${GGML_IMPLIB_DIR}/ggml.lib"
-    "${GGML_IMPLIB_DIR}/llama.lib"
-)
-add_custom_command(TARGET kv-handoff POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:kv-handoff> "${GGML_DIST}"
-)
-
-# The GPU prefill baseline. Same library linkage as kv-handoff; it exists
-# because a prefill timed once in a fresh process is dominated by Vulkan
-# shader compilation and cannot be quoted.
-add_executable(gpu-prefill
-    hybrid/gpu-prefill.cpp
-)
-target_include_directories(gpu-prefill PRIVATE hybrid "${GGML_HEADERS}/include")
-target_compile_definitions(gpu-prefill PRIVATE GGML_SHARED GGML_BACKEND_SHARED LLAMA_SHARED _CRT_SECURE_NO_WARNINGS)
-target_link_libraries(gpu-prefill PRIVATE
-    "${GGML_IMPLIB_DIR}/ggml-base.lib"
-    "${GGML_IMPLIB_DIR}/ggml.lib"
-    "${GGML_IMPLIB_DIR}/llama.lib"
-)
-add_custom_command(TARGET gpu-prefill POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:gpu-prefill> "${GGML_DIST}"
-)
-
-# How fast data moves between Vulkan's buffers and CPU memory, by each path
-# ggml offers (step 0 of .claude/plans/backend-size-aware.md). A measurement.
-add_executable(datapath-probe
-    hybrid/datapath-probe.cpp
-)
-target_include_directories(datapath-probe PRIVATE hybrid "${GGML_HEADERS}/include")
-target_compile_definitions(datapath-probe PRIVATE GGML_SHARED GGML_BACKEND_SHARED LLAMA_SHARED _CRT_SECURE_NO_WARNINGS)
-target_link_libraries(datapath-probe PRIVATE
-    "${GGML_IMPLIB_DIR}/ggml-base.lib"
-    "${GGML_IMPLIB_DIR}/ggml.lib"
-    "${GGML_IMPLIB_DIR}/llama.lib"
-)
-add_custom_command(TARGET datapath-probe POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:datapath-probe> "${GGML_DIST}"
-)
-
-# The host reference prefill for Qwen3 and the test that hands its keys and
-# values to a GPU context. The reference is plain loops over float32, so it
-# gets the vector instructions and the relaxed float rules; nothing in it
-# depends on strict ordering.
-add_executable(ref-handoff
-    hybrid/ref-handoff.cpp
-    hybrid/qwen3_ref.cpp
-    hybrid/kv_state.cpp
-)
-target_include_directories(ref-handoff PRIVATE hybrid "${GGML_HEADERS}/include")
-target_compile_definitions(ref-handoff PRIVATE GGML_SHARED GGML_BACKEND_SHARED LLAMA_SHARED _CRT_SECURE_NO_WARNINGS)
-target_compile_options(ref-handoff PRIVATE /arch:AVX2 /fp:fast)
-target_link_libraries(ref-handoff PRIVATE
-    "${GGML_IMPLIB_DIR}/ggml-base.lib"
-    "${GGML_IMPLIB_DIR}/ggml.lib"
-    "${GGML_IMPLIB_DIR}/llama.lib"
-)
-add_custom_command(TARGET ref-handoff POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:ref-handoff> "${GGML_DIST}"
-)
-
-# Stage 3a of .claude/plans/npu-prefill-beats-gpu.md: the bfp16 packer against
-# the host layout the NPU kernel was verified with. Pure host code.
-add_executable(test-bfp16-pack
-    hybrid/test-bfp16-pack.cpp
-    hybrid/bfp16_pack.cpp
-)
-target_include_directories(test-bfp16-pack PRIVATE hybrid)
+# The weight packer against the kernel's verified layout (pure host code).
+add_executable(test-bfp16-pack tests/test-bfp16-pack.cpp src/npu/bfp16_pack.cpp)
+target_include_directories(test-bfp16-pack PRIVATE src/npu)
 target_compile_options(test-bfp16-pack PRIVATE /arch:AVX2)
-add_custom_command(TARGET test-bfp16-pack POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:test-bfp16-pack> "${GGML_DIST}"
-)
 
-# Stage 1 of .claude/plans/npu-prefill-beats-gpu.md: the reference prefill with
-# its matmul inputs rounded the way an NPU datapath would round them, each
-# result handed to a GPU context, compared against float32.
-add_executable(prefill-numerics
-    hybrid/prefill-numerics.cpp
-    hybrid/qwen3_ref.cpp
-    hybrid/kv_state.cpp
-)
-target_include_directories(prefill-numerics PRIVATE hybrid "${GGML_HEADERS}/include")
-target_compile_definitions(prefill-numerics PRIVATE GGML_SHARED GGML_BACKEND_SHARED LLAMA_SHARED _CRT_SECURE_NO_WARNINGS)
-target_compile_options(prefill-numerics PRIVATE /arch:AVX2 /fp:fast)
-target_link_libraries(prefill-numerics PRIVATE
-    "${GGML_IMPLIB_DIR}/ggml-base.lib"
-    "${GGML_IMPLIB_DIR}/ggml.lib"
-    "${GGML_IMPLIB_DIR}/llama.lib"
-)
-add_custom_command(TARGET prefill-numerics POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:prefill-numerics> "${GGML_DIST}"
-)
-# With the XRT import library present, --npu runs the projections on the NPU
-# (stage 3c), and the same comparison then measures the real kernel.
-if(EXISTS "${XRT_LIB}")
-    target_sources(prefill-numerics PRIVATE
-        hybrid/npu_projections.cpp
-        hybrid/npu_prefill.cpp
-        hybrid/gpu_attention.cpp
-        hybrid/npu_bfp16.cpp
-        hybrid/bfp16_pack.cpp
-        "${XRT_SHIM}/xrt_shim.cpp"
-    )
-    target_include_directories(prefill-numerics PRIVATE "${XRT_SHIM}" "${XRT_INC}")
-    target_compile_definitions(prefill-numerics PRIVATE HAVE_NPU)
-    target_compile_options(prefill-numerics PRIVATE /Zc:__cplusplus)
-    target_link_libraries(prefill-numerics PRIVATE "${XRT_LIB}")
-endif()
-
-# The GGUF-to-NPU-chunk weight packer and its check. Reads GGUF through ggml,
-# so it needs no llama.cpp.
-add_executable(test-q4-pack
-    hybrid/test-q4-pack.cpp
-    hybrid/q4_pack.cpp
-)
-target_include_directories(test-q4-pack PRIVATE hybrid "${GGML_HEADERS}/include")
-target_compile_definitions(test-q4-pack PRIVATE GGML_SHARED GGML_BACKEND_SHARED _CRT_SECURE_NO_WARNINGS)
-target_link_libraries(test-q4-pack PRIVATE "${GGML_IMPLIB_DIR}/ggml-base.lib")
-add_custom_command(TARGET test-q4-pack POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:test-q4-pack> "${GGML_DIST}"
-)
-
-# Stage 3e of .claude/plans/npu-prefill-beats-gpu.md: the whole prefill with
-# every projection on the NPU, timed against the GPU in one process.
-if(EXISTS "${XRT_LIB}")
-    add_executable(npu-prefill-bench
-        hybrid/npu-prefill-bench.cpp
-        hybrid/npu_prefill.cpp
-        hybrid/gpu_attention.cpp
-        hybrid/npu_bfp16.cpp
-        hybrid/bfp16_pack.cpp
-        hybrid/qwen3_ref.cpp
-        hybrid/kv_state.cpp
-        "${XRT_SHIM}/xrt_shim.cpp"
-    )
-    target_include_directories(npu-prefill-bench PRIVATE hybrid "${GGML_HEADERS}/include" "${XRT_SHIM}" "${XRT_INC}")
-    target_compile_definitions(npu-prefill-bench PRIVATE GGML_SHARED GGML_BACKEND_SHARED LLAMA_SHARED _CRT_SECURE_NO_WARNINGS)
-    target_compile_options(npu-prefill-bench PRIVATE /Zc:__cplusplus /arch:AVX2 /fp:fast /Zi)
-    target_link_options(npu-prefill-bench PRIVATE /DEBUG /OPT:REF /OPT:ICF)  # a PDB, for crash stacks
-    target_link_libraries(npu-prefill-bench PRIVATE
-        "${XRT_LIB}"
-        "${GGML_IMPLIB_DIR}/ggml-base.lib"
-        "${GGML_IMPLIB_DIR}/ggml.lib"
-        "${GGML_IMPLIB_DIR}/llama.lib"
-    )
-    add_custom_command(TARGET npu-prefill-bench POST_BUILD
-        COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:npu-prefill-bench> "${GGML_DIST}"
-    )
-endif()
+# ctest labels: "host" needs no NPU (the backend-facing ones do need a Vulkan
+# device), "npu" needs the NPU, "nodriver" expects a machine without the NPU
+# driver (CI).
+file(TO_NATIVE_PATH "${GGML_DIST}/ggml-xdna.dll" XDNA_DLL)
+set(XDNA_ENV "GGML_BACKEND_PATH=${XDNA_DLL}" "GGML_XDNA_KERNELS=")
+add_test(NAME insts-gen COMMAND test-insts-gen)
+add_test(NAME bfp16-pack COMMAND test-bfp16-pack)
+add_test(NAME safe-start COMMAND "${GGML_DIST}/test-safe-start.exe")
+add_test(NAME safe-start-no-driver COMMAND "${GGML_DIST}/test-safe-start.exe" --no-driver)
+foreach(t dispatch-gate mul-mat)
+    add_test(NAME ${t}-host COMMAND "${GGML_DIST}/test-${t}.exe")
+    add_test(NAME ${t}-npu COMMAND "${GGML_DIST}/test-${t}.exe")
+    set_tests_properties(${t}-host PROPERTIES LABELS host ENVIRONMENT "${XDNA_ENV};GGML_XDNA_HOST_ONLY=1")
+    set_tests_properties(${t}-npu PROPERTIES LABELS npu ENVIRONMENT "${XDNA_ENV};GGML_XDNA_HOST_ONLY=")
+endforeach()
+set_tests_properties(insts-gen bfp16-pack PROPERTIES LABELS host)
+set_tests_properties(safe-start PROPERTIES LABELS host ENVIRONMENT "${XDNA_ENV}")
+set_tests_properties(safe-start-no-driver PROPERTIES LABELS nodriver ENVIRONMENT "${XDNA_ENV}")

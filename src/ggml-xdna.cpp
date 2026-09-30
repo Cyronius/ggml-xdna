@@ -1,5 +1,4 @@
-// ggml backend for the AMD XDNA2 NPU, working next to the Vulkan GPU
-// (plan: .claude/plans/backend-size-aware.md).
+// ggml backend for the AMD XDNA2 NPU, working next to the Vulkan GPU.
 //
 // The device registers as an integrated GPU named XDNA0 and is opted in with
 // `-dev XDNA0,Vulkan0`: listed first, it has the highest priority. It reports
@@ -175,9 +174,9 @@ struct xdna_context {
     ggml_backend_buffer_t pin = nullptr;
     size_t pin_size = 0;
 
-    // Step 1: each claimed weight's raw bytes, read once. The NPU's own
-    // 8-bit copy replaces this in step 2. Only tensors in buffers llama.cpp
-    // marks as weights are kept (their contents never change after loading),
+    // Each claimed weight's raw bytes, read once, for matmuls run on the
+    // host (the NPU keeps its own 8-bit copy). Only tensors in buffers
+    // llama.cpp marks as weights are kept (their contents never change after loading),
     // keyed on where they live and what they are rather than on the tensor
     // struct, whose address can be reused.
     struct wkey {
@@ -632,7 +631,7 @@ static bool xdna_is_weight(const ggml_tensor * w) {
 // above Vulkan and share its buffer type, so its upgrade pass checks us
 // first). Each question carries the op's inputs, so this records every reader
 // of every tensor. Block claiming writes a result back to Vulkan only when a
-// reader outside the piece exists (plan step 1, "the write-back question").
+// reader outside the piece exists.
 // Readers from earlier graphs whose tensors ggml reused can linger; that only
 // ever adds a write, never skips one.
 static bool xdna_trace() {
@@ -684,7 +683,7 @@ static void xdna_trace_piece(const ggml_cgraph * cgraph) {
                 (long long) results, (long long) unseen);
 }
 
-// Block claiming (plan step 5): with the NPU configured, also take the small
+// Block claiming: with the NPU configured, also take the small
 // ops next to our matmuls. GGML_XDNA_BLOCKS=0 claims matmuls only.
 static bool xdna_blocks() {
     static bool v = env_int("GGML_XDNA_BLOCKS", 1) != 0;

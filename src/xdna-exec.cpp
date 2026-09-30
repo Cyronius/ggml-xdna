@@ -97,8 +97,7 @@ struct group {
     std::vector<const ggml_tensor *> mms;  // the matmul nodes (on the host, outs are these)
 };
 
-// One pass over a stream's rows, as in the prototype (hybrid/npu_prefill.cpp):
-// read the results of the group that just finished, run the small ops that
+// One pass over a stream's rows: read the results of the group that just finished, run the small ops that
 // follow it, and encode the next group's input straight into the NPU buffer.
 // Separate passes each went through memory, and memory bandwidth is what the
 // NPU competes for.

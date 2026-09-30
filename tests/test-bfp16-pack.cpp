@@ -1,10 +1,10 @@
-// The bfp16 packer (hybrid/bfp16_pack.cpp) against the host code the NPU
-// kernel was verified with (kernels/bfp16_gemm/bench_bfp16.cpp:
-// floatToBfp16Rne, emit_tile, linA, linB, copied below unchanged), byte for
-// byte, for both operands and several tilings. Then unpacking must give back
-// exactly the decoded values.
+// The bfp16 packer (src/npu/bfp16_pack.cpp) against the host code the NPU
+// kernel was verified with (kernels/bfp16_gemm/bench_bfp16.cpp, now in the
+// research-archive tag: floatToBfp16Rne, emit_tile, linA, linB, copied below
+// unchanged), byte for byte, for both operands and several tilings. Then
+// unpacking must give back exactly the decoded values.
 //
-// Traces: HYBRID-Q4-PACK
+// Traces: XDNA-BFP16-PACK
 
 #include "bfp16_pack.h"
 

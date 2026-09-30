@@ -188,8 +188,8 @@ bool npu_bfp16::run_mapped(int si, int wi, const float *& c, std::string & err, 
     sync_out_ms += took;
     sync_ms += took;
     // The driver's sync from the device is a cache-flush loop with no fence
-    // after it, so a load that follows can still see the stale line
-    // (openflowlm-next OPEN-REQUEST-ISOLATION). Fence before reading.
+    // after it, so a load that follows can still see the stale line. Fence
+    // before reading.
     _mm_mfence();
     c = (const float *) xrtsh_bo_map(cbo_);
     if (!c) { err = shim_error("cannot map the output buffer"); return false; }

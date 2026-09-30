@@ -10,7 +10,7 @@
 //   fp32: first(A,B,Cacc)  mid(A,B,Cacc)  last(A,B,Cacc,Cout)   Cout is bf16
 //   bf16: bf16_first(A,B,C)  bf16_mid(A,B,C)                      C is bf16
 //
-// A and B arrive pair-interleaved (see bench_bfp16.cpp shufflePaired/linA/linB):
+// A and B arrive pair-interleaved (see src/npu/bfp16_pack.h):
 // one block stream per operand, inner loop unrolled by 2. C blocks are 8x8,
 // block (z, j) at element (z * n/8 + j) * 64, each block row-major (the layout
 // whole_array_mixed's C path untiles). Every accum -> bf16 conversion rounds

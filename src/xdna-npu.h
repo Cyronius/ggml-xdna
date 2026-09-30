@@ -1,11 +1,9 @@
-// The NPU side of the backend (plan: .claude/plans/backend-size-aware.md,
-// steps 2 and 3): each claimed weight's private 8-bit copy, and the matmul
-// itself, on the bfp16 kernel the prototype uses (hybrid/npu_bfp16.h,
-// kernels/bfp16_gemm).
+// The NPU side of the backend: each claimed weight's private 8-bit copy, and
+// the matmul itself, on the bfp16 kernel (npu/npu_bfp16.h, kernels/bfp16_gemm).
 //
 // The kernel is one core program (an xclbin of whole_array_bfp_rtp) that
 // serves every size; each size's instruction stream is made here
-// (hybrid/bfp16_insts.h, plan: .claude/plans/any-model-sizes.md).
+// (npu/bfp16_insts.h).
 // GGML_XDNA_KERNELS names the xclbin: the file itself, a directory holding
 // final.xclbin, or a directory of per-size builds (any one's final.xclbin).
 // A call covers 1024 prompt rows, or 512 for a short remainder.

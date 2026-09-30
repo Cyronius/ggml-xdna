@@ -9,32 +9,27 @@ size, driven by an instruction stream the backend makes per size
 (XDNA-INSTS-GEN). This spec covers how the backend presents itself to
 `ggml_backend_sched`, what its matmul must produce, and that stream.
 
-**Scope, revised 2026-09-29.** The backend now works next to the Vulkan GPU
-instead of the CPU (plan: `.claude/plans/backend-size-aware.md`). It
-registers as an integrated GPU, shares Vulkan's buffer type, and takes only
-the prompt work its size rules accept; Vulkan runs everything else, and every
-reply token. The earlier design (an accelerator device with its own host
-buffer, next to the CPU) could not coexist with the GPU: llama.cpp ranks
-accelerators below every GPU. XDNA-HOST-BUFT is retired for that reason.
-Claiming whole blocks rather than single matmuls is a requirement of the new
-design (the plan's step 0) and will add requirements here as it lands.
+**Scope, revised 2026-09-29.** The backend works next to the Vulkan GPU
+instead of the CPU. It registers as an integrated GPU, shares Vulkan's
+buffer type, and takes only the prompt work its size rules accept; Vulkan
+runs everything else, and every reply token. The earlier design (an
+accelerator device with its own host buffer, next to the CPU) could not
+coexist with the GPU: llama.cpp ranks accelerators below every GPU.
+XDNA-HOST-BUFT is retired for that reason.
 
 Tests: `specs/xdna-backend/tests/` is empty by design — the test binaries are
 built by the top-level `CMakeLists.txt` from `tests/`, because they must link
-the same import libs as the backend. Run them with `GGML_BACKEND_PATH` set:
+the same import libs as the backend. `build.cmd` builds and runs them
+(XDNA-BUILD). CTest labels them:
+- `host`: no NPU needed. `test-dispatch-gate` and `test-mul-mat` run here
+  with `GGML_XDNA_HOST_ONLY=1` (matmuls on the CPU reference), and need a
+  Vulkan device.
+- `npu`: `test-dispatch-gate` and `test-mul-mat` on the NPU.
+- `nodriver`: `test-safe-start --no-driver`, on a machine without the NPU
+  driver (CI).
 
-```
-build.cmd
-set GGML_BACKEND_PATH=...\third_party\llama-b10944\ggml-xdna.dll
-third_party\llama-b10944\test-dispatch-gate.exe
-third_party\llama-b10944\test-mul-mat.exe
-third_party\llama-b10944\test-safe-start.exe
-build\test-insts-gen.exe
-```
-
-`test-dispatch-gate` and `test-mul-mat` run once as above (on the NPU) and
-once more with `set GGML_XDNA_HOST_ONLY=1` (matmuls on the CPU reference; the
-only mode on a machine without an NPU).
+`build.cmd` runs `host` and `npu` where the NPU driver is installed, and
+`host` and `nodriver` elsewhere.
 
 ---
 
@@ -217,14 +212,14 @@ them showed up as plausible but different text, never as a crash.
 **Verification (manual):**
 ```
 set GGML_BACKEND_PATH=...\ggml-xdna.dll
-set GGML_XDNA_KERNELS=...\kernels\bfp16_gemm\prebuilt\bfp16_gemm.xclbin
 set GGML_XDNA_MIN_BATCH=32
-llama-completion -m Qwen3-1.7B-Q4_0.gguf -f <first 500 bytes of hybrid/prompts/prose.txt> -n 24 --temp 0 -no-cnv -fa on -b 2048 -ub 2048 -dev XDNA0,Vulkan0
+llama-completion -m Qwen3-1.7B-Q4_0.gguf -f <first 500 bytes of tests/prompts/prose.txt> -n 24 --temp 0 -no-cnv -fa on -b 2048 -ub 2048 -dev XDNA0,Vulkan0
 ```
 and the same with `-dev Vulkan0`. The 24 generated tokens must match.
 
 **Measured 2026-09-29:** identical ("…ides, the town was to be abandoned. The
-people had to leave, and the quay was to be left as").
+people had to leave, and the quay was to be left as"). Again 2026-09-30,
+after the repository cleanup: identical, 269 pieces on the NPU.
 
 ---
 
@@ -254,10 +249,14 @@ generation ran at 64–66 tok/s either way.
 **Applies to:** ggml-xdna
 **Test category:** unit
 
-When llama.cpp loads the backend, it shall offer the XDNA0 device only if
-all of these hold:
+When llama.cpp loads the backend, it shall load whether or not the NPU
+driver is installed, and offer the XDNA0 device only if all of these hold:
 - the kernel's xclbin is found: `GGML_XDNA_KERNELS` if set, else
   `bfp16_gemm.xclbin` next to `ggml-xdna.dll`;
+- the NPU driver's `xrt_coreutil.dll` is found and exports, by name, every
+  function the backend uses (`vendor/xrt-implib/xrt_coreutil.def`). The DLL
+  is delay-loaded, and all of its functions are bound here, so a missing one
+  turns the backend off instead of failing at a call;
 - the NPU opens;
 - it's a chip the backend was tested on (XRT's name "NPU Strix": Strix
   Point, Ryzen AI 300), unless `GGML_XDNA_ANY_NPU=1`;
@@ -272,8 +271,15 @@ empty setting counts as unset.
 Offering a device that can't run would have llama.cpp hand it work it then
 fails, stopping the run.
 
-**Acceptance criteria:** `tests/test-safe-start.cpp`: with a kernel path
-that names nothing, the backend loads and XDNA0 is not offered.
+Known gap (found 2026-09-30, open with the owner): with no device offered, a
+command that names `-dev XDNA0,Vulkan0` stops at llama.cpp's argument check
+(`invalid device: XDNA0`) rather than running on the GPU.
+
+**Acceptance criteria:** `tests/test-safe-start.cpp`:
+- with a kernel path that names nothing, the backend loads and XDNA0 is
+  not offered;
+- `--no-driver`, on a machine without the NPU driver (CI): with the real
+  kernel, the backend loads and XDNA0 is not offered.
 
 **Verification (manual, the other checks):** on this machine, `llama-cli
 --list-devices` with no settings lists XDNA0. The chip check was seen
@@ -442,7 +448,7 @@ day, land at the same errors (8.7e-3 to 9.0e-3).
 **Test category:** unit
 
 For every size the kernel takes, the instruction stream the backend makes
-(`hybrid/bfp16_insts.cpp`) shall equal, word for word, the `insts.bin` the
+(`src/npu/bfp16_insts.cpp`) shall equal, word for word, the `insts.bin` the
 IRON toolchain builds from `kernels/bfp16_gemm/designs/whole_array_bfp_rtp.py`
 (`-Tm 128 -Tk 64 -Tn 64 --c-tiled`, 8 columns) at that size and output mode.
 Sizes the design can't take (M not a multiple of 512, N not a multiple of
@@ -456,30 +462,58 @@ wrong output rather than a crash, so it is checked word for word.
 **Acceptance criteria:** `tests/test-insts-gen.cpp` against the reference
 streams in `tests/insts/` (30 sizes: M 512 and 1,024; K 128 to 9,728; N 512
 to 18,432; modes 0, 1 and 2), and five refused sizes. To add a size, build it
-with `kernels/bfp16_gemm/build.ps1` and copy its `insts.bin` there.
+with `kernels/bfp16_gemm/build.ps1 -M <M> -K <K> -N <N> [-OutMode <mode>]`
+and copy its `insts.bin` there.
 
 **Passing 2026-09-29:** 30 of 30 identical, 5 of 5 refused.
 
 ---
 
+### XDNA-BFP16-PACK: Weights are laid out as the kernel was verified with
+**Applies to:** ggml-xdna
+**Test category:** unit
+
+The packer that builds each weight's NPU copy (`src/npu/bfp16_pack.cpp`)
+shall produce, byte for byte, what the host code the kernel was verified
+with produces: blocks of eight values sharing one exponent byte, rounded to
+nearest even, in the kernel's tile order, for both operands and several
+tilings. Unpacking shall give back exactly the decoded values.
+
+A wrong layout gives plausible wrong output, not a crash, and on a machine
+without an NPU this is the only check of it (XDNA-MUL-MAT-AGREES covers it
+end to end on the NPU).
+
+**Acceptance criteria:** `tests/test-bfp16-pack.cpp` against that
+reference, copied into the test unchanged (its source,
+`kernels/bfp16_gemm/bench_bfp16.cpp`, is in the `research-archive` tag).
+
 ---
 
-### XDNA-DISPATCH-COST: Submission overhead stays under a millisecond
+### XDNA-BUILD: One command builds and tests it
 **Applies to:** ggml-xdna
 **Test category:** manual
 
-Per-dispatch submit+wait cost on this NPU shall be reported by
-`tools/bench-dispatch.cpp`, which drives the vendored XRT shim
-(`vendor/xrt-shim/`) against a built design. The backend's op-granularity offload depends on this staying small
-against the per-split work.
+On Windows with Visual Studio 2022 (or its Build Tools) and the C++ tools,
+`build.cmd` in a clean checkout shall download the pinned llama.cpp release,
+build the backend and its tests, and run the tests the machine can run, with
+no NPU driver needed to build.
 
-Measured 2026-09-13: ~0.1 ms for designs from 75 to 3524 instruction words,
-falling to 0.02-0.04 ms when runs are batched into a runlist. Note that the
-~3.3 ms reported for FLM's fused whole-layer chains is a different quantity —
-per-submission cost including instruction patching and BO syncs.
+**Verification (manual):** the CI workflow (`.github/workflows/ci.yml`) runs
+`build.cmd` on every pull request, on a GitHub Windows machine with no NPU
+or GPU (a software Vulkan device stands in), so it runs the `host` and
+`nodriver` tests. On this machine, `build.cmd` runs `host` and `npu`.
 
-**Verification:** `build/bench-dispatch.exe <design-build-dir> <iters> <buffer
-sizes...>`; the three rows are new-run-each, reused-run, and runlist.
+**Passing 2026-09-30** on this machine: 7 of 7 tests.
+
+---
+
+### XDNA-DISPATCH-COST: Submission overhead stays under a millisecond — RETIRED 2026-09-30
+
+Retired with the move of the research code out of the tree. It measured the
+per-call cost that the first, one-matmul-at-a-time design depended on, with
+`tools/bench-dispatch.cpp` (in the `research-archive` tag). Block claiming
+doesn't depend on it, and the model-level speed numbers cover it. Measured
+2026-09-13: ~0.1 ms a call, 0.02–0.04 ms batched.
 
 ---
 

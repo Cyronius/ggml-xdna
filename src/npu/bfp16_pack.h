@@ -1,7 +1,6 @@
-// Operands for the NPU's bfp16ebs8 matmul (kernels/bfp16_gemm,
-// whole_array_bfp_acc): blocks of eight values sharing one exponent byte, each
-// value a signed 8-bit mantissa, nine bytes a block, rounded to nearest on the
-// host. Plan: .claude/plans/npu-prefill-beats-gpu.md, stage 3a.
+// Operands for the NPU's bfp16ebs8 matmul (kernels/bfp16_gemm): blocks of
+// eight values sharing one exponent byte, each value a signed 8-bit mantissa,
+// nine bytes a block, rounded to nearest on the host.
 //
 // The kernel computes C[M x N] = A[M x K] * B[K x N]. A is the activations,
 // one token per row; B is given as its transpose, which is exactly a GGUF
@@ -52,7 +51,7 @@ void bfp16_pack_b(const float * w, int64_t N, int64_t K, const bfp16_tiling & t,
                   int n_threads);
 
 // Runs fn(begin, end) over [0, n), in parallel however the caller likes
-// (hybrid/thread_pool.h).
+// (thread_pool.h).
 using bfp16_runner = std::function<void(int64_t n, const std::function<void(int64_t, int64_t)> & fn)>;
 
 // bfp16_pack_a straight into `out` (M*K/8*9 bytes, e.g. a mapped NPU buffer).
