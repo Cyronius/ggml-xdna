@@ -503,7 +503,9 @@ no NPU driver needed to build.
 or GPU (a software Vulkan device stands in), so it runs the `host` and
 `nodriver` tests. On this machine, `build.cmd` runs `host` and `npu`.
 
-**Passing 2026-09-30** on this machine: 7 of 7 tests.
+**Passing 2026-09-30:** on this machine, 7 of 7 tests; in CI, 6 of 6
+(`host` and `nodriver`). CI sets `GGML_XDNA_PINNED=0`: on Windows,
+lavapipe's pinned memory fails ggml's alignment check.
 
 ---
 
