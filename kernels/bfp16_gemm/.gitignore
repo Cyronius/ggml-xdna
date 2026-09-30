@@ -1,0 +1,6 @@
+build/
+out/
+*.prj/
+__pycache__/
+*.obj
+*.log

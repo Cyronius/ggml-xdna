@@ -1,8 +1,9 @@
-// The prefill/decode split lives entirely in supports_op and the buffer type.
-// These are the two properties the scheduler reads to make that split, so they
-// get checked directly rather than inferred from a model run.
+// What the backend takes from Vulkan lives entirely in supports_op, the
+// device type and the buffer type: the three things the scheduler reads to
+// decide. So they're checked directly rather than inferred from a model run.
+// Run with GGML_XDNA_MIN_BATCH and GGML_XDNA_MIN_MFLOP unset (the defaults).
 //
-// Traces: XDNA-HOST-BUFT, XDNA-BATCH-GATE, XDNA-WORK-FLOOR, XDNA-NO-OFFLOAD-OP
+// Traces: XDNA-SHARED-BUFT, XDNA-BATCH-GATE, XDNA-WORK-FLOOR, XDNA-NO-OFFLOAD-OP, XDNA-SIZE-POLICY
 
 #include "ggml.h"
 #include "ggml-backend.h"
@@ -16,7 +17,7 @@ static void check(bool ok, const char * what) {
     if (!ok) failures++;
 }
 
-// Builds a MUL_MAT of the given shape without allocating any data.
+// A MUL_MAT of the given shape, without allocating any data.
 static ggml_tensor * make_mul_mat(ggml_context * ctx, ggml_type wtype, int64_t k, int64_t n, int64_t batch) {
     ggml_tensor * a = ggml_new_tensor_2d(ctx, wtype, k, n);
     ggml_tensor * b = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, k, batch);
@@ -26,42 +27,63 @@ static ggml_tensor * make_mul_mat(ggml_context * ctx, ggml_type wtype, int64_t k
 int main() {
     ggml_backend_load_all();
 
-    ggml_backend_dev_t dev = ggml_backend_dev_by_name("XDNA");
+    ggml_backend_dev_t dev = ggml_backend_dev_by_name("XDNA0");
     if (dev == NULL) {
-        fprintf(stderr, "XDNA device not registered - is GGML_BACKEND_PATH set?\n");
+        fprintf(stderr, "XDNA0 device not registered - is GGML_BACKEND_PATH set?\n");
+        return 2;
+    }
+    ggml_backend_dev_t vk = ggml_backend_dev_by_name("Vulkan0");
+    if (vk == NULL) {
+        fprintf(stderr, "Vulkan0 not registered - the backend works next to it\n");
         return 2;
     }
 
-    check(ggml_backend_dev_type(dev) == GGML_BACKEND_DEVICE_TYPE_ACCEL,
-          "device registers as ACCEL (llama.cpp puts ACCEL bufts first in the CPU list)");
+    check(ggml_backend_dev_type(dev) == GGML_BACKEND_DEVICE_TYPE_IGPU,
+          "device registers as an integrated GPU (llama.cpp ranks accelerators below every GPU)");
+    check(ggml_backend_dev_buffer_type(dev) == ggml_backend_dev_buffer_type(vk),
+          "its buffer type is Vulkan's (ops change hands with no copies)");
+    check(ggml_backend_dev_supports_buft(dev, ggml_backend_dev_buffer_type(vk)),
+          "it can read Vulkan's buffers");
+    ggml_backend_dev_t cpu = ggml_backend_dev_by_type(GGML_BACKEND_DEVICE_TYPE_CPU);
+    check(cpu && ggml_backend_dev_supports_buft(dev, ggml_backend_dev_buffer_type(cpu)),
+          "it can read host buffers (so its pieces never need copied inputs, which skip waiting for Vulkan)");
+    size_t free = 1, total = 0;
+    ggml_backend_dev_memory(dev, &free, &total);
+    check(free == 0 && total > 0, "reports no free memory, so llama.cpp gives it no layers");
 
-    ggml_backend_buffer_type_t buft = ggml_backend_dev_buffer_type(dev);
-    check(ggml_backend_buft_is_host(buft),
-          "buffer type is host-visible (lets the CPU backend read the same weights)");
-
-    ggml_init_params ip = { ggml_tensor_overhead()*64, NULL, true };
+    ggml_init_params ip = { ggml_tensor_overhead() * 64, NULL, true };
     ggml_context * ctx = ggml_init(ip);
-
-    // A weight big enough to clear the work floor at batch 512 but not at 1.
     const int64_t k = 2048, n = 2048;
 
     check(!ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, k, n, 1)),
-          "batch 1 (decode) is not claimed");
-    check(!ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, k, n, 31)),
-          "batch 31 is not claimed (below the default threshold of 32)");
+          "batch 1 (reply generation) is not claimed");
+    check(!ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, k, n, 511)),
+          "batch 511 is not claimed (below the default threshold of 512)");
     check(ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, k, n, 512)),
-          "batch 512 (prefill) is claimed");
+          "batch 512, q4_K 2048x2048 is claimed");
+    check(ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_0, k, n, 2048)),
+          "batch 2048, q4_0 is claimed");
 
-    // 2*512*64*512 = 34 MFLOP, well under the 256 MFLOP floor (k stays a
-    // multiple of the q4_K block size so ggml will build the tensor at all)
-    check(!ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, 512, 64, 512)),
-          "a tiny matmul is not claimed even at prefill batch");
+    // 2*1024*64*1024 = 134 MFLOP, under the 256 MFLOP floor
+    check(!ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, 1024, 64, 1024)),
+          "a tiny matmul is not claimed even at a large batch");
 
-    check(!ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_IQ2_XXS, k, n, 512)),
-          "an unsupported quant type is not claimed");
+    // attention's matmuls read keys from the cache through views, not weights
+    {
+        ggml_tensor * cache = ggml_new_tensor_2d(ctx, GGML_TYPE_F16, k, 4 * n);
+        ggml_tensor * view = ggml_view_2d(ctx, cache, k, n, cache->nb[1], 0);
+        ggml_tensor * b = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, k, 1024);
+        check(!ggml_backend_dev_supports_op(dev, ggml_mul_mat(ctx, view, b)),
+              "a matmul whose left side is a view (a cache read, not a weight) is not claimed");
+        ggml_tensor * computed = ggml_add(ctx, ggml_new_tensor_2d(ctx, GGML_TYPE_F32, k, n),
+                                          ggml_new_tensor_2d(ctx, GGML_TYPE_F32, k, n));
+        check(!ggml_backend_dev_supports_op(dev, ggml_mul_mat(ctx, computed, b)),
+              "a matmul whose left side is computed (not a weight) is not claimed");
+        check(!ggml_backend_dev_supports_op(dev, computed), "other ops (ADD) are not claimed");
+    }
 
     // offload_op is deliberately absent: that path copies the weight per op.
-    check(!ggml_backend_dev_offload_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, k, n, 512)),
+    check(!ggml_backend_dev_offload_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, k, n, 2048)),
           "offload_op never claims an op (no per-op weight copies)");
 
     ggml_free(ctx);

@@ -167,6 +167,15 @@ int xrtsh_bo_sync(xrtsh_bo bo, int to_device) {
     })
 }
 
+int xrtsh_bo_sync_range(xrtsh_bo bo, int to_device, size_t n, size_t off) {
+    GUARD_INT({
+        auto *b = static_cast<ShimBo *>(bo);
+        b->bo.sync(to_device ? XCL_BO_SYNC_BO_TO_DEVICE
+                             : XCL_BO_SYNC_BO_FROM_DEVICE, n, off);
+        return 0;
+    })
+}
+
 int xrtsh_bo_write(xrtsh_bo bo, const void *src, size_t n, size_t off) {
     GUARD_INT({
         auto *b = static_cast<ShimBo *>(bo);

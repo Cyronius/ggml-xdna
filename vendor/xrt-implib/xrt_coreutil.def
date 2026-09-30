@@ -1,0 +1,40 @@
+; The functions of the NPU driver's xrt_coreutil.dll that the XRT shim (vendor/xrt-shim)
+; calls, by name. The backend binds them when it starts.
+; XRT ships no import library on Windows; CMake builds one from this file.
+; Taken from AMD NPU driver 32.0.20102.3930 (xrt_coreutil.dll 32.00.20102.3931).
+; Code that calls a new XRT function fails to link until it is added here.
+; tools/check-xrt-driver.ps1 checks an installed driver against this list.
+LIBRARY xrt_coreutil
+EXPORTS
+    ??0bo@ext@xrt@@QEAA@AEBVdevice@2@_K@Z
+    ??0bo@xrt@@QEAA@AEBVdevice@1@_KW4flags@01@I@Z
+    ??0device@xrt@@QEAA@I@Z
+    ??0elf@xrt@@QEAA@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
+    ??0hw_context@xrt@@QEAA@AEBVdevice@1@AEBVuuid@1@W4access_mode@01@@Z
+    ??0kernel@ext@xrt@@QEAA@AEBVhw_context@2@AEBVmodule@2@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
+    ??0kernel@xrt@@QEAA@AEBVhw_context@1@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
+    ??0module@xrt@@QEAA@AEBVelf@1@@Z
+    ??0run@xrt@@QEAA@AEBVkernel@1@@Z
+    ??0runlist@xrt@@QEAA@AEBVhw_context@1@@Z
+    ??0xclbin@xrt@@QEAA@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
+    ??1bo@xrt@@QEAA@XZ
+    ??1device@xrt@@QEAA@XZ
+    ??1hw_context@xrt@@QEAA@XZ
+    ??1kernel@xrt@@QEAA@XZ
+    ??1run@xrt@@QEAA@XZ
+    ??1runlist@xrt@@QEAA@XZ
+    ?add@runlist@xrt@@QEAAXAEBVrun@2@@Z
+    ?address@bo@xrt@@QEBA_KXZ
+    ?execute@runlist@xrt@@QEAAXXZ
+    ?get_ctrl_scratchpad_bo@run@xrt@@QEBA?AVbo@2@XZ
+    ?get_info_std@device@xrt@@AEBA?AVany@std@@W41info@2@AEBUabi@detail@2@@Z
+    ?group_id@kernel@xrt@@QEBAHH@Z
+    ?map@bo@xrt@@QEAAPEAXXZ
+    ?register_xclbin@device@xrt@@QEAA?AVuuid@2@AEBVxclbin@2@@Z
+    ?set_arg_at_index@run@xrt@@AEAAXHAEBVbo@2@@Z
+    ?set_arg_at_index@run@xrt@@AEAAXHPEBX_K@Z
+    ?size@bo@xrt@@QEBA_KXZ
+    ?start@run@xrt@@QEAAXXZ
+    ?sync@bo@xrt@@QEAAXW4xclBOSyncDirection@@_K1@Z
+    ?wait@run@xrt@@QEBA?AW4ert_cmd_state@@AEBV?$duration@_JU?$ratio@$00$0DOI@@std@@@chrono@std@@@Z
+    ?wait@runlist@xrt@@QEBA?AW4cv_status@std@@AEBV?$duration@_JU?$ratio@$00$0DOI@@std@@@chrono@4@@Z

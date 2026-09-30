@@ -11,6 +11,10 @@ set(GGML_DIST "${CMAKE_SOURCE_DIR}/third_party/llama-b10944" CACHE PATH "llama.c
 set(GGML_HEADERS "${CMAKE_SOURCE_DIR}/third_party/ggml-b10944" CACHE PATH "matching ggml headers")
 set(GGML_IMPLIB_DIR "${CMAKE_SOURCE_DIR}/third_party" CACHE PATH "generated ggml import libs")
 
+# Without the NPU path the backend runs its claimed matmuls on a CPU
+# reference only, like GGML_XDNA_HOST_ONLY=1.
+option(GGML_XDNA_NPU "build the NPU path" ON)
+
 add_library(ggml-xdna SHARED
     src/ggml-xdna.cpp
     src/xdna-ref.cpp
@@ -33,42 +37,63 @@ target_compile_definitions(ggml-xdna PRIVATE
 
 target_link_libraries(ggml-xdna PRIVATE
     "${GGML_IMPLIB_DIR}/ggml-base.lib"
+    "${GGML_IMPLIB_DIR}/ggml.lib"      # the device registry, to find the Vulkan device we work next to
 )
 
 set_target_properties(ggml-xdna PROPERTIES PREFIX "")
 
 # Drop the DLL next to the llama.cpp binaries so GGML_BACKEND_PATH is a
-# one-liner and ggml-base.dll resolves from the same directory.
+# one-liner and ggml-base.dll resolves from the same directory. The NPU
+# kernel goes next to the DLL in both places: the backend looks for it there.
+set(XDNA_XCLBIN "${CMAKE_SOURCE_DIR}/kernels/bfp16_gemm/prebuilt/bfp16_gemm.xclbin")
 add_custom_command(TARGET ggml-xdna POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:ggml-xdna> "${GGML_DIST}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${XDNA_XCLBIN}" "${GGML_DIST}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${XDNA_XCLBIN}" $<TARGET_FILE_DIR:ggml-xdna>
 )
 
-# XRT is vendored: headers under vendor/xrt (Apache-2.0, see vendor/xrt/LICENSE)
-# and our extern "C" shim over XRT's C++ API under vendor/xrt-shim. XRT ships no
-# import lib on Windows, so tools/gen-xrt-implib.ps1 reconstructs one from the
-# export table of the driver's own xrt_coreutil.dll.
-set(XRT_INC "${CMAKE_SOURCE_DIR}/vendor/xrt/include")
-set(XRT_SHIM "${CMAKE_SOURCE_DIR}/vendor/xrt-shim")
-set(XRT_LIB "${CMAKE_SOURCE_DIR}/third_party/xrt_coreutil.lib" CACHE FILEPATH "XRT import lib")
+# The NPU path. XRT is vendored: headers under vendor/xrt (Apache-2.0, see
+# vendor/xrt/LICENSE) and our extern "C" shim over XRT's C++ API under
+# vendor/xrt-shim. XRT ships no import lib on Windows, so one is built here
+# from the list of functions the backend imports (vendor/xrt-implib). The
+# driver's DLL is delay-loaded: the backend then loads on a machine without
+# the driver, and says so instead of failing to load.
+if(GGML_XDNA_NPU)
+    set(XRT_DEF "${CMAKE_SOURCE_DIR}/vendor/xrt-implib/xrt_coreutil.def")
+    set(XRT_LIB "${CMAKE_BINARY_DIR}/xrt_coreutil.lib")
+    add_custom_command(OUTPUT "${XRT_LIB}"
+        COMMAND "${CMAKE_AR}" /nologo "/def:${XRT_DEF}" /machine:x64 "/out:${XRT_LIB}"
+        DEPENDS "${XRT_DEF}"
+        VERBATIM
+    )
+    add_custom_target(xrt-implib DEPENDS "${XRT_LIB}")
+    add_dependencies(ggml-xdna xrt-implib)
 
-if(EXISTS "${XRT_LIB}")
-    add_executable(bench-dispatch
-        tools/bench-dispatch.cpp
-        "${XRT_SHIM}/xrt_shim.cpp"
+    target_sources(ggml-xdna PRIVATE
+        src/xdna-npu.cpp
+        src/xdna-exec.cpp
+        src/npu/npu_bfp16.cpp
+        src/npu/bfp16_pack.cpp
+        src/npu/bfp16_insts.cpp
+        vendor/xrt-shim/xrt_shim.cpp
     )
-    target_include_directories(bench-dispatch PRIVATE
-        "${XRT_SHIM}"
-        "${XRT_INC}"
-    )
-    # XRT's headers pick std::any over boost::any only when __cplusplus is
-    # reported honestly, which MSVC does not do without this.
-    target_compile_options(bench-dispatch PRIVATE /Zc:__cplusplus)
-    target_link_libraries(bench-dispatch PRIVATE "${XRT_LIB}")
-else()
-    message(STATUS "${XRT_LIB} missing - run tools/gen-xrt-implib.ps1; skipping bench-dispatch")
+    target_include_directories(ggml-xdna PRIVATE src/npu vendor/xrt-shim vendor/xrt/include)
+    target_compile_definitions(ggml-xdna PRIVATE XDNA_HAVE_NPU)
+    # /Zc:__cplusplus: XRT's headers pick std::any over boost::any only when
+    # __cplusplus is reported honestly. /arch:AVX2 /fp:fast: the host's small
+    # ops vectorize.
+    target_compile_options(ggml-xdna PRIVATE /Zc:__cplusplus /arch:AVX2 /fp:fast)
+    target_link_libraries(ggml-xdna PRIVATE "${XRT_LIB}" delayimp)
+    target_link_options(ggml-xdna PRIVATE /DELAYLOAD:xrt_coreutil.dll)
 endif()
 
-foreach(t test-mul-mat test-dispatch-gate)
+#
+# tests
+#
+
+enable_testing()
+
+foreach(t test-mul-mat test-dispatch-gate test-safe-start)
     add_executable(${t} tests/${t}.cpp)
     target_include_directories(${t} PRIVATE "${GGML_HEADERS}/include")
     target_compile_definitions(${t} PRIVATE GGML_SHARED GGML_BACKEND_SHARED)
@@ -76,7 +101,38 @@ foreach(t test-mul-mat test-dispatch-gate)
         "${GGML_IMPLIB_DIR}/ggml-base.lib"
         "${GGML_IMPLIB_DIR}/ggml.lib"
     )
+    # they run next to the llama.cpp DLLs
     add_custom_command(TARGET ${t} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:${t}> "${GGML_DIST}"
     )
 endforeach()
+
+# The NPU instruction streams made on the host, against the toolchain's (no
+# NPU or XRT needed).
+add_executable(test-insts-gen tests/test-insts-gen.cpp src/npu/bfp16_insts.cpp)
+target_include_directories(test-insts-gen PRIVATE src/npu)
+target_compile_definitions(test-insts-gen PRIVATE XDNA_INSTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/insts")
+
+# The weight packer against the kernel's verified layout (pure host code).
+add_executable(test-bfp16-pack tests/test-bfp16-pack.cpp src/npu/bfp16_pack.cpp)
+target_include_directories(test-bfp16-pack PRIVATE src/npu)
+target_compile_options(test-bfp16-pack PRIVATE /arch:AVX2)
+
+# ctest labels: "host" needs no NPU (the backend-facing ones do need a Vulkan
+# device), "npu" needs the NPU, "nodriver" expects a machine without the NPU
+# driver (CI).
+file(TO_NATIVE_PATH "${GGML_DIST}/ggml-xdna.dll" XDNA_DLL)
+set(XDNA_ENV "GGML_BACKEND_PATH=${XDNA_DLL}" "GGML_XDNA_KERNELS=")
+add_test(NAME insts-gen COMMAND test-insts-gen)
+add_test(NAME bfp16-pack COMMAND test-bfp16-pack)
+add_test(NAME safe-start COMMAND "${GGML_DIST}/test-safe-start.exe")
+add_test(NAME safe-start-no-driver COMMAND "${GGML_DIST}/test-safe-start.exe" --no-driver)
+foreach(t dispatch-gate mul-mat)
+    add_test(NAME ${t}-host COMMAND "${GGML_DIST}/test-${t}.exe")
+    add_test(NAME ${t}-npu COMMAND "${GGML_DIST}/test-${t}.exe")
+    set_tests_properties(${t}-host PROPERTIES LABELS host ENVIRONMENT "${XDNA_ENV};GGML_XDNA_HOST_ONLY=1")
+    set_tests_properties(${t}-npu PROPERTIES LABELS npu ENVIRONMENT "${XDNA_ENV};GGML_XDNA_HOST_ONLY=")
+endforeach()
+set_tests_properties(insts-gen bfp16-pack PROPERTIES LABELS host)
+set_tests_properties(safe-start PROPERTIES LABELS host ENVIRONMENT "${XDNA_ENV}")
+set_tests_properties(safe-start-no-driver PROPERTIES LABELS nodriver ENVIRONMENT "${XDNA_ENV}")

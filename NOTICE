@@ -1,0 +1,27 @@
+ggml-xdna
+Copyright (c) 2026 Cyrus Attoun
+Licensed under the MIT License (LICENSE).
+
+This repository carries, or derives from, the following. Each keeps its own
+license.
+
+XRT headers (vendor/xrt/include/)
+  AMD's Xilinx Runtime public C++ API headers, version 2.20.
+  Apache License 2.0: vendor/xrt/LICENSE. Copyright holders: vendor/xrt/NOTICE.
+
+NPU kernel (kernels/bfp16_gemm/)
+  The design (designs/whole_array_bfp_rtp.py), the core kernel
+  (aie_kernels/aie2p/mm_bfp_acc.cc) and the xclbin built from them
+  (prebuilt/bfp16_gemm.xclbin) are derived from AMD's mlir-aie v1.4.2
+  (https://github.com/Xilinx/mlir-aie): its block_datatypes matrix
+  multiplication example and aie_kernels/aie2p/mm_bfp.cc.
+  Apache License 2.0 with LLVM Exceptions: kernels/bfp16_gemm/LICENSE.
+  Copyright (C) Advanced Micro Devices, Inc.
+  aie_kernels/aie_kernel_utils.h is from the same project under the MIT
+  License (its header).
+
+llama.cpp and ggml (https://github.com/ggml-org/llama.cpp)
+  The build fetches a pinned llama.cpp release and its ggml headers
+  (tools/fetch-llama.ps1); none of it is in this repository. Release zips
+  include that llama.cpp build unmodified.
+  MIT License. Copyright (c) 2023-2026 The ggml authors.

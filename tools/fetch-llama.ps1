@@ -44,10 +44,15 @@ if (-not (Test-Path $hdr)) {
     Remove-Item $zip
 }
 
-# Import libs from the release DLLs' export tables.
-$vcvars = "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat"
-if (-not (Test-Path $vcvars)) {
-    throw "vcvars64.bat not found at $vcvars"
+# Import libs from the release DLLs' export tables, with the MSVC tools of
+# whichever Visual Studio has them.
+$vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+$vs = if (Test-Path $vswhere) {
+    & $vswhere -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+}
+$vcvars = if ($vs) { Join-Path $vs "VC\Auxiliary\Build\vcvars64.bat" }
+if (-not $vcvars -or -not (Test-Path $vcvars)) {
+    throw "no Visual Studio with the C++ tools found"
 }
 
 foreach ($dll in "ggml-base", "ggml") {

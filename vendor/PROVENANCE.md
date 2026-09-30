@@ -26,10 +26,16 @@ declaring the version macros that `xrt/detail/abi.h` consumes. Those macros
 affect the compile-time ABI tag, so keep them matching the XRT the driver
 actually installs. Re-create it after any XRT bump.
 
-The matching import lib is **not** vendored. XRT ships no `.lib` on Windows, so
-`tools/gen-xrt-implib.ps1` reconstructs one from the export table of the
-driver's own `xrt_coreutil.dll` into gitignored `third_party/`. That binds to
-whatever XRT is installed rather than to a pinned copy, which is what we want.
+## vendor/xrt-implib/
+
+XRT ships no `.lib` on Windows. `xrt_coreutil.def` lists, by decorated name,
+the functions of the driver's `xrt_coreutil.dll` that the shim calls, taken
+from the export table of the driver named in its header. CMake builds the
+import lib from it, so the build needs no driver. The backend delay-loads the
+DLL and binds every listed function when it starts, by name, so it runs
+against whatever driver is installed and turns itself off, with a reason, if
+one is missing. `tools/check-xrt-driver.ps1` checks an installed driver
+against the list.
 
 ## vendor/xrt-shim/
 

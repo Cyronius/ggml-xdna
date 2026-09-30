@@ -1,0 +1,59 @@
+name: Problem report
+description: Something went wrong, the answers changed, or the NPU wasn't used
+body:
+  - type: input
+    id: chip
+    attributes:
+      label: Processor
+      description: For example, Ryzen AI 9 HX 370
+    validations:
+      required: true
+  - type: input
+    id: npu-driver
+    attributes:
+      label: NPU driver version
+      description: Device Manager, Neural processors, NPU Compute Accelerator Device, Driver tab. `tools\check-xrt-driver.ps1` prints it too.
+    validations:
+      required: true
+  - type: input
+    id: gpu-driver
+    attributes:
+      label: GPU driver version
+    validations:
+      required: true
+  - type: input
+    id: versions
+    attributes:
+      label: ggml-xdna and llama.cpp versions
+      description: The ggml-xdna release or commit, and the llama.cpp build (for example, b10944)
+    validations:
+      required: true
+  - type: input
+    id: model
+    attributes:
+      label: Model
+      description: Name and quantization, for example Qwen3-1.7B Q4_0
+    validations:
+      required: true
+  - type: textarea
+    id: command
+    attributes:
+      label: Command
+      description: The full command you ran
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what you expected
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The whole output, run with `set GGML_XDNA_TRACE=1`
+      render: text
+    validations:
+      required: true
