@@ -317,6 +317,57 @@ submission after the n-th fail.
 
 ---
 
+### XDNA-SERVER-USE: Works with llama.cpp as people run it
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+With llama.cpp's default settings plus `-dev XDNA0,Vulkan0`, the backend
+shall neither crash nor change the model's answers beyond XDNA-BLOCK-AGREES'
+bar in these uses:
+- several prompts' rows in one chunk (llama-server's parallel slots and
+  continuous batching);
+- a prompt that continues a cached conversation;
+- contexts up to 32,768 tokens;
+- llama-server's router with several models loaded at once. The router
+  runs each model in its own process, so this is several processes using
+  the NPU at the same time.
+
+Every op the backend runs treats each row (token) on its own, so which
+prompts share a chunk can't change a result. Each process has its own
+weight copies, freed with its llama.cpp context.
+
+**Verification (manual):** Qwen3-1.7B Q4_0. The text is any long file
+that doesn't repeat itself; 2026-09-30 used llama.cpp's own docs
+concatenated (`docs`, `tools` and `examples` `*.md`, 265k tokens).
+- `llama-perplexity -f <text> -c 512 --chunks 16 -b 2048`, first with
+  `-dev Vulkan0 --kl-divergence-base base.kld`, then with
+  `-dev XDNA0,Vulkan0 --kl-divergence-base base.kld --kl-divergence` at
+  `-ub` 512 and 2048. At `-ub 2048` each chunk holds 4 prompts. The two
+  must give the same KL, in the range every model so far has shown: mean
+  KL under 0.01 and at least 95% same top token.
+- The same at `-c 32768 --chunks 1` (the base file is ~5 GB).
+- `llama-server -np 4 -c 16384`, once with `-dev Vulkan0` and once with
+  `-dev XDNA0,Vulkan0`. Send 12 prompts of 700–3,000 tokens at once, and 6
+  conversations of a prefix and then the prefix plus ~1,200 tokens
+  (`cache_prompt`, one slot each), with `n_predict` 16, `temperature` 0,
+  `n_probs` 10. The first generated token must match in every request.
+- The router: `llama-server --models-preset <ini with two models> -np 4
+  -c 16384`, 12 prompts to each model at the same time. The same check,
+  and `GGML_XDNA_TRACE=1` shows both child processes' NPU pieces.
+
+**Measured 2026-09-30:**
+- 4 prompts per chunk: KL 0.0052, 96.2% same top token, identical at
+  `-ub` 512, 1,024 and 2,048.
+- 32k context: KL 0.0036, 97.9%, identical at `-ub` 512 and 2,048.
+- Server: first token the same in 23 of 23 requests; 19 of 23 16-token
+  replies identical word for word. The rest split at near-ties
+  ("--model-name" against "--model_name").
+- Router, Qwen3-1.7B and Qwen3-4B Q4_K_M: first token the same in 44 of
+  44; 38 of 44 replies identical; both processes on the NPU throughout.
+- No crash in any run.
+
+---
+
 ### XDNA-NO-WEIGHT-TRANSFER: No weight is copied between backends
 **Applies to:** ggml-xdna
 **Test category:** manual
@@ -442,6 +493,11 @@ sizes...>`; the three rows are new-run-each, reused-run, and runlist.
 - The backend's weight cache (step 1: raw bytes of each claimed weight, kept
   for tensors in buffers llama.cpp marks as weights, keyed on buffer, offset,
   type and shape) and the pinned host memory it reads activations into.
+  Weight copies, raw and 8-bit, belong to the backend instance llama.cpp
+  makes per context and are freed with it. That lifetime is what makes a
+  key by location safe: a context never outlives its model. Anything that
+  keeps copies longer (a disk cache, copies shared between contexts) must
+  key them by content instead.
 - `GGML_XDNA_TRACE=1`: a diagnostic that records the inputs of every op the
   backend declines and reports any of its own results no declined op was seen
   reading. It is the basis for deciding which results block claiming must
