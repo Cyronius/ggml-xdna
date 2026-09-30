@@ -44,4 +44,6 @@ jobs:
           GGML_VK_VISIBLE_DEVICES: "0"
           GGML_VK_DISABLE_F16: "1"
           GGML_VK_DISABLE_COOPMAT: "1"
+          # lavapipe's pinned memory fails ggml's alignment check on Windows
+          GGML_XDNA_PINNED: "0"
         run: build.cmd

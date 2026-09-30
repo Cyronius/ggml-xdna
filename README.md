@@ -161,6 +161,7 @@ All optional. An empty value counts as unset.
 | `GGML_XDNA_STREAMS` | 2 | how many parts a piece is split into, so the CPU and NPU overlap |
 | `GGML_XDNA_N_THREADS` | all cores | CPU threads for the add-on's own work |
 | `GGML_XDNA_TRACE` | 0 | 1 prints where the time goes |
+| `GGML_XDNA_PINNED` | 1 | 0 reads from the GPU into ordinary memory instead of pinned memory: slower, for software Vulkan devices |
 | `GGML_XDNA_HOST_ONLY` | 0 | 1 runs the NPU's share on the CPU instead: for tests without an NPU |
 
 ## Building from source

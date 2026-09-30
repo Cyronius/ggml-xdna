@@ -167,10 +167,19 @@ static const xdna_vk & xdna_vulkan() {
 // backend
 //
 
+// Host memory we read Vulkan's tensors into is Vulkan's pinned memory, where
+// the GPU copies fastest. GGML_XDNA_PINNED=0 uses ordinary memory instead: a
+// diagnostic, and for software Vulkan devices (CI's lavapipe on Windows hands
+// out pinned memory ggml then rejects as misaligned).
+static bool xdna_pinned_mem() {
+    static const bool v = env_int("GGML_XDNA_PINNED", 1) != 0;
+    return v;
+}
+
 struct xdna_context {
     ggml_backend_t vk = nullptr;  // our own Vulkan backend, for async reads
 
-    // pinned host memory the GPU copies our inputs into; grows as needed
+    // host memory the GPU copies our inputs into; grows as needed
     ggml_backend_buffer_t pin = nullptr;
     size_t pin_size = 0;
 
@@ -237,7 +246,8 @@ struct xdna_context {
     void * pinned(size_t size) {
         if (size > pin_size) {
             if (pin) ggml_backend_buffer_free(pin);
-            pin = ggml_backend_buft_alloc_buffer(xdna_vulkan().host_buft, size);
+            pin = ggml_backend_buft_alloc_buffer(xdna_pinned_mem() ? xdna_vulkan().host_buft : ggml_backend_cpu_buffer_type(),
+                                                 size);
             pin_size = pin ? size : 0;
         }
         return pin ? ggml_backend_buffer_get_base(pin) : nullptr;
@@ -253,13 +263,12 @@ struct xdna_context {
         ggml_backend_synchronize(vk);
     }
 
-    // Block claiming's host memory: pinned buffers, handed out per piece and
-    // all returned when it ends, reused by the next.
-    // GGML_XDNA_PINNED=0 uses ordinary memory instead (a diagnostic).
+    // Block claiming's host memory: pinned buffers (xdna_pinned_mem), handed
+    // out per piece and all returned when it ends, reused by the next.
     struct pin_buf { ggml_backend_buffer_t buf; void * mem; size_t size; bool used; };
     std::vector<pin_buf> pool;
     void * pool_alloc(size_t n) {
-        static const bool pinned_mem = env_int("GGML_XDNA_PINNED", 1) != 0;
+        const bool pinned_mem = xdna_pinned_mem();
         pin_buf * best = nullptr;
         for (pin_buf & p : pool)
             if (!p.used && p.size >= n && (!best || p.size < best->size)) best = &p;
