@@ -99,6 +99,14 @@ set GGML_BACKEND_PATH=C:\code\npu-prefill-engine\third_party\llama-b10944\ggml-x
 third_party\llama-b10944\llama-cli.exe -m <model.gguf> -dev XDNA0,Vulkan0 -fa on -b 2048 -ub 2048
 ```
 
+**Pass `-ub 2048`.** llama.cpp reads a prompt in chunks of `-ub` tokens,
+512 by default, and the NPU only takes chunks of 1,024 or more
+(`GGML_XDNA_MIN_BATCH`): below that, handing work to the NPU costs more
+than it saves. With the default, every prompt runs on the GPU and the
+backend does nothing. `llama-completion` and `llama-server` print a
+warning when that happens. `llama-cli`'s chat screen hides all warnings
+unless run with `-v`.
+
 The NPU kernel, `bfp16_gemm.xclbin`, sits next to `ggml-xdna.dll` (the
 build copies it there). If the NPU can't run it (no NPU, a chip the backend
 hasn't been tested on, a missing file), XDNA0 isn't offered and one log line

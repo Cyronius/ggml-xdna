@@ -121,6 +121,31 @@ tokens; the plan's step 3 tunes it.
 
 ---
 
+### XDNA-CHUNK-WARNING: A warning when llama.cpp's chunks are too small
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+On the NPU, when llama.cpp's prompt chunk (`-ub`, 512 by default) is below
+`GGML_XDNA_MIN_BATCH`, the backend shall log one warning naming the chunk
+size and the flag to change (`-ub 2048`). Otherwise the backend silently
+does nothing. The chunk size is read from the first matmul on loaded
+weights with more than one row: llama.cpp lays out a prompt step at its
+full chunk size before running anything. Matmuls on weights with no data
+don't count; llama.cpp's memory fitting sets up a trial context that way,
+with warnings hidden.
+
+**Verification (manual):** Qwen3-1.7B, `-dev XDNA0,Vulkan0`:
+- `llama-completion` and `llama-server` with the default `-ub` print the
+  warning once;
+- `-ub 2048` prints nothing;
+- `-dev Vulkan0` prints nothing.
+
+`llama-cli` hides all warnings unless `-v`, which the README says.
+
+**Measured 2026-09-30:** as above.
+
+---
+
 ### XDNA-WORK-FLOOR: Small matmuls stay on the GPU
 **Applies to:** ggml-xdna
 **Test category:** unit
