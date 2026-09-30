@@ -39,9 +39,13 @@ target_link_libraries(ggml-xdna PRIVATE
 set_target_properties(ggml-xdna PROPERTIES PREFIX "")
 
 # Drop the DLL next to the llama.cpp binaries so GGML_BACKEND_PATH is a
-# one-liner and ggml-base.dll resolves from the same directory.
+# one-liner and ggml-base.dll resolves from the same directory. The NPU
+# kernel goes next to the DLL in both places: the backend looks for it there.
+set(XDNA_XCLBIN "${CMAKE_SOURCE_DIR}/kernels/bfp16_gemm/prebuilt/bfp16_gemm.xclbin")
 add_custom_command(TARGET ggml-xdna POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:ggml-xdna> "${GGML_DIST}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${XDNA_XCLBIN}" "${GGML_DIST}"
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different "${XDNA_XCLBIN}" $<TARGET_FILE_DIR:ggml-xdna>
 )
 
 # XRT is vendored: headers under vendor/xrt (Apache-2.0, see vendor/xrt/LICENSE)
@@ -125,7 +129,7 @@ else()
     message(STATUS "${XRT_LIB} missing - run tools/gen-xrt-implib.ps1; skipping bench-dispatch")
 endif()
 
-foreach(t test-mul-mat test-dispatch-gate)
+foreach(t test-mul-mat test-dispatch-gate test-safe-start)
     add_executable(${t} tests/${t}.cpp)
     target_include_directories(${t} PRIVATE "${GGML_HEADERS}/include")
     target_compile_definitions(${t} PRIVATE GGML_SHARED GGML_BACKEND_SHARED)

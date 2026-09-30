@@ -1,6 +1,8 @@
 #include "xdna-exec.h"
 
+#include "xdna-env.h"
 #include "xdna-npu.h"
+#include "xdna-ref.h"
 #include "ggml-impl.h"
 #include "thread_pool.h"
 
@@ -92,6 +94,7 @@ struct group {
     const ggml_tensor * x = nullptr;
     std::vector<xdna_npu::wkey> keys;
     std::vector<const ggml_tensor *> outs;
+    std::vector<const ggml_tensor *> mms;  // the matmul nodes (on the host, outs are these)
 };
 
 // One pass over a stream's rows, as in the prototype (hybrid/npu_prefill.cpp):
@@ -112,7 +115,7 @@ struct tile {
 
 struct piece {
     const ggml_cgraph * g;
-    xdna_npu & npu;
+    xdna_npu * npu;  // null: everything on the host
     const xdna_io & io;
     thread_pool & pool;
     std::vector<ggml_tensor *> nodes;                        // compute nodes and reshapes, in order
@@ -124,7 +127,7 @@ struct piece {
     size_t scratch_floats = 0;
     int64_t T = 0;
 
-    piece(const ggml_cgraph * g_, xdna_npu & n, const xdna_io & i) : g(g_), npu(n), io(i), pool(n.pool()) {}
+    piece(const ggml_cgraph * g_, xdna_npu * n, thread_pool & p, const xdna_io & i) : g(g_), npu(n), io(i), pool(p) {}
 
     // what a tensor's rows are kept under: its memory's owner if that's
     // produced here, else the tensor itself (an input from outside)
@@ -254,6 +257,23 @@ struct piece {
         }
     }
 
+    // A group's matmuls on the host, rows [t0, t1): the reference the backend
+    // falls back to when the NPU fails.
+    bool host_matmuls(const group & G, int64_t t0, int64_t t1, std::string & err) {
+        for (const ggml_tensor * m : G.mms) {
+            const void * w = io.weight_bytes(m->src[0]);
+            if (!w) { err = std::string("cannot read ") + m->src[0]->name; return false; }
+            ggml_tensor s0 = *m->src[0], s1 = *m->src[1], d = *m;
+            s0.data = (void *) w;
+            s1.data = (char *) data(m->src[1]) + t0 * s1.nb[1];
+            s1.ne[1] = t1 - t0;
+            d.data = (char *) data(m) + t0 * d.nb[1];
+            d.ne[1] = t1 - t0;
+            xdna_ref_mul_mat(&s0, &s1, &d, pool.size());
+        }
+        return true;
+    }
+
     // A segment over one stream's rows [t0, t1), tile by tile. NPU rows count
     // from the stream's first.
     void run_pass(const segment & seg, const std::vector<group> & groups, int si, int64_t t0, int64_t t1) {
@@ -265,12 +285,12 @@ struct piece {
             if (scratch.size() < scratch_floats) scratch.resize(scratch_floats);
             for (int64_t i = i0; i < i1; i++) {
                 const tile tl = { t0 + i * TILE_ROWS, std::min(t1, t0 + (i + 1) * TILE_ROWS), scratch.data() };
-                if (done)
+                if (done && npu)
                     for (size_t k = 0; k < done->outs.size(); k++)
-                        for (int64_t r = tl.r0; r < tl.r1; r++) npu.decode_row(si, (int) k, r - t0, row(done->outs[k], r, tl));
+                        for (int64_t r = tl.r0; r < tl.r1; r++) npu->decode_row(si, (int) k, r - t0, row(done->outs[k], r, tl));
                 for (const ggml_tensor * n : seg.ops) run_rows(n, tl);
-                if (next)
-                    for (int64_t r = tl.r0; r < tl.r1; r++) npu.encode_row(si, r - t0, row(next->x, r, tl));
+                if (next && npu)
+                    for (int64_t r = tl.r0; r < tl.r1; r++) npu->encode_row(si, r - t0, row(next->x, r, tl));
             }
         });
     }
@@ -278,8 +298,9 @@ struct piece {
 
 } // namespace
 
-bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu & npu, const xdna_io & io, int n_streams, std::string & err) {
-    piece P(g, npu, io);
+bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu * npu, thread_pool & pool, const xdna_io & io, int n_streams,
+                     std::string & err) {
+    piece P(g, npu, pool, io);
     for (int i = 0; i < g->n_nodes; i++) {
         ggml_tensor * n = g->nodes[i];
         if (n->op == GGML_OP_NONE) continue;
@@ -308,7 +329,7 @@ bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu & npu, const xdna_io & io, 
     std::unordered_map<const ggml_tensor *, size_t> index;
     for (size_t i = 0; i < P.nodes.size(); i++) index[P.nodes[i]] = i;
     for (ggml_tensor * n : P.nodes) {
-        if (n->op != GGML_OP_GLU) continue;
+        if (!npu || n->op != GGML_OP_GLU) continue;
         ggml_tensor * gm = n->src[0], * um = n->src[1];
         if (gm->op != GGML_OP_MUL_MAT || um->op != GGML_OP_MUL_MAT || !index.count(gm) || !index.count(um)) continue;
         if (owner(gm->src[1]) != owner(um->src[1]) || gm->src[0]->type != um->src[0]->type ||
@@ -328,7 +349,7 @@ bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu & npu, const xdna_io & io, 
     // inputs from outside: read once. A matmul's weight is the NPU's own copy
     // and a MUL's scale row is a kept parameter, so neither is read here.
     for (ggml_tensor * n : P.nodes) {
-        if (n->op == GGML_OP_MUL_MAT) {
+        if (n->op == GGML_OP_MUL_MAT && npu) {
             auto f = fused.find(n);
             if (f != fused.end()) {
                 if (!io.ensure_fused(n->src[0], f->second.up->src[0], err)) return false;
@@ -378,16 +399,18 @@ bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu & npu, const xdna_io & io, 
                     // gate, up and their SwiGLU in one call
                     G.keys.push_back(xdna_npu::fused_key(mm_key(m->src[0])));
                     G.outs.push_back(f->second.glu);
+                    G.mms.push_back(m);
                     done[index.at(f->second.up)] = 1;
                     done[index.at(f->second.glu)] = 1;
                 } else {
                     G.keys.push_back(mm_key(m->src[0]));
                     G.outs.push_back(m);
+                    G.mms.push_back(m);
                 }
             }
             if (!f32_contig(G.x) || row_floats(G.x) != G.x->ne[0]) { err = "a matmul input that isn't float rows"; return false; }
             for (size_t k = 0; k < G.outs.size(); k++)
-                if (npu.out_width(G.keys[k]) != row_floats(G.outs[k])) { err = "a matmul output of the wrong width"; return false; }
+                if (npu && npu->out_width(G.keys[k]) != row_floats(G.outs[k])) { err = "a matmul output of the wrong width"; return false; }
             segs.back().next = (int) groups.size();
             segs.push_back({ (int) groups.size(), -1, {} });
             groups.push_back(std::move(G));
@@ -397,7 +420,7 @@ bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu & npu, const xdna_io & io, 
     // Where each result lives. One made and read within a single segment,
     // and read by nothing outside the piece, lives only in tiles; everything
     // else gets host memory for the whole piece.
-    static const bool dump = getenv("GGML_XDNA_DUMP") != nullptr;  // every result kept, to show
+    static const bool dump = xdna_env("GGML_XDNA_DUMP") != nullptr;  // every result kept, to show
     std::unordered_map<const ggml_tensor *, int> made, last;  // by key: the segment that makes it, the last that reads it
     auto reads = [&](const ggml_tensor * t, int si) {
         const ggml_tensor * k = P.key(t);
@@ -422,7 +445,8 @@ bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu & npu, const xdna_io & io, 
     std::vector<size_t> seg_floats(segs.size(), 0);
     for (const auto & [k, si] : made) {
         auto l = last.find(k);
-        if (!dump && !outside.count(k) && (l == last.end() || l->second <= si)) {
+        // on the host a matmul writes whole results, so everything is kept
+        if (npu && !dump && !outside.count(k) && (l == last.end() || l->second <= si)) {
             P.local[k] = seg_floats[si];
             seg_floats[si] += (size_t) ((TILE_ROWS * row_floats(k) + 15) / 16 * 16);  // whole cache lines
             continue;
@@ -444,13 +468,14 @@ bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu & npu, const xdna_io & io, 
         bool waiting = false;
     };
     std::vector<stream> S;
+    if (!npu) n_streams = 1;  // nothing to overlap with
     const int64_t per = std::min<int64_t>(1024, std::max<int64_t>(512, ((P.T + n_streams - 1) / n_streams + 511) / 512 * 512));
     for (int64_t t0 = 0; t0 < P.T; t0 += per) S.push_back({ t0, std::min(P.T, t0 + per) });
-    if (!groups.empty()) {
+    if (npu && !groups.empty()) {
         std::vector<std::vector<xdna_npu::wkey>> all;
         for (const group & G : groups) all.push_back(G.keys);
         for (int si = 0; si < (int) S.size(); si++)
-            if (!npu.reserve(si, all, err)) return false;
+            if (!npu->reserve(si, all, err)) return false;
     }
 
     size_t left = S.size();
@@ -459,18 +484,20 @@ bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu & npu, const xdna_io & io, 
             stream & s = S[si];
             if (s.seg >= segs.size()) continue;
             if (s.waiting) {
-                if (!npu.wait(si, err)) return false;
+                if (!npu->wait(si, err)) return false;
                 s.waiting = false;
             }
             const segment & seg = segs[s.seg++];
-            if (seg.next >= 0 && !npu.begin(si, groups[seg.next].keys, s.t1 - s.t0, err)) return false;
+            if (npu && seg.next >= 0 && !npu->begin(si, groups[seg.next].keys, s.t1 - s.t0, err)) return false;
             const auto h0 = std::chrono::steady_clock::now();
             P.run_pass(seg, groups, si, s.t0, s.t1);
             xdna_pass_ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - h0).count();
             xdna_passes++;
-            if (seg.next >= 0) {
-                if (!npu.submit(si, err)) return false;
+            if (seg.next >= 0 && npu) {
+                if (!npu->submit(si, err)) return false;
                 s.waiting = true;
+            } else if (seg.next >= 0 && !P.host_matmuls(groups[seg.next], s.t0, s.t1, err)) {
+                return false;
             }
             if (s.seg >= segs.size()) left--;
         }

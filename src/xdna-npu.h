@@ -24,9 +24,15 @@
 
 class thread_pool;
 
-// The kernel's xclbin, from GGML_XDNA_KERNELS; empty when that's unset or
-// names no xclbin.
+// The kernel's xclbin: GGML_XDNA_KERNELS if set (the file, or a directory
+// holding final.xclbin or per-size builds), else bfp16_gemm.xclbin next to
+// this DLL. Empty when there's none.
 const std::string & xdna_xclbin();
+// Whether the NPU can run the backend: it opens, it's a chip the backend was
+// tested on (GGML_XDNA_ANY_NPU=1 skips that check), and it loads the
+// xclbin. Checked once, when llama.cpp registers the backend; `why` says what
+// failed.
+bool xdna_npu_usable(std::string & why);
 // Whether the kernel takes a weight of K x N at both row counts.
 bool xdna_npu_has_shape(int64_t K, int64_t N);
 

@@ -1,15 +1,23 @@
 #include "xdna-npu.h"
 
+#include "xdna-env.h"
+
 #include "bfp16_insts.h"
 #include "bfp16_pack.h"
 #include "thread_pool.h"
+#include "xrt_shim.h"
 
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <tuple>
+
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
 
 namespace {
 
@@ -34,7 +42,7 @@ int64_t pad_f(int64_t F) { return (F + 255) / 256 * 256; }
 
 bool out16_enabled() {
     static const bool v = [] {
-        const char * s = getenv("GGML_XDNA_OUT16");
+        const char * s = xdna_env("GGML_XDNA_OUT16");
         return !s || atoi(s) != 0;
     }();
     return v;
@@ -55,24 +63,94 @@ void read_row(const float * c, int64_t M, int64_t N, int mode, int64_t r, int64_
     if (dst != row) memcpy(row, dst, (size_t) n_out * sizeof(float));
 }
 
+// GGML_XDNA_FAIL_AFTER=n: every NPU submission after the n-th fails, to test
+// the backend's fallback to the CPU.
+bool injected_failure(std::string & err) {
+    static const long long after = [] {
+        const char * s = xdna_env("GGML_XDNA_FAIL_AFTER");
+        return s ? atoll(s) : -1LL;
+    }();
+    static std::atomic<long long> n{ 0 };
+    if (after < 0 || ++n <= after) return false;
+    err = "an injected failure (GGML_XDNA_FAIL_AFTER)";
+    return true;
+}
+
 } // namespace
+
+// The directory this DLL was loaded from.
+static std::filesystem::path module_dir() {
+    HMODULE h = nullptr;
+    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                            (LPCWSTR) &module_dir, &h))
+        return {};
+    wchar_t buf[MAX_PATH];
+    const DWORD n = GetModuleFileNameW(h, buf, MAX_PATH);
+    if (n == 0 || n == MAX_PATH) return {};
+    return std::filesystem::path(std::wstring(buf, n)).parent_path();
+}
 
 const std::string & xdna_xclbin() {
     static const std::string path = []() -> std::string {
         namespace fs = std::filesystem;
-        const char * s = getenv("GGML_XDNA_KERNELS");
-        if (!s || !*s) return {};
         std::error_code ec;
+        const char * s = xdna_env("GGML_XDNA_KERNELS");
+        if (!s || !*s) {
+            const fs::path p = module_dir() / "bfp16_gemm.xclbin";
+            return fs::is_regular_file(p, ec) ? p.u8string() : std::string();
+        }
         const fs::path p = fs::u8path(s);
         if (fs::is_regular_file(p, ec)) return p.u8string();
         if (fs::is_regular_file(p / "final.xclbin", ec)) return (p / "final.xclbin").u8string();
         // a directory of per-size builds: every one holds the same program
         for (const auto & e : fs::directory_iterator(p, ec))
             if (fs::is_regular_file(e.path() / "final.xclbin", ec)) return (e.path() / "final.xclbin").u8string();
-        fprintf(stderr, "xdna: GGML_XDNA_KERNELS=%s names no xclbin; the NPU is off\n", s);
         return {};
     }();
     return path;
+}
+
+// NPUs the backend was tested on, as XRT names them: "NPU Strix" is Strix
+// Point (Ryzen AI 300, e.g. the HX 370).
+static const char * const TESTED_NPUS[] = { "NPU Strix" };
+
+bool xdna_npu_usable(std::string & why) {
+    static std::string reason;
+    static const bool ok = [] {
+        if (xdna_xclbin().empty()) {
+            const char * s = xdna_env("GGML_XDNA_KERNELS");
+            reason = s && *s ? std::string("GGML_XDNA_KERNELS=") + s + " names no xclbin"
+                             : "no bfp16_gemm.xclbin next to ggml-xdna.dll";
+            return false;
+        }
+        xrtsh_dev dev = xrtsh_device_open(0);
+        if (!dev) {
+            reason = std::string("no NPU found (") + xrtsh_last_error() + ")";
+            return false;
+        }
+        char name[256] = {};
+        xrtsh_device_name(dev, name, sizeof(name));
+        const char * any = xdna_env("GGML_XDNA_ANY_NPU");
+        bool tested = any && atoi(any) != 0;
+        for (const char * t : TESTED_NPUS) tested |= strcmp(name, t) == 0;
+        if (!tested) {
+            reason = std::string("the NPU \"") + name + "\" hasn't been tested with this backend (GGML_XDNA_ANY_NPU=1 tries it)";
+            xrtsh_device_free(dev);
+            return false;
+        }
+        xrtsh_ctx ctx = xrtsh_hwctx_create(dev, xdna_xclbin().c_str());
+        if (!ctx) {
+            reason = "the NPU won't load " + xdna_xclbin() + " (" + xrtsh_last_error() + ")";
+            xrtsh_device_free(dev);
+            return false;
+        }
+        xrtsh_hwctx_free(ctx);
+        xrtsh_device_free(dev);
+        reason = std::string("NPU \"") + name + "\", " + xdna_xclbin();
+        return true;
+    }();
+    why = reason;
+    return ok;
 }
 
 bool xdna_npu_has_shape(int64_t K, int64_t N) { return fits(K, pad_n(N)); }
@@ -206,7 +284,7 @@ bool xdna_npu::mul_mat(const wkey & key, const float * x, int64_t T, float * y, 
     times_.encode_ms += ms_since(t0);
 
     t0 = clk::now();
-    if (!batch_->run(err)) return false;
+    if (injected_failure(err) || !batch_->run(err)) return false;
     times_.npu_ms += ms_since(t0);
     times_.calls += n;
 
@@ -293,6 +371,7 @@ void xdna_npu::encode_row(int stream, int64_t r, const float * row) {
 }
 
 bool xdna_npu::submit(int stream, std::string & err) {
+    if (injected_failure(err)) return false;
     flight & f = flights_.at(stream);
     clk::time_point t0 = clk::now();
     // every call reads the same input

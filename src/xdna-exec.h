@@ -18,6 +18,7 @@
 #include <string>
 
 class xdna_npu;
+class thread_pool;
 
 // What the executor needs from the backend.
 struct xdna_io {
@@ -37,6 +38,9 @@ struct xdna_io {
     std::function<bool(const ggml_tensor *, std::string &)> ensure_weight;
     // a gate and an up weight, fused for SiLU(gate) * up on the NPU
     std::function<bool(const ggml_tensor *, const ggml_tensor *, std::string &)> ensure_fused;
+    // a weight's raw bytes in host memory, for matmuls on the host; null if
+    // they can't be read
+    std::function<const void *(const ggml_tensor *)> weight_bytes;
 };
 
 // Host time in those passes, and how many, since the last reset, for
@@ -48,5 +52,9 @@ extern int64_t xdna_passes;
 // this before claiming anything but a matmul.
 bool xdna_exec_supports(const ggml_tensor * op);
 
-// Runs the piece. Returns false with `err` set on failure.
-bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu & npu, const xdna_io & io, int n_streams, std::string & err);
+// Runs the piece: its matmuls on `npu`, or with `npu` null on the host (the
+// fallback when the NPU fails; slow, but the same results within rounding).
+// Returns false with `err` set on failure. A failed piece has written nothing
+// back, so it can be run again.
+bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu * npu, thread_pool & pool, const xdna_io & io, int n_streams,
+                     std::string & err);

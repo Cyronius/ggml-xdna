@@ -96,9 +96,15 @@ powershell -File tools\gen-xrt-implib.ps1
 
 ```
 set GGML_BACKEND_PATH=C:\code\npu-prefill-engine\third_party\llama-b10944\ggml-xdna.dll
-set GGML_XDNA_KERNELS=C:\code\npu-prefill-engine\kernels\bfp16_gemm\prebuilt\bfp16_gemm.xclbin
 third_party\llama-b10944\llama-cli.exe -m <model.gguf> -dev XDNA0,Vulkan0 -fa on -b 2048 -ub 2048
 ```
+
+The NPU kernel, `bfp16_gemm.xclbin`, sits next to `ggml-xdna.dll` (the
+build copies it there). If the NPU can't run it (no NPU, a chip the backend
+hasn't been tested on, a missing file), XDNA0 isn't offered and one log line
+says why. llama.cpp then runs on the GPU as usual. If the NPU fails in the
+middle of a run, the backend finishes that step on the CPU, logs it, and
+hands everything to the GPU after that.
 
 `-dev XDNA0,Vulkan0` opts in: the NPU takes the big prompt work (weight
 matmuls on long prompts, and the norms, rotary and adds between them), the
@@ -111,7 +117,9 @@ instructions itself, so no per-model kernel builds are needed.
 
 | env | default | |
 |---|---|---|
-| `GGML_XDNA_KERNELS` | unset | the NPU kernel's xclbin (or a directory holding `final.xclbin`); unset, matmuls run on a CPU reference |
+| `GGML_XDNA_KERNELS` | `bfp16_gemm.xclbin` next to the DLL | another xclbin, or a directory holding `final.xclbin` |
+| `GGML_XDNA_ANY_NPU` | 0 | 1 tries an NPU the backend hasn't been tested on (tested: Strix Point) |
+| `GGML_XDNA_HOST_ONLY` | 0 | 1 runs claimed matmuls on a CPU reference, never the NPU: for tests without an NPU |
 | `GGML_XDNA_MIN_BATCH` | 1024 | prompt tokens at or above which work is claimed |
 | `GGML_XDNA_MIN_MFLOP` | 256 | smallest matmul claimed, in MFLOP |
 | `GGML_XDNA_BLOCKS` | 1 | claim whole blocks (0: matmuls only) |

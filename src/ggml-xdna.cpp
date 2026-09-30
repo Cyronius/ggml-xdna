@@ -25,12 +25,15 @@
 #include "ggml-backend-impl.h"
 #include "ggml-impl.h"
 
+#include "xdna-env.h"
 #include "xdna-ref.h"
 #ifdef XDNA_HAVE_NPU
 #include "xdna-npu.h"
 #include "xdna-exec.h"
+#include "thread_pool.h"
 #endif
 
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -54,10 +57,7 @@ static int64_t xdna_op_batch_size(const ggml_tensor * op) {
     }
 }
 
-static int64_t env_int(const char * name, int64_t def) {
-    const char * s = getenv(name);
-    return s ? atoll(s) : def;
-}
+static int64_t env_int(const char * name, int64_t def) { return xdna_env_int(name, def); }
 
 // Batch size at or above which a matmul is ours. The prototype (hybrid/)
 // beats the GPU from about 1,000 tokens; step 3 of the plan tunes this.
@@ -79,6 +79,47 @@ static int xdna_n_threads() {
         return hc ? (int) hc : 4;
     }());
     return v;
+}
+
+// How the backend runs, decided once, when llama.cpp registers it:
+//   npu   the NPU opens and runs the kernel (xdna_npu_usable)
+//   host  GGML_XDNA_HOST_ONLY=1: claimed matmuls run on a CPU reference,
+//         for tests and CI on machines without an NPU
+//   off   neither: no device is offered, and llama.cpp runs as if the backend
+//         weren't there
+enum class xdna_mode { off, npu, host };
+
+static xdna_mode xdna_run_mode() {
+    static const xdna_mode m = [] {
+        if (env_int("GGML_XDNA_HOST_ONLY", 0) != 0) {
+            GGML_LOG_INFO("xdna: host-only mode (GGML_XDNA_HOST_ONLY): claimed matmuls run on the CPU\n");
+            return xdna_mode::host;
+        }
+#ifdef XDNA_HAVE_NPU
+        std::string why;
+        if (xdna_npu_usable(why)) {
+            GGML_LOG_INFO("xdna: %s\n", why.c_str());
+            return xdna_mode::npu;
+        }
+        GGML_LOG_WARN("xdna: not offering " GGML_XDNA_DEVICE_NAME ": %s\n", why.c_str());
+#else
+        GGML_LOG_WARN("xdna: not offering " GGML_XDNA_DEVICE_NAME ": built without the NPU\n");
+#endif
+        return xdna_mode::off;
+    }();
+    return m;
+}
+
+// Set when the NPU fails during a prompt. The piece that failed is finished
+// on the CPU, and from then on the backend claims nothing, so everything goes
+// to the GPU. Never set in host-only mode.
+static std::atomic<bool> g_npu_broken{ false };
+
+static void xdna_npu_failed(const std::string & err) {
+    if (!g_npu_broken.exchange(true))
+        GGML_LOG_ERROR("xdna: the NPU failed (%s); finishing this step on the CPU and handing everything to the GPU "
+                       "from now on\n",
+                       err.c_str());
 }
 
 //
@@ -161,19 +202,24 @@ struct xdna_context {
     int64_t matmuls = 0, pieces = 0;
 
 #ifdef XDNA_HAVE_NPU
-    // the NPU, started on first use when GGML_XDNA_KERNELS names the kernel
+    // the NPU, started on first use; null in host-only mode or once it failed
     std::unique_ptr<xdna_npu> npu;
-    bool npu_failed = false;
     xdna_npu * get_npu() {
-        if (npu || npu_failed || xdna_xclbin().empty()) return npu.get();
+        if (g_npu_broken || xdna_run_mode() != xdna_mode::npu) return nullptr;
+        if (npu) return npu.get();
         npu = std::make_unique<xdna_npu>();
         std::string err;
         if (!npu->init(xdna_n_threads(), err)) {
-            GGML_LOG_ERROR("xdna: NPU unavailable: %s\n", err.c_str());
+            xdna_npu_failed(err);
             npu.reset();
-            npu_failed = true;
         }
         return npu.get();
+    }
+    // threads for pieces run on the host when the NPU has failed
+    std::unique_ptr<thread_pool> host_pool;
+    thread_pool & host_threads() {
+        if (!host_pool) host_pool = std::make_unique<thread_pool>(xdna_n_threads());
+        return *host_pool;
     }
 #endif
 
@@ -295,22 +341,20 @@ static bool xdna_mul_mat(xdna_context & ctx, ggml_tensor * node) {
         xdna_npu_has_shape(src0->ne[0], src0->ne[1])) {
         const xdna_npu::wkey key = { src0->buffer, src0->data, (int) src0->type, src0->ne[0], src0->ne[1] };
         std::string err;
-        if (!npu->has_weight(key)) {
+        bool ok = npu->has_weight(key);
+        if (!ok) {
             ctx.scratch_weight.resize(ggml_nbytes(src0));
             ctx.read(src0, ctx.scratch_weight.data());
-            if (!npu->add_weight(key, ctx.scratch_weight.data(), err)) {
-                GGML_LOG_ERROR("%s: %s: %s\n", __func__, src0->name, err.c_str());
-                return false;
-            }
+            ok = npu->add_weight(key, ctx.scratch_weight.data(), err);
         }
-        if (!npu->mul_mat(key, (const float *) x, src1->ne[1], (float *) ctx.out.data(), err)) {
-            GGML_LOG_ERROR("%s: %s: %s\n", __func__, node->name, err.c_str());
-            return false;
+        if (ok) ok = npu->mul_mat(key, (const float *) x, src1->ne[1], (float *) ctx.out.data(), err);
+        if (ok) {
+            t0 = std::chrono::steady_clock::now();
+            ggml_backend_tensor_set(node, ctx.out.data(), 0, ggml_nbytes(node));
+            ctx.write_ms += since(t0);
+            return true;
         }
-        t0 = std::chrono::steady_clock::now();
-        ggml_backend_tensor_set(node, ctx.out.data(), 0, ggml_nbytes(node));
-        ctx.write_ms += since(t0);
-        return true;
+        xdna_npu_failed(std::string(node->name) + ": " + err);  // and on to the reference below
     }
 #endif
     const std::vector<uint8_t> & w = ctx.weight(src0);
@@ -374,18 +418,22 @@ static ggml_status ggml_backend_xdna_graph_compute(ggml_backend_t backend, ggml_
 #ifdef XDNA_HAVE_NPU
     // Block claiming runs every matmul on the NPU. The policy only hands us
     // matmuls it can run, but a caller computing a graph directly (a test)
-    // can pass others; those go op by op below, which falls back to the CPU.
-    bool npu_takes_all = true;
+    // can pass others; a graph of only such matmuls goes op by op below,
+    // which falls back to the CPU. A graph with small ops in it is a claimed
+    // block: it runs here, on the host if the NPU has failed.
+    bool npu_takes_all = true, small_ops = false;
     for (int i = 0; i < cgraph->n_nodes; i++) {
         const ggml_tensor * n = cgraph->nodes[i];
-        if (n->op != GGML_OP_MUL_MAT) continue;
+        if (n->op != GGML_OP_MUL_MAT) {
+            small_ops |= n->op != GGML_OP_NONE && n->op != GGML_OP_RESHAPE;
+            continue;
+        }
         const ggml_tensor * w = n->src[0];
         npu_takes_all &= w->buffer && ggml_backend_buffer_get_usage(w->buffer) == GGML_BACKEND_BUFFER_USAGE_WEIGHTS &&
                          xdna_npu_has_shape(w->ne[0], w->ne[1]);
     }
-    if (xdna_blocks() && npu_takes_all) {
-        xdna_npu * npu = ctx.get_npu();
-        if (!npu) return GGML_STATUS_FAILED;
+    if (xdna_blocks() && (npu_takes_all || small_ops)) {
+        xdna_npu * npu = npu_takes_all ? ctx.get_npu() : nullptr;
         std::unordered_set<const ggml_tensor *> in_piece;
         for (int i = 0; i < cgraph->n_nodes; i++) {
             in_piece.insert(cgraph->nodes[i]);
@@ -432,9 +480,19 @@ static ggml_status ggml_backend_xdna_graph_compute(ggml_backend_t backend, ggml_
             ctx.read(uw, u.data());
             return npu->add_fused(gate, g.data(), u.data(), err);
         };
+        io.weight_bytes = [&](const ggml_tensor * w) -> const void * { return ctx.weight(w).data(); };
         std::string err;
-        const bool ok = xdna_exec_piece(cgraph, *npu, io, xdna_streams(), err);
-        ctx.pool_release();
+        bool ok = false;
+        if (npu) {
+            ok = xdna_exec_piece(cgraph, npu, npu->pool(), io, xdna_streams(), err);
+            ctx.pool_release();
+            if (!ok) xdna_npu_failed(err);
+        }
+        if (!ok) {
+            // a failed piece wrote nothing back; run it again on the host
+            ok = xdna_exec_piece(cgraph, nullptr, ctx.host_threads(), io, 1, err);
+            ctx.pool_release();
+        }
         if (!ok) {
             GGML_LOG_ERROR("%s: %s\n", __func__, err.c_str());
             return GGML_STATUS_FAILED;
@@ -628,7 +686,7 @@ static void xdna_trace_piece(const ggml_cgraph * cgraph) {
 static bool xdna_blocks() {
     static bool v = env_int("GGML_XDNA_BLOCKS", 1) != 0;
 #ifdef XDNA_HAVE_NPU
-    return v && !xdna_xclbin().empty();
+    return v && xdna_run_mode() == xdna_mode::npu;
 #else
     return false;
 #endif
@@ -655,8 +713,8 @@ static bool xdna_claim_mul_mat(const ggml_tensor * op) {
     if (!ggml_is_contiguous(src1) || src1->ne[2] != 1 || src1->ne[3] != 1) return false;
     if (src0->ne[0] != src1->ne[0]) return false;
 #ifdef XDNA_HAVE_NPU
-    // with the NPU configured, only sizes the kernel takes
-    if (!xdna_xclbin().empty() && !xdna_npu_has_shape(src0->ne[0], src0->ne[1])) return false;
+    // on the NPU, only sizes the kernel takes
+    if (xdna_run_mode() == xdna_mode::npu && !xdna_npu_has_shape(src0->ne[0], src0->ne[1])) return false;
 #endif
     const int64_t mflop = 2 * src0->ne[0] * src0->ne[1] * xdna_op_batch_size(op) / 1000000;
     return mflop >= xdna_min_mflop();
@@ -672,7 +730,7 @@ static bool xdna_claim_mul_mat(const ggml_tensor * op) {
 // down -> add) without pulling in unrelated work, which would split Vulkan's
 // graph into pieces for nothing.
 static bool xdna_supports_op_policy(const ggml_tensor * op, int depth) {
-    if (!xdna_vulkan().dev) return false;
+    if (!xdna_vulkan().dev || g_npu_broken) return false;
     if (op->op == GGML_OP_MUL_MAT) return xdna_claim_mul_mat(op);
 #ifdef XDNA_HAVE_NPU
     if (!xdna_blocks() || depth > 8) return false;
@@ -683,7 +741,7 @@ static bool xdna_supports_op_policy(const ggml_tensor * op, int depth) {
         // may take (ggml's op names, e.g. "ADD,RMS_NORM"), for tracking down
         // a wrong result op by op. Unset: all of them.
         static const std::string allow = [] {
-            const char * s = getenv("GGML_XDNA_BLOCK_OPS");
+            const char * s = xdna_env("GGML_XDNA_BLOCK_OPS");
             return s ? "," + std::string(s) + "," : std::string();
         }();
         if (!allow.empty() && allow.find("," + std::string(ggml_op_name(op->op)) + ",") == std::string::npos) return false;
@@ -751,8 +809,10 @@ static const char * ggml_backend_xdna_reg_get_name(ggml_backend_reg_t reg) {
     GGML_UNUSED(reg);
 }
 
+// No device when the NPU can't run the backend (and host-only mode is off):
+// llama.cpp then never sees XDNA0, and runs as if the backend weren't there.
 static size_t ggml_backend_xdna_reg_device_count(ggml_backend_reg_t reg) {
-    return 1;
+    return xdna_run_mode() == xdna_mode::off ? 0 : 1;
     GGML_UNUSED(reg);
 }
 

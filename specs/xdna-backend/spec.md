@@ -28,8 +28,13 @@ build.cmd
 set GGML_BACKEND_PATH=...\third_party\llama-b10944\ggml-xdna.dll
 third_party\llama-b10944\test-dispatch-gate.exe
 third_party\llama-b10944\test-mul-mat.exe
+third_party\llama-b10944\test-safe-start.exe
 build\test-insts-gen.exe
 ```
+
+`test-dispatch-gate` and `test-mul-mat` run once as above (on the NPU) and
+once more with `set GGML_XDNA_HOST_ONLY=1` (matmuls on the CPU reference; the
+only mode on a machine without an NPU).
 
 ---
 
@@ -142,14 +147,14 @@ prefill graph for a few MFLOP of work.
 Beyond the batch gate and the work floor, `supports_op` shall accept a
 `MUL_MAT` only when its left side is a weight: a plain 2D tensor that is
 neither a view nor computed, of a type ggml can unpack (any type with a
-`to_float`). With the NPU configured (`GGML_XDNA_KERNELS`), it shall also
-require the weight's shape to fit the kernel: K a multiple of 64 and at
+`to_float`). On the NPU (XDNA-SAFE-START), it shall also require the
+weight's shape to fit the kernel: K a multiple of 64 and at
 least 128, and N at most 32,768 once padded up to a multiple of 512 (the
 backend pads the weight's NPU copy with zero rows and reads back only the
 real columns).
 
-With the NPU configured and block claiming on (`GGML_XDNA_BLOCKS`, default
-on), it shall also accept a small op when all of these hold: the backend's
+On the NPU and with block claiming on (`GGML_XDNA_BLOCKS`, default on), it
+shall also accept a small op when all of these hold: the backend's
 executor implements it in that variant (RMS_NORM; MUL by a scale row; ADD of
 two same-shape tensors; ROPE, normal or NeoX, with no YaRN ramp and no
 frequency factors; SwiGLU, split and not swapped; RESHAPE); it covers at
@@ -163,7 +168,11 @@ graph into pieces for nothing. The "input from an accepted op" rule grows
 pieces out from the matmuls and stops there. Keys and values read from the
 cache are views, so attention's own matmuls never match.
 
-**Acceptance criteria (unit, NPU not configured):**
+Once the NPU has failed during a run (XDNA-NPU-FAILURE), it shall decline
+everything.
+
+**Acceptance criteria (unit; in host-only mode, `GGML_XDNA_HOST_ONLY=1`, and
+on the NPU):**
 - batch 2048, q4_0 2048x2048 → claimed
 - a matmul whose left side is a view of a larger tensor → not claimed
 - a matmul whose left side is the result of another op → not claimed
@@ -225,6 +234,73 @@ generation ran at 64–66 tok/s either way.
 
 ---
 
+### XDNA-SAFE-START: No device unless the NPU can run the backend
+**Applies to:** ggml-xdna
+**Test category:** unit
+
+When llama.cpp loads the backend, it shall offer the XDNA0 device only if
+all of these hold:
+- the kernel's xclbin is found: `GGML_XDNA_KERNELS` if set, else
+  `bfp16_gemm.xclbin` next to `ggml-xdna.dll`;
+- the NPU opens;
+- it's a chip the backend was tested on (XRT's name "NPU Strix": Strix
+  Point, Ryzen AI 300), unless `GGML_XDNA_ANY_NPU=1`;
+- it loads the xclbin.
+
+Otherwise it shall offer no device and log one line saying which check
+failed, so llama.cpp runs as if the backend weren't there. The exception is
+host-only mode (`GGML_XDNA_HOST_ONLY=1`), which offers the device and runs
+claimed matmuls on a CPU reference, for tests and CI without an NPU. An
+empty setting counts as unset.
+
+Offering a device that can't run would have llama.cpp hand it work it then
+fails, stopping the run.
+
+**Acceptance criteria:** `tests/test-safe-start.cpp`: with a kernel path
+that names nothing, the backend loads and XDNA0 is not offered.
+
+**Verification (manual, the other checks):** on this machine, `llama-cli
+--list-devices` with no settings lists XDNA0. The chip check was seen
+refusing "NPU Strix" before it was added to the tested list, with the line
+`xdna: not offering XDNA0: the NPU "NPU Strix" hasn't been tested with this
+backend`. Measured 2026-09-30.
+
+---
+
+### XDNA-NPU-FAILURE: An NPU failure during a run doesn't stop it
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+If an NPU call fails during a run (starting it, building a weight's copy, a
+submission, a wait), the backend shall:
+- log one error line;
+- finish the failed piece on the CPU, giving the same results within
+  rounding (a failed piece has written nothing back, so it is run again);
+- decline all work from then on, so later schedules go to the GPU.
+
+Known limit: llama.cpp reuses a schedule for chunks of the same size, so
+the rest of the current prompt keeps coming to the backend and runs on the
+CPU, slowly. New prompts are scheduled afresh.
+
+**Verification (manual):** `GGML_XDNA_FAIL_AFTER=n` makes every NPU
+submission after the n-th fail.
+- Qwen3-1.7B Q4_0, the 105-token prompt, `GGML_XDNA_MIN_BATCH=32
+  -b 2048 -ub 2048`:
+  - with n = 0 and n = 30, the run completes and logs one "the NPU failed"
+    line;
+  - with n = 0 the 24 tokens match the GPU's.
+- `llama-perplexity --kl-divergence` against the GPU (6 chunks of 512):
+  with n = 60, mean KL must be no worse than the NPU's without failures.
+
+**Measured 2026-09-30:**
+- The runs completed, n = 0 identical to the GPU.
+- KL 0.0042 and 96.2% same top token, against 0.0081 and 95.3% without
+  failures.
+- The rest of that 6-chunk run took 65 s on the CPU, against 8 s on the
+  GPU: the known limit.
+
+---
+
 ### XDNA-NO-WEIGHT-TRANSFER: No weight is copied between backends
 **Applies to:** ggml-xdna
 **Test category:** manual
@@ -281,12 +357,12 @@ XDNA-BLOCK-AGREES.
 - f32, f16, q8_0, q4_0, q4_K, q6_K, at shapes from 256x128x64 up to 2048x512x512
   (sizes with no NPU build: the host fallback)
 - q4_0 2048x1024x512 and q4_K 2048x1024x600 with the weight in a weight
-  buffer: on the NPU when `GGML_XDNA_KERNELS` is set
+  buffer: on the NPU (on the CPU reference in host-only mode)
 - the same at widths the kernel runs padded: q4_0 1536x896x512, q8_0
   1536x256x512, q4_K 1536x8960x520
 - each case: `nrmse_xdna <= 2*nrmse_cpu + 1e-6` and `cos_xdna > 0.9999`
 
-**Passing 2026-09-29**, with and without `GGML_XDNA_KERNELS` and with block
+**Passing 2026-09-29**, on the NPU and in host-only mode, and with block
 claiming on and off: the host cases at 1e-7 to 2e-7 against the CPU's 1e-7
 to 7e-3; on the NPU, q4_0 8.7e-3 against 5.4e-3 (1.62x) and q4_K 8.9e-3
 against 7.0e-3 (1.28x), cosine 0.99996. The padded cases, added the same

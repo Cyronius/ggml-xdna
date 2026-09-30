@@ -4,8 +4,11 @@
 #
 # XRT ships no .lib on Windows, so we reconstruct one from the DLL's export
 # table with dumpbin + lib - the same trick tools/fetch-llama.ps1 uses for the
-# llama.cpp release DLLs. The exports are mangled C++ names and some are
-# ordinal-only, so each entry keeps its ordinal.
+# llama.cpp release DLLs. The exports are mangled C++ names. Only named
+# exports go in, and without their ordinals: an ordinal in the .def makes the
+# import bind by number, and a driver update that renumbers the exports would
+# then call the wrong functions. Bound by name, a missing function fails the
+# load instead.
 
 param(
     [string] $Dll  = "$env:SystemRoot\System32\xrt_coreutil.dll",
@@ -49,7 +52,7 @@ $names = Select-String -Path $exports -Pattern '^\s+(\d+)\s+[0-9A-F]+\s+(?:[0-9A
              $ord  = $_.Matches[0].Groups[1].Value
              $name = $_.Matches[0].Groups[2].Value
              if ($name -eq "[NONAME]") { return }
-             "    $name @$ord"
+             "    $name"
          }
 if ($names.Count -eq 0) { throw "no exports parsed out of $exports" }
 
