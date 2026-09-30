@@ -1,0 +1,47 @@
+# Builds the add-on from a clean checkout with build.cmd and runs every test
+# that needs no NPU. GitHub's machines have no GPU either, so Mesa's software
+# Vulkan device (lavapipe) stands in for the one the add-on works next to.
+# The NPU tests are a local step: build.cmd runs them where the NPU driver is.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    name: build and test (Windows)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the llama.cpp release
+        uses: actions/cache@v4
+        with:
+          path: third_party
+          key: llama-b10944-${{ hashFiles('tools/fetch-llama.ps1') }}
+
+      - name: Vulkan loader and a software Vulkan device
+        uses: jakoch/install-vulkan-sdk-action@v1.6.0
+        with:
+          vulkan_version: 1.4.313.0
+          install_runtime_only: true
+          install_lavapipe: true
+          cache: true
+
+      - name: Put the Vulkan loader on PATH
+        shell: pwsh
+        run: Add-Content $env:GITHUB_PATH "$env:VULKAN_SDK\$env:VULKAN_VERSION\runtime\x64"
+
+      - name: Build and test
+        shell: cmd
+        env:
+          # what llama.cpp's own CI sets to run on a software device
+          GGML_VK_VISIBLE_DEVICES: "0"
+          GGML_VK_DISABLE_F16: "1"
+          GGML_VK_DISABLE_COOPMAT: "1"
+        run: build.cmd
