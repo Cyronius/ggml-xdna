@@ -21,21 +21,54 @@ including writing the reply.
 
 There's no release zip yet. [Build from source](#building-from-source):
 `build.cmd` downloads llama.cpp b10944 into `third_party\llama-b10944` and
-puts `ggml-xdna.dll` and the NPU kernel, `bfp16_gemm.xclbin`, next to it.
+puts the add-on (`ggml-xdna.dll`), the NPU kernel (`bfp16_gemm.xclbin`) and
+the launcher (`npu.exe`) next to it.
 
-Then point llama.cpp at the add-on and name the NPU first in the device list:
+From that folder, put `npu` in front of the llama.cpp command:
+
+```
+npu llama-server
+npu llama-cli -m model.gguf
+```
+
+With no model given, `npu` lists the models it finds and asks which one:
+
+```
+Models found:
+   0  all of them: llama-server's router, which loads each model when it's asked for
+   1  granite-4.1-3b-Q4_K_S                 2.0 GB  LM Studio: unsloth
+   2  Qwen3.8-27B-UD-IQ3_S                 12.0 GB  LM Studio: unsloth
+   3  gpt-oss-20b-MXFP4                    12.1 GB  Hugging Face: ggml-org
+Pick a number (Enter: granite-4.1-3b-Q4_K_S; q: quit):
+```
+
+It looks in a `models` folder next to `npu.exe`, LM Studio's models folder,
+llama.cpp's download folder and the Hugging Face download folder. Enter
+picks the model you chose last time. "All of them" (llama-server only)
+serves every model in the list and loads each when a request names it.
+
+What `npu` does for you:
+- points llama.cpp at the add-on next to it;
+- checks the NPU can run, and if so adds `-dev XDNA0,Vulkan0`. If it can't,
+  it adds nothing, says why in one line, and llama.cpp runs on the GPU;
+- adds `-ub 2048 -b 2048` for llama-server, llama-cli and llama-completion
+  when the NPU is on, so prompts reach it in bigger pieces (faster, see
+  below). Pass `-ub 512` to keep llama.cpp's default.
+
+Anything you give yourself (`-m`, `-dev`, `-ub`, `-b`) is kept, and the
+rest of your command reaches llama.cpp exactly as typed. `npu server` works
+for `npu llama-server` too. Put the folder on your `PATH` to run `npu` from
+anywhere.
+
+**Without the launcher,** set `GGML_BACKEND_PATH` to the add-on and name
+the NPU yourself:
 
 ```
 set GGML_BACKEND_PATH=C:\path\to\llama-b10944\ggml-xdna.dll
 llama-server -m model.gguf -dev XDNA0,Vulkan0
 ```
 
-`-dev XDNA0,Vulkan0` is what turns it on. Without it, llama.cpp runs exactly
-as if the add-on weren't there.
-
-For longer prompts, `-ub 2048` is faster (below): llama.cpp then hands over
-the prompt in bigger pieces. `-b` must be at least `-ub`; its default, 2048,
-is.
+Without `-dev XDNA0,...`, llama.cpp runs as if the add-on weren't there.
 
 ## Results
 
@@ -116,16 +149,16 @@ part of the prompt, the CPU prepares the next.
 
 ## Troubleshooting
 
-When the add-on can't use the NPU, it offers no XDNA0 device and logs one
-line:
+When the NPU can't run, `npu` says why and runs llama.cpp on the GPU:
 
 ```
-xdna: not offering XDNA0: <reason>
+npu: running on the GPU only: <reason>
 ```
 
-A command that names `-dev XDNA0,Vulkan0` then stops with
-`invalid device: XDNA0`. Until the reason is fixed, use `-dev Vulkan0`, or
-leave `-dev` out.
+Without the launcher, the add-on offers no XDNA0 device and logs
+`xdna: not offering XDNA0: <reason>`. A command that names
+`-dev XDNA0,Vulkan0` itself then stops with `invalid device: XDNA0`; use
+`npu`, or `-dev Vulkan0`, until the reason is fixed.
 
 | reason | what to do |
 |---|---|
@@ -137,19 +170,21 @@ leave `-dev` out.
 | the NPU "..." hasn't been tested with this backend | a chip other than Ryzen AI 300; `GGML_XDNA_ANY_NPU=1` tries it |
 | the NPU won't load ... | another program may be holding the whole NPU |
 
-If llama.cpp says `invalid device: XDNA0` and no `xdna:` line appears,
-`GGML_BACKEND_PATH` doesn't point at `ggml-xdna.dll`.
+| the add-on didn't load | `ggml-xdna.dll` isn't next to `npu.exe`, or `GGML_BACKEND_PATH` points elsewhere |
 
-**Is it doing anything?** `GGML_XDNA_TRACE=1` prints where the time goes
-every few hundred multiplies. With default settings, a prompt under 512
-tokens never reaches the NPU.
+**Is it doing anything?** `npu` prints `npu: prompts on the NPU` when it
+turns it on. `set GGML_XDNA_TRACE=1` prints where the time goes every few
+hundred multiplies. A prompt under 512 tokens never reaches the NPU.
 
 **Reporting a problem:** open an issue with your chip, the NPU and GPU driver
 versions, the model, the command, and the output with `GGML_XDNA_TRACE=1`.
 
 ## Settings
 
-All optional. An empty value counts as unset.
+All optional, and none needed with `npu`. They're environment variables
+(`set GGML_XDNA_TRACE=1` in cmd, `$env:GGML_XDNA_TRACE = "1"` in
+PowerShell), read once when llama.cpp starts: set them before starting it.
+An empty value counts as unset.
 
 | variable | default | |
 |---|---|---|

@@ -87,6 +87,16 @@ if(GGML_XDNA_NPU)
     target_link_options(ggml-xdna PRIVATE /DELAYLOAD:xrt_coreutil.dll)
 endif()
 
+# The launcher: `npu llama-server ...` with nothing to set (XDNA-LAUNCHER).
+# It goes next to the llama.cpp programs it runs.
+add_executable(npu tools/npu.cpp)
+target_compile_definitions(npu PRIVATE UNICODE _UNICODE _CRT_SECURE_NO_WARNINGS)
+target_compile_options(npu PRIVATE /utf-8)
+target_link_libraries(npu PRIVATE shell32)
+add_custom_command(TARGET npu POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:npu> "${GGML_DIST}"
+)
+
 #
 # tests
 #

@@ -271,9 +271,10 @@ empty setting counts as unset.
 Offering a device that can't run would have llama.cpp hand it work it then
 fails, stopping the run.
 
-Known gap (found 2026-09-30, open with the owner): with no device offered, a
-command that names `-dev XDNA0,Vulkan0` stops at llama.cpp's argument check
-(`invalid device: XDNA0`) rather than running on the GPU.
+Known gap (found 2026-09-30): with no device offered, a command that names
+`-dev XDNA0,Vulkan0` itself stops at llama.cpp's argument check
+(`invalid device: XDNA0`) rather than running on the GPU. The launcher
+(XDNA-LAUNCHER) avoids it by naming XDNA0 only when it's offered.
 
 **Acceptance criteria:** `tests/test-safe-start.cpp`:
 - with a kernel path that names nothing, the backend loads and XDNA0 is
@@ -506,6 +507,60 @@ or GPU (a software Vulkan device stands in), so it runs the `host` and
 **Passing 2026-09-30:** on this machine, 7 of 7 tests; in CI, 6 of 6
 (`host` and `nodriver`). CI sets `GGML_XDNA_PINNED=0`: on Windows,
 lavapipe's pinned memory fails ggml's alignment check.
+
+---
+
+### XDNA-LAUNCHER: `npu` runs llama.cpp with the NPU, with nothing to set
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+`npu <llama.cpp program> [arguments]` (`tools/npu.cpp`, built next to the
+llama.cpp programs) shall run that program so that:
+- llama.cpp loads the add-on next to `npu.exe`, unless `GGML_BACKEND_PATH`
+  is already set;
+- when llama.cpp offers XDNA0, `-dev XDNA0,Vulkan0` is added
+  (`XDNA0/Vulkan0` for llama-bench), and `-ub 2048 -b 2048` for
+  llama-server, llama-cli and llama-completion. When it doesn't, nothing is
+  added, llama.cpp runs on the GPU, and one line gives the add-on's reason;
+- with no model given (no `-m`, `-hf` and the like, nor their
+  `LLAMA_ARG_*` variables) and a console to ask on, it lists the `.gguf`
+  models in a `models` folder next to it, LM Studio's folder, llama.cpp's
+  download folder and the Hugging Face download folder (vision add-ons and
+  parts 2+ of split models left out), and runs the one picked. Enter picks
+  the last one. For llama-server, "all of them" runs the router over every
+  model listed;
+- whatever the user set (`-dev`, `-ub`, `-b`, the model, or their
+  `LLAMA_ARG_*` variables) is kept, and the rest of the command line
+  reaches the program exactly as typed;
+- Ctrl+C reaches the program, and `npu` returns the program's exit code. If
+  `npu` is closed or killed, the program goes with it.
+
+The launcher is what makes "run it with nothing to set" true. It also
+avoids XDNA-SAFE-START's gap: a command naming XDNA0 when there isn't one.
+
+**Verification (manual):**
+- From cmd, `npu llama-echo -p "a & b | c * d! e" -x "say \"hi\"" --path
+  "C:\dir with space\\" plain*.gguf ^& "" last`, with a program that
+  prints its arguments standing in for llama-echo: every argument arrives
+  unchanged, and the exit code comes back.
+- `npu llama-completion -m Qwen3-1.7B-Q4_0.gguf -f <XDNA-BLOCK-AGREES'
+  prompt> -n 24 --temp 0 -no-cnv -fa on` with `GGML_XDNA_MIN_BATCH=32`:
+  prints `npu: prompts on the NPU (added -dev XDNA0,Vulkan0 -ub 2048
+  -b 2048)`, and the 24 tokens match the GPU's.
+- The same with `GGML_XDNA_KERNELS` naming nothing: prints
+  `npu: running on the GPU only: ...` and runs.
+- With `-dev Vulkan0`: nothing added. With `-ub 512`: only `-dev` added.
+  `npu llama-bench`: `-dev XDNA0/Vulkan0`.
+- In a console (a script can drive one with a pseudo console): with no
+  model, the list shows; a number runs that model; next time Enter runs it
+  again; 0 for llama-server lists every model in the router's `/models`,
+  and a request to one loads it.
+- llama-server through `npu`, Ctrl+C in its console: the server cleans up
+  and exits 0, and no llama-server process is left.
+
+**Passing 2026-09-30:** all of the above. The menu listed 38 models from
+LM Studio and the Hugging Face cache; the router listed 41 (llama.cpp adds
+3 of its own).
 
 ---
 
