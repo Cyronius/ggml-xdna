@@ -1,6 +1,9 @@
 // npu: runs a llama.cpp program with the NPU add-on, with nothing to set.
 //
-//   npu llama-server [its arguments]        (or: npu server ...)
+//   npu [npu's options] llama-server [its arguments]   (or: npu server ...)
+//
+// npu's options (--memory-gb) come before the program's name, so they never
+// mix with the program's own, and reach the add-on as its variables.
 //
 // It points llama.cpp at ggml-xdna.dll next to itself, asks llama.cpp
 // whether the NPU is usable, and if it is adds -dev XDNA0,Vulkan0 (and
@@ -18,6 +21,7 @@
 
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <cwctype>
 #include <filesystem>
@@ -398,13 +402,61 @@ int run(const fs::path & exe, const std::wstring & args) {
 void usage() {
     say(L"npu runs a llama.cpp program with prompts read on the NPU.\n"
         L"\n"
-        L"  npu llama-server [arguments]      (or: npu server ...)\n"
+        L"  npu [npu's options] llama-server [its arguments]      (or: npu server ...)\n"
         L"  npu llama-cli -m model.gguf\n"
         L"\n"
         L"It points llama.cpp at the NPU add-on next to it and, when the NPU can run, adds\n"
         L"-dev XDNA0,Vulkan0 (plus -ub 2048 -b 2048 for llama-server, llama-cli and\n"
         L"llama-completion). With no model given, it lists the models it finds. Anything\n"
-        L"you set yourself is kept.");
+        L"you set yourself is kept.\n"
+        L"\n"
+        L"npu's options, before the program's name:\n"
+        L"  --memory-gb N   the most memory the NPU's copies of the weights may take, in GB\n"
+        L"                  (0.5 and the like work; 0 keeps the NPU out). Default: the\n"
+        L"                  memory free once the model is loaded, less 4 GB or a tenth of\n"
+        L"                  the machine's memory, whichever is larger. Layers that don't\n"
+        L"                  fit stay on the GPU.");
+}
+
+// npu's own options, before the program's name.
+struct options {
+    std::wstring memory_gb;  // as typed; empty when not given
+};
+
+// A size in GB: a number, 0 or more.
+bool is_gb(const std::wstring & s) {
+    if (s.empty()) return false;
+    wchar_t * end = nullptr;
+    const double v = wcstod(s.c_str(), &end);
+    return *end == 0 && v >= 0 && v < 1e6;
+}
+
+// Reads npu's options from argv[1] on, as "--name value" or "--name=value".
+// Returns where the program's name is, 0 when help was asked for, or -1
+// after saying what's wrong.
+int read_options(int argc, LPWSTR * argv, options & o) {
+    int i = 1;
+    for (; i < argc; i++) {
+        const std::wstring a = argv[i];
+        if (lower(a) == L"-h" || lower(a) == L"--help") return 0;
+        if (a.rfind(L"-", 0) != 0) break;
+        const size_t eq = a.find(L'=');
+        const std::wstring name = lower(a.substr(0, eq));
+        if (name != L"--memory-gb") {
+            say(L"npu: unknown option " + a + L" (npu's options go before the program's name; npu -h lists them)");
+            return -1;
+        }
+        std::wstring value;
+        if (eq != std::wstring::npos) value = a.substr(eq + 1);
+        else if (i + 1 < argc) value = argv[++i];
+        if (!is_gb(value)) {
+            say(L"npu: --memory-gb takes a size in GB, such as 20 or 0.5 (0 keeps the NPU out)" +
+                (value.empty() ? std::wstring() : L", not \"" + value + L"\""));
+            return -1;
+        }
+        o.memory_gb = value;
+    }
+    return i;
 }
 
 } // namespace
@@ -412,14 +464,18 @@ void usage() {
 int wmain() {
     int argc = 0;
     LPWSTR * argv = CommandLineToArgvW(GetCommandLineW(), &argc);
-    if (!argv || argc < 2 || lower(argv[1]) == L"-h" || lower(argv[1]) == L"--help") {
+    if (!argv) return 1;
+    options opt;
+    const int at = read_options(argc, argv, opt);  // argv[at]: the program
+    if (at < 0) return 1;
+    if (at == 0 || at >= argc) {
         usage();
-        return argc < 2 ? 1 : 0;
+        return at == 0 ? 0 : 1;
     }
     const fs::path dir = exe_dir();
 
     // the program: "llama-server", "llama-server.exe" or "server"
-    std::wstring tool = argv[1];
+    std::wstring tool = argv[at];
     if (lower(tool).size() > 4 && lower(tool).substr(lower(tool).size() - 4) == L".exe") tool.resize(tool.size() - 4);
     fs::path exe = dir / (tool + L".exe");
     if (!is_file(exe) && is_file(dir / (L"llama-" + tool + L".exe"))) {
@@ -431,13 +487,20 @@ int wmain() {
         return 1;
     }
     tool = lower(tool);
-    const std::vector<std::wstring> args(argv + 2, argv + argc);
+    const std::vector<std::wstring> args(argv + at + 1, argv + argc);
     std::wstring added;
 
     // the add-on, unless the user points llama.cpp elsewhere
     if (env(L"GGML_BACKEND_PATH").empty()) {
         const fs::path dll = dir / L"ggml-xdna.dll";
         if (is_file(dll)) SetEnvironmentVariableW(L"GGML_BACKEND_PATH", dll.c_str());
+    }
+    // npu's options reach the add-on as its variables, which the program
+    // and anything it starts (the router's per-model servers) inherit
+    std::wstring set;
+    if (!opt.memory_gb.empty()) {
+        SetEnvironmentVariableW(L"GGML_XDNA_MAX_COPY_GB", opt.memory_gb.c_str());
+        set += L"; NPU weight copies limited to " + opt.memory_gb + L" GB";
     }
 
     // which programs take which of our additions
@@ -457,7 +520,7 @@ int wmain() {
             if (chat && !given(args, { L"-b", L"--batch-size", L"-ub", L"--ubatch-size" },
                                { L"LLAMA_ARG_BATCH", L"LLAMA_ARG_UBATCH" }))
                 added += L" -ub 2048 -b 2048";
-            say(L"npu: prompts on the NPU (added" + added + L")");
+            say(L"npu: prompts on the NPU (added" + added + set + L")");
         } else {
             say(L"npu: running on the GPU only: " + c.why);
         }
@@ -477,7 +540,7 @@ int wmain() {
         added += (p.kind == pick_kind::all ? L" --models-preset \"" : L" -m \"") + p.path.wstring() + L"\"";
     }
 
-    const std::wstring rest = after_args(GetCommandLineW(), 2);
+    const std::wstring rest = after_args(GetCommandLineW(), at + 1);
     LocalFree(argv);
     return run(exe, added + (rest[0] ? L" " + rest : std::wstring()));
 }

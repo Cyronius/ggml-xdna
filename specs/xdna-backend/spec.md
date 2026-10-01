@@ -649,6 +649,21 @@ llama.cpp programs) shall run that program so that:
 - Ctrl+C reaches the program, and `npu` returns the program's exit code. If
   `npu` is closed or killed, the program goes with it.
 
+`npu`'s own options come before the program's name, as
+`--name value` or `--name=value`:
+- `--memory-gb N` (a number, 0 or more; fractions allowed) shall set
+  `GGML_XDNA_MAX_COPY_GB` to N for the program, replacing any value already
+  set (XDNA-MEMORY-BUDGET), and the `npu: prompts on the NPU (...)` line
+  shall end with `; NPU weight copies limited to N GB`;
+- a bad or missing value, or an option `npu` doesn't know, shall stop `npu`
+  with one line saying what's wrong, before any program starts, and exit 1;
+- `-h` or `--help` there shall print the usage, options included.
+
+They go before the name so they never mix with the program's own options:
+llama.cpp's programs reject options they don't know, and llama.cpp passes
+add-ons no settings of their own. llama-server's router copies its
+environment into every model's server, so the option covers them all.
+
 The launcher is what makes "run it with nothing to set" true. It also
 avoids XDNA-SAFE-START's gap: a command naming XDNA0 when there isn't one.
 
@@ -672,9 +687,25 @@ avoids XDNA-SAFE-START's gap: a command naming XDNA0 when there isn't one.
 - llama-server through `npu`, Ctrl+C in its console: the server cleans up
   and exits 0, and no llama-server process is left.
 
-**Passing 2026-09-30:** all of the above. The menu listed 38 models from
-LM Studio and the Hugging Face cache; the router listed 41 (llama.cpp adds
-3 of its own).
+- The first check again with `--memory-gb 20` and with `--memory-gb=0.5`
+  in front of `llama-echo`, the stand-in also printing
+  `GGML_XDNA_MAX_COPY_GB`: the same arguments arrive, the variable is 20
+  and 0.5, the exit code comes back. `npu --memory-gb 1 llama-completion`
+  on the second check's prompt: the `npu:` line ends with `; NPU weight
+  copies limited to 1 GB`, the add-on's warning follows, and the tokens
+  match the GPU's. `--memory-gb lots`, `--memory-gb -1`, `--memory-gb`
+  alone and a misspelled option: one line each, exit 1, nothing started.
+
+**Passing 2026-09-30:** all of the above but `--memory-gb` (added
+2026-10-01). The menu listed 38 models from LM Studio and the Hugging Face
+cache; the router listed 41 (llama.cpp adds 3 of its own).
+
+**Passing 2026-10-01 (`--memory-gb`):** all of its checks. Arguments
+identical with the option in front, without it, and run directly; exit
+code 7 came back each time. `--memory-gb 1`: 18 of 28 layers on the NPU,
+reply identical to the GPU's; `--memory-gb=0.01`: no layer, identical.
+The router's copying of its environment was checked in its source
+(`tools/server/server-models.cpp`, b10944), not by a run.
 
 ---
 
