@@ -295,17 +295,63 @@ struct piece {
     }
 };
 
+// The piece's nodes, without the leaves.
+std::vector<ggml_tensor *> piece_nodes(const ggml_cgraph * g) {
+    std::vector<ggml_tensor *> nodes;
+    for (int i = 0; i < g->n_nodes; i++)
+        if (g->nodes[i]->op != GGML_OP_NONE) nodes.push_back(g->nodes[i]);
+    return nodes;
+}
+
+// SiLU(gate) * up on the NPU: a SwiGLU whose gate and up are matmuls in
+// this piece on the same input, read by nothing else, runs as one fused
+// matmul (output mode 2) that writes the SwiGLU's result directly.
+struct fusion { ggml_tensor * up, * glu; };
+using fusions = std::unordered_map<const ggml_tensor *, fusion>;  // by the gate matmul
+
+fusions find_fusions(const std::vector<ggml_tensor *> & nodes, const ggml_cgraph * g, const xdna_io & io) {
+    fusions fused;
+    const std::unordered_set<const ggml_tensor *> in_piece(nodes.begin(), nodes.end());
+    for (ggml_tensor * n : nodes) {
+        if (n->op != GGML_OP_GLU) continue;
+        ggml_tensor * gm = n->src[0], * um = n->src[1];
+        if (gm->op != GGML_OP_MUL_MAT || um->op != GGML_OP_MUL_MAT || !in_piece.count(gm) || !in_piece.count(um)) continue;
+        if (owner(gm->src[1]) != owner(um->src[1]) || gm->src[0]->type != um->src[0]->type ||
+            !ggml_are_same_shape(gm->src[0], um->src[0]))
+            continue;
+        if (!xdna_npu::has_fused_shape(gm->src[0]->ne[0], gm->src[0]->ne[1])) continue;
+        if (io.needed_outside(gm, g) || io.needed_outside(um, g)) continue;
+        bool other = false;  // another reader in the piece
+        for (ggml_tensor * m : nodes)
+            for (int j = 0; j < GGML_MAX_SRC && m != n; j++)
+                if (m->src[j] && (owner(m->src[j]) == gm || owner(m->src[j]) == um)) other = true;
+        if (other) continue;
+        fused[gm] = { um, n };
+    }
+    return fused;
+}
+
 } // namespace
+
+void xdna_exec_weights(const ggml_cgraph * g, const xdna_io & io,
+                       std::vector<std::pair<const ggml_tensor *, const ggml_tensor *>> & out) {
+    const std::vector<ggml_tensor *> nodes = piece_nodes(g);
+    const fusions fused = find_fusions(nodes, g, io);
+    std::unordered_set<const ggml_tensor *> fused_up;
+    for (const auto & f : fused) fused_up.insert(f.second.up);
+    for (const ggml_tensor * n : nodes) {
+        if (n->op != GGML_OP_MUL_MAT || fused_up.count(n)) continue;
+        auto f = fused.find(n);
+        out.emplace_back(n->src[0], f != fused.end() ? f->second.up->src[0] : nullptr);
+    }
+}
 
 bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu * npu, thread_pool & pool, const xdna_io & io, int n_streams,
                      std::string & err) {
     piece P(g, npu, pool, io);
-    for (int i = 0; i < g->n_nodes; i++) {
-        ggml_tensor * n = g->nodes[i];
-        if (n->op == GGML_OP_NONE) continue;
-        P.nodes.push_back(n);
+    P.nodes = piece_nodes(g);
+    for (ggml_tensor * n : P.nodes)
         if (!is_noop(n)) P.produced.insert(n);
-    }
     if (P.nodes.empty()) return true;
 
     // one token count for the whole piece, or no streams
@@ -319,31 +365,12 @@ bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu * npu, thread_pool & pool, 
         }
     }
 
-    // SiLU(gate) * up on the NPU: a SwiGLU whose gate and up are matmuls in
-    // this piece on the same input, read by nothing else, runs as one fused
-    // matmul (output mode 2) that writes the SwiGLU's result directly.
-    struct fusion { ggml_tensor * up, * glu; };
-    std::unordered_map<const ggml_tensor *, fusion> fused;  // by the gate matmul
+    fusions fused;
+    if (npu) fused = find_fusions(P.nodes, g, io);
     std::unordered_set<const ggml_tensor *> fused_up;
+    for (const auto & f : fused) fused_up.insert(f.second.up);
     std::unordered_map<const ggml_tensor *, size_t> index;
     for (size_t i = 0; i < P.nodes.size(); i++) index[P.nodes[i]] = i;
-    for (ggml_tensor * n : P.nodes) {
-        if (!npu || n->op != GGML_OP_GLU) continue;
-        ggml_tensor * gm = n->src[0], * um = n->src[1];
-        if (gm->op != GGML_OP_MUL_MAT || um->op != GGML_OP_MUL_MAT || !index.count(gm) || !index.count(um)) continue;
-        if (owner(gm->src[1]) != owner(um->src[1]) || gm->src[0]->type != um->src[0]->type ||
-            !ggml_are_same_shape(gm->src[0], um->src[0]))
-            continue;
-        if (!xdna_npu::has_fused_shape(gm->src[0]->ne[0], gm->src[0]->ne[1])) continue;
-        if (io.needed_outside(gm, g) || io.needed_outside(um, g)) continue;
-        bool other = false;  // another reader in the piece
-        for (ggml_tensor * m : P.nodes)
-            for (int j = 0; j < GGML_MAX_SRC && m != n; j++)
-                if (m->src[j] && (owner(m->src[j]) == gm || owner(m->src[j]) == um)) other = true;
-        if (other) continue;
-        fused[gm] = { um, n };
-        fused_up.insert(um);
-    }
 
     // inputs from outside: read once. A matmul's weight is the NPU's own copy
     // and a MUL's scale row is a kept parameter, so neither is read here.

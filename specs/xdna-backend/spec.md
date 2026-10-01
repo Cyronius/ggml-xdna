@@ -266,6 +266,50 @@ All four replies identical to the GPU's. `llama-bench -ub 512,1024 -v` at
 
 ---
 
+### XDNA-COPY-AT-LOAD: The NPU's weight copies are built while the model loads
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+When llama.cpp plans a context's pieces (it does so at load, before the
+first prompt, and shows each backend its pieces through `graph_optimize`),
+the add-on shall start building the NPU copies those pieces will use, on a
+thread of its own. A piece shall wait for that thread before it runs. The
+copies built shall be the ones the pieces use, so none is built inside a
+piece afterwards. Pieces whose weights have no data (llama.cpp's
+memory-fitting trial) shall build nothing. A copy that fails to build shall
+fail the NPU as XDNA-NPU-FAILURE describes. Freeing the context shall stop
+the building after the copy in progress. `GGML_XDNA_COPY_AT_LOAD=0` shall
+leave the copies to the first prompt, as before.
+
+Building the copies takes seconds (1.9 s for Qwen3-1.7B and 4.4 s for
+Qwen3-4B, measured on an idle machine in A2), and the first prompt paid for
+all of it. A server loads and then waits for requests, so its copies are
+ready by the first one. A tool that sends its prompt straight after loading
+(`llama-completion`, `llama-cli -p`) still waits for most of them.
+
+**Verification (manual):** with `GGML_XDNA_TRACE=1` on Qwen3-1.7B Q4_0,
+where the trace line `xdna weight copies:` counts copies built at load and
+inside pieces, and the time a piece waited:
+1. `npu llama-server`; 30 s after it's listening, one `/completion` with a
+   ~3,000-token prompt, `n_predict` 24, temperature 0. Copies: all built at
+   load, 0 inside pieces, about 0 ms waited.
+2. The same with `GGML_XDNA_COPY_AT_LOAD=0`: 0 at load, all inside pieces;
+   the reply identical to step 1's.
+3. `npu llama-completion` on the same prompt, `-n 24 --temp 0`: 0 inside
+   pieces; the reply identical to `llama-completion -dev Vulkan0`.
+4. `npu llama-bench -ub 512,1024 -r 1`, and `npu llama-completion` on a
+   prompt under 512 tokens (copies still building at exit): both finish and
+   exit normally.
+
+**Passing 2026-10-01** (machine busy, CPU 83%): 1. 166 built at load, 0
+inside pieces, 0.0 ms waited. 2. 0 at load, 166 inside; reply identical to
+1's. Both differ from a GPU-only server by one token ("sincpf" for
+"sincpi"), with building at load on or off, so the difference is the NPU's,
+not this. 3. identical to the GPU; 0 inside pieces; waited 7.3 s. 4.
+both exited normally.
+
+---
+
 ### XDNA-BLOCK-AGREES: Block claiming leaves the model's answer unchanged
 **Applies to:** ggml-xdna
 **Test category:** manual

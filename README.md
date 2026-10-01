@@ -117,7 +117,9 @@ contexts of 32,768 tokens, and two models served at once by its router.
   the NPU.
 - **Memory:** the NPU keeps its own 8-bit copy of each weight it uses,
   about 1.1 GB per billion parameters, on top of llama.cpp's. It's built
-  during the first prompt, which takes a few seconds (4.4 s for Qwen3-4B).
+  in the background while the model loads, which takes a few seconds (4.4 s
+  for Qwen3-4B). llama-server is usually ready before the first request; a
+  prompt given on the command line waits for the rest.
   The copies are kept within the memory free once the model is loaded, less
   4 GB or a tenth of the machine's memory, whichever is larger. When they
   don't all fit, the first layers that do go to the NPU and the rest stay
@@ -197,6 +199,7 @@ An empty value counts as unset.
 | `GGML_XDNA_ANY_NPU` | 0 | 1 tries an NPU the add-on hasn't been tested on |
 | `GGML_XDNA_MIN_BATCH` | 512 | the smallest piece of a prompt, in tokens, the NPU takes |
 | `GGML_XDNA_MIN_MFLOP` | 256 | the smallest multiply the NPU takes, in millions of operations |
+| `GGML_XDNA_COPY_AT_LOAD` | 1 | 0 builds the NPU's weight copies during the first prompt instead of while the model loads |
 | `GGML_XDNA_MAX_COPY_GB` | memory free at load, less 4 GB or a tenth of memory | the most memory, in GB, the NPU's weight copies may take; 0 keeps the NPU out |
 | `GGML_XDNA_BLOCKS` | 1 | 0 takes only the multiplies, not the steps between them |
 | `GGML_XDNA_STREAMS` | 2 | how many parts a piece is split into, so the CPU and NPU overlap |
