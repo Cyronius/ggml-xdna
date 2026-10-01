@@ -32,6 +32,7 @@
 #include "thread_pool.h"
 #endif
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <cstdio>
@@ -44,6 +45,10 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
+
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
 
 #define XDNA_DESCRIPTION "AMD XDNA2 NPU (prompt work, next to the Vulkan GPU)"
 
@@ -318,6 +323,134 @@ struct xdna_context {
     }
 };
 
+//
+// the memory budget for the NPU's weight copies
+//
+
+// What the NPU's copy of a K x N weight takes: 9 bytes for every 8 values,
+// with N padded as the kernel runs it (pad_n in xdna-npu.cpp). A fused
+// gate/up pair takes no more than its two weights apart. Host-only mode
+// budgets the same, so it decides as the NPU would.
+static double xdna_copy_bytes(int64_t K, int64_t N) {
+    return (double) ((N + 511) / 512 * 512) * (double) K / 8 * 9;
+}
+
+// The layer a weight belongs to, from llama.cpp's names ("blk.12.attn_q.weight");
+// -1 for the others (the output matrix).
+static int xdna_layer_of(const ggml_tensor * w) {
+    int layer = -1;
+    return sscanf(w->name, "blk.%d.", &layer) == 1 ? layer : -1;
+}
+
+static constexpr double GB = 1024.0 * 1024 * 1024;
+
+// The copies are built the first time each weight is used and freed with the
+// context, so without a limit they could take more memory than the machine
+// has. Weights are taken in the order llama.cpp asks about them (layer by
+// layer, while it plans the first prompt at load) until the next would pass
+// the limit; from then on that layer and every new weight stay on the GPU.
+// What's taken stays taken, so the split never changes between prompts. When
+// the last context goes, its copies go with it, and the next starts afresh.
+//
+// The limit is the memory free when the first weight is asked about (the
+// model and its context are loaded by then), less what's kept back for
+// llama.cpp's work buffers and the rest of the machine: the larger of 4 GB and
+// a tenth of memory. GGML_XDNA_MAX_COPY_GB sets it instead.
+//
+// supports_op is asked with no context, so there's one budget per process:
+// two contexts alive at once on the same model would each build the copies it
+// counted once.
+struct xdna_budget {
+    std::mutex mu;
+    int contexts = 0;  // backends alive
+    bool started = false, cut = false, running = false, overridden = false;
+    double limit = 0, free = 0, kept_back = 0, taken = 0;
+    struct entry { int layer; double bytes; };
+    std::unordered_map<xdna_context::wkey, entry, xdna_context::wkey_hash> in, out;  // taken; left to the GPU
+
+    // where the limit came from, for the log
+    std::string source() const {
+        char s[96];
+        if (overridden) snprintf(s, sizeof(s), "set by GGML_XDNA_MAX_COPY_GB");
+        else snprintf(s, sizeof(s), "%.1f GB free, less %.1f GB kept back", free / GB, kept_back / GB);
+        return s;
+    }
+
+    void reset() {
+        started = cut = running = overridden = false;
+        limit = free = kept_back = taken = 0;
+        in.clear();
+        out.clear();
+    }
+};
+static xdna_budget g_budget;
+
+// Whether the weight's copy fits the budget. Weights with no data (llama.cpp's
+// memory-fitting trial and load-time checks), weights outside a weight buffer
+// (nothing is kept for them) and questions asked with no context alive build
+// nothing, so they pass.
+static bool xdna_budget_takes(const ggml_tensor * w) {
+    if (!w->buffer || !w->data || ggml_backend_buffer_get_usage(w->buffer) != GGML_BACKEND_BUFFER_USAGE_WEIGHTS)
+        return true;
+    xdna_budget & b = g_budget;
+    std::lock_guard<std::mutex> lk(b.mu);
+    if (b.contexts == 0) return true;
+    const xdna_context::wkey key = { w->buffer, w->data, (int) w->type, w->ne[0], w->ne[1] };
+    if (b.in.count(key)) return true;
+    if (b.out.count(key)) return false;
+    if (!b.started) {
+        b.started = true;
+        MEMORYSTATUSEX m = {};
+        m.dwLength = sizeof(m);
+        GlobalMemoryStatusEx(&m);
+        b.free = (double) m.ullAvailPhys;
+        b.kept_back = std::max(4 * GB, (double) m.ullTotalPhys / 10);
+        const char * s = xdna_env("GGML_XDNA_MAX_COPY_GB");
+        b.overridden = s != nullptr;
+        b.limit = s ? atof(s) * GB : b.free - b.kept_back;
+    }
+    const xdna_budget::entry e = { xdna_layer_of(w), xdna_copy_bytes(w->ne[0], w->ne[1]) };
+    if (!b.cut && b.taken + e.bytes <= b.limit) {
+        b.in[key] = e;
+        b.taken += e.bytes;
+        return true;
+    }
+    if (!b.cut) {
+        b.cut = true;
+        // The layer's weights taken so far go back to the GPU with it, so no
+        // layer is split between the two. Once a prompt has run, their copies
+        // may exist, and they stay.
+        if (e.layer >= 0 && !b.running)
+            for (auto it = b.in.begin(); it != b.in.end();) {
+                if (it->second.layer != e.layer) { ++it; continue; }
+                b.taken -= it->second.bytes;
+                b.out.insert(*it);
+                it = b.in.erase(it);
+            }
+        std::unordered_set<int> layers;
+        for (const auto & kv : b.in)
+            if (kv.second.layer >= 0) layers.insert(kv.second.layer);
+        char split[64] = "no layer fits, so all run on the GPU";
+        if (!layers.empty()) snprintf(split, sizeof(split), "the first %zu layers on the NPU, the rest on the GPU", layers.size());
+        GGML_LOG_WARN("xdna: NPU weight copies limited to %.1f GB (%s): %s\n", std::max(0.0, b.limit) / GB,
+                      b.source().c_str(), split);
+    }
+    b.out[key] = e;
+    return false;
+}
+
+// When nothing was left to the GPU, one line on what the copies take, as a
+// context first runs a piece. (A limit reached says so where it's reached.)
+static void xdna_budget_report() {
+    xdna_budget & b = g_budget;
+    std::lock_guard<std::mutex> lk(b.mu);
+    if (b.running) return;
+    b.running = true;
+    if (!b.started || b.cut) return;
+    GGML_LOG_INFO("xdna: NPU weight copies: %.1f GB for %zu weights (limit %.1f GB: %s)\n", b.taken / GB, b.in.size(),
+                  std::max(0.0, b.limit) / GB, b.source().c_str());
+}
+
 static const char * ggml_backend_xdna_get_name(ggml_backend_t backend) {
     return GGML_XDNA_DEVICE_NAME;
     GGML_UNUSED(backend);
@@ -326,6 +459,8 @@ static const char * ggml_backend_xdna_get_name(ggml_backend_t backend) {
 static void ggml_backend_xdna_free(ggml_backend_t backend) {
     delete (xdna_context *) backend->context;
     delete backend;
+    std::lock_guard<std::mutex> lk(g_budget.mu);
+    if (--g_budget.contexts == 0) g_budget.reset();
 }
 
 static bool xdna_mul_mat(xdna_context & ctx, ggml_tensor * node) {
@@ -394,6 +529,7 @@ static int xdna_streams() {
 
 static ggml_status ggml_backend_xdna_graph_compute(ggml_backend_t backend, ggml_cgraph * cgraph) {
     xdna_context & ctx = *(xdna_context *) backend->context;
+    xdna_budget_report();
     if (xdna_trace()) xdna_trace_piece(cgraph);
     const auto t_start = std::chrono::steady_clock::now();
     struct timer {
@@ -615,6 +751,10 @@ static ggml_backend_t ggml_backend_xdna_device_init(ggml_backend_dev_t dev, cons
         delete ctx;
         return nullptr;
     }
+    {
+        std::lock_guard<std::mutex> lk(g_budget.mu);
+        g_budget.contexts++;
+    }
     return new ggml_backend{
         /* .guid    = */ ggml_backend_xdna_guid(),
         /* .iface   = */ ggml_backend_xdna_i,
@@ -728,7 +868,7 @@ static bool xdna_claim_mul_mat(const ggml_tensor * op) {
     if (xdna_run_mode() == xdna_mode::npu && !xdna_npu_has_shape(src0->ne[0], src0->ne[1])) return false;
 #endif
     const int64_t mflop = 2 * src0->ne[0] * src0->ne[1] * xdna_op_batch_size(op) / 1000000;
-    return mflop >= xdna_min_mflop();
+    return mflop >= xdna_min_mflop() && xdna_budget_takes(src0);
 }
 
 // The whole policy. Anything accepted here is taken from Vulkan, so it has to

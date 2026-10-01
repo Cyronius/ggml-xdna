@@ -21,10 +21,11 @@ Tests: `specs/xdna-backend/tests/` is empty by design — the test binaries are
 built by the top-level `CMakeLists.txt` from `tests/`, because they must link
 the same import libs as the backend. `build.cmd` builds and runs them
 (XDNA-BUILD). CTest labels them:
-- `host`: no NPU needed. `test-dispatch-gate` and `test-mul-mat` run here
-  with `GGML_XDNA_HOST_ONLY=1` (matmuls on the CPU reference), and need a
-  Vulkan device.
-- `npu`: `test-dispatch-gate` and `test-mul-mat` on the NPU.
+- `host`: no NPU needed. `test-dispatch-gate`, `test-memory-budget` and
+  `test-mul-mat` run here with `GGML_XDNA_HOST_ONLY=1` (matmuls on the CPU
+  reference), and need a Vulkan device.
+- `npu`: `test-dispatch-gate`, `test-memory-budget` and `test-mul-mat` on
+  the NPU.
 - `nodriver`: `test-safe-start --no-driver`, on a machine without the NPU
   driver (CI).
 
@@ -193,6 +194,75 @@ on the NPU):**
 check that each `xdna piece:` line on Qwen3-1.7B spans o-projection through
 the next layer's k rope, and no piece contains an op outside the list above
 other than views. Measured 2026-09-29: 29 pieces, each as described.
+
+---
+
+### XDNA-MEMORY-BUDGET: The NPU's weight copies are held to a memory limit
+**Applies to:** ggml-xdna
+**Test category:** unit (the decisions), manual (the log line)
+
+The NPU keeps its own copy of every weight it uses, on top of llama.cpp's:
+9 bytes for every 8 values, with the weight's width padded to a multiple of
+512 (about 1.1 GB per billion parameters). Beyond XDNA-SIZE-POLICY,
+`supports_op` shall accept a weight's matmul only while the copies of the
+weights accepted so far, plus this one, fit a limit. It shall take weights in
+the order llama.cpp asks about them (layer by layer, when it plans the first
+prompt at load). When the first weight doesn't fit, it shall stop taking
+new weights, and hand back to the GPU the weights already taken from that
+weight's layer (named `blk.N.` by llama.cpp), so no layer is split, unless a
+prompt has already run. Its answer for a weight shall then never change
+while a context is alive. When the last context is freed (its copies go
+with it), the count shall start again from nothing.
+
+Weights with no data (llama.cpp's memory-fitting trial and its load-time
+checks), weights outside a buffer llama.cpp marks as weights, and questions
+asked with no context alive shall not count. Host-only mode
+(`GGML_XDNA_HOST_ONLY=1`) shall decide exactly as the NPU would.
+
+The limit is the memory available when the first weight is asked about,
+less what's kept back for llama.cpp's work buffers and the rest of the
+machine: the larger of 4 GB and a tenth of the machine's memory.
+`GGML_XDNA_MAX_COPY_GB` (in GiB, fractions allowed) sets it instead.
+
+Without a limit, a big model's copies pass the machine's memory and Windows
+starts paging, which looks like the add-on being slow, not like a memory
+problem.
+
+One budget covers the process, since `supports_op` is asked without a
+context. Two contexts alive at once on the same model would each build the
+copies the budget counted once; llama.cpp's tools and server don't do that
+(the router runs one process per model).
+
+**Acceptance criteria** (`tests/test-memory-budget.cpp`, with
+`GGML_XDNA_MAX_COPY_GB=0.05`, 51.2 MiB; weights are 2048x2048 q4_0, a
+4.5 MiB copy each, four to a layer, in a Vulkan buffer marked as weights;
+in host-only mode and on the NPU):
+- with no context started, a weight is claimed and nothing is counted
+- with a context: a 2048x32768 weight with no data (72 MiB if counted) is
+  claimed
+- layers 0 and 1 (36 MiB) are claimed; layer 2's first three weights are
+  claimed when asked (49.5 MiB), its fourth (54 MiB) is not
+- layer 2's first three are then not claimed either
+- a 2048x512 weight in layer 3 (1.1 MiB, which would fit) is not claimed
+- layer 0's and layer 1's weights are still claimed
+- after the context is freed, a new context claims the layer 3 weight and
+  layer 2's fourth
+
+**Verification (manual, the log line):** when the limit is reached, the
+add-on shall log one warning saying the limit, where it came from, and how
+many layers went to the NPU; when everything fits, one info line (shown
+with `-v`) with the total. Run `npu llama-completion` on Qwen3-1.7B Q4_0
+with a prompt over 512 tokens and `-n 24 --temp 0`, with
+`GGML_XDNA_MAX_COPY_GB` set to 1, 0.01 and 100, and once unset with `-v`.
+Compare each reply with `llama-completion -dev Vulkan0` on the same
+arguments.
+
+**Passing 2026-10-01:** 1 GB: `limited to 1.0 GB (set by
+GGML_XDNA_MAX_COPY_GB): the first 18 layers on the NPU, the rest on the
+GPU`. 0.01: `no layer fits, so all run on the GPU`. 100: `1.5 GB for 196
+weights`. Unset: `limit 12.7 GB: 21.5 GB free, less 8.8 GB kept back`.
+All four replies identical to the GPU's. `llama-bench -ub 512,1024 -v` at
+1 GB: each test's new context printed the same 18-layer split.
 
 ---
 
@@ -581,6 +651,8 @@ doesn't depend on it, and the model-level speed numbers cover it. Measured
   detail; only XDNA-MUL-MAT-AGREES constrains it.
 - The exact default values of `GGML_XDNA_MIN_BATCH` and `GGML_XDNA_MIN_MFLOP`
   are tuning, not contract. The requirements fix the mechanism, not the numbers.
+  The same goes for how much memory XDNA-MEMORY-BUDGET keeps back (4 GB or a
+  tenth of memory): a starting point, to be tuned from measurements.
 - The backend's weight cache (step 1: raw bytes of each claimed weight, kept
   for tensors in buffers llama.cpp marks as weights, keyed on buffer, offset,
   type and shape) and the pinned host memory it reads activations into.
