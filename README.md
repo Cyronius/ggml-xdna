@@ -95,13 +95,13 @@ llama-server -m model.gguf -dev XDNA0,Vulkan0
 
 Without `-dev XDNA0,...`, llama.cpp runs as if the add-on weren't there.
 
-## Faster: the NPU's power mode
+## The NPU's power mode
 
-The NPU has a power setting of its own, separate from Windows'. On
-"Default" it picks its own speed, and in our tests it often picked a slower
-one. Set to "Performance", the add-on read Qwen3-1.7B's prompts about 10%
-faster (see [Results](#results)). AMD recommends the same setting for
-language models.
+The NPU has a power setting of its own, separate from Windows'. AMD
+recommends "Performance" for language models. In our tests it made no
+clear difference: in one pair of runs the add-on read Qwen3-1.7B's prompts
+about 10% faster with it, and in another no faster (see
+[Results](#results)).
 
 To change it, open a terminal as administrator (Start, type `cmd`, then
 "Run as administrator") and run:
@@ -139,31 +139,36 @@ fastest runs are in brackets.
 
 | model | prompt tokens | NPU power mode "Default" | "Performance" |
 |---|---|---|---|
-| Qwen3-1.7B Q4_0 | 1,024 | 1.04x (0.96–1.24x) | not measured yet |
-| Qwen3-1.7B Q4_0 | 2,048 | 1.04x (0.94–1.19x) | 1.15x (0.94–1.35x) |
-| Qwen3-1.7B Q4_0 | 4,096 | 1.03x (0.93–1.16x) | not measured yet |
-| Qwen3-4B Q4_K_M | 2,048 | 1.32x (1.13–1.50x) | not measured yet |
+| Qwen3-1.7B Q4_0 | 1,024 | 1.04x (0.96–1.24x) | 1.00x (0.94–1.05x) |
+| Qwen3-1.7B Q4_0 | 2,048 | 1.04x (0.94–1.19x) | 0.99x (0.90–1.27x) |
+| Qwen3-1.7B Q4_0 | 4,096 | 1.03x (0.93–1.16x) | 0.96x (0.94–1.11x) |
+| Qwen3-4B Q4_K_M | 2,048 | 1.32x (1.13–1.50x) | 1.33x (1.22–1.46x) |
 
-On its own, the GPU read Qwen3-1.7B at about 1,500 tokens a second and
-Qwen3-4B at about 525.
+On its own, the GPU read Qwen3-1.7B at 1,500–1,600 tokens a second and
+Qwen3-4B at about 530.
 
 - **The bigger model gains more.** On Qwen3-1.7B the add-on is about level
-  with the GPU unless the NPU is set to "Performance"; on Qwen3-4B it's
-  about a third faster.
+  with the GPU; on Qwen3-4B it's about a third faster.
+- **The power mode made no clear difference.** The two columns were measured
+  about 80 minutes apart. Earlier the same day, another pair of runs on
+  Qwen3-1.7B at 2,048 tokens gave 1.06x on "Default" and 1.15x on
+  "Performance". The whole chip's speed drifts over time, so runs taken at
+  different times can't settle it; that would take switching the mode back
+  and forth within one run.
 - **Speeds vary from run to run.** Single runs of the same test differed by
   as much as 40%. The processor, GPU and NPU share one chip and its power
   budget, and both the add-on and the GPU speed up and slow down with it.
 - **Smaller chunks are slower.** At llama.cpp's default 512-token chunks the
-  add-on was slower than the GPU (median 0.80x on "Default", 0.87x on
-  "Performance"), which is why it takes only chunks of 1,024 tokens or more
+  add-on was slower than the GPU (median 0.80–0.87x over 20+ runs in each
+  power mode), which is why it takes only chunks of 1,024 tokens or more
   unless told otherwise (`npu --min-chunk`).
 
 **How it was measured:** `llama-bench -r 3 -n 0 -ub 2048 -b 2048`, the GPU
 alone (`-dev Vulkan0`) and with the add-on (`-dev XDNA0/Vulkan0`) taking
-turns in each round, 10 rounds on "Default" and 22 on "Performance"; each
-round's ratio compares the two runs next to each other. The machine was
-otherwise idle, and its load was logged throughout. Compare only paired,
-repeated runs like these: on this machine a single run proves little.
+turns in each round, 10 rounds in each power mode; each round's ratio
+compares the two runs next to each other. The machine was otherwise idle,
+and its load was logged throughout. Compare only paired, repeated runs like
+these: on this machine a single run proves little.
 
 ## Accuracy
 
@@ -265,11 +270,11 @@ turns it on. `set GGML_XDNA_TRACE=1` prints where the time goes every few
 hundred multiplies. A prompt under 1,024 tokens never reaches the NPU
 (`npu --min-chunk` changes that).
 
-**Slower than the Results table?** Check the NPU's power mode (see
-[Faster: the NPU's power mode](#faster-the-npus-power-mode)). Speeds also
-vary from run to run on the same machine, because the processor, GPU and
-NPU share one chip and its power budget. Compare medians of several runs,
-not single runs.
+**Slower than the Results table?** Speeds vary from run to run on the same
+machine, because the processor, GPU and NPU share one chip and its power
+budget. Compare medians of several runs, not single runs. You can also try
+the NPU's "Performance" mode (see
+[The NPU's power mode](#the-npus-power-mode)).
 
 **Reporting a problem:** open an issue with your chip, the NPU and GPU driver
 versions, the model, the command, and the output with `GGML_XDNA_TRACE=1`.

@@ -788,6 +788,8 @@ doesn't depend on it, and the model-level speed numbers cover it. Measured
   `gops=50000` or `latency=1`). The driver received it (xrt-smi showed the
   values on the context), but on the NPU's "Default" power mode it made no
   difference: Qwen3-1.7B, 2,048-token prompt, 26 paired rounds, 0.99x and
-  1.01x the speed with no request. Only xrt-smi's power mode changed the
-  speed (README, "Faster: the NPU's power mode").
+  1.01x the speed with no request. The only other control known is
+  xrt-smi's power mode, and whether that changes the add-on's speed is
+  unsettled: two pairs of runs taken at different times disagreed (README,
+  "The NPU's power mode").
 - Which llama.cpp release we pin.
