@@ -109,6 +109,30 @@ xrtsh_ctx xrtsh_hwctx_create(xrtsh_dev dev, const char *xclbin_path) {
     })
 }
 
+xrtsh_ctx xrtsh_hwctx_create_qos(xrtsh_dev dev, const char *xclbin_path, const char *qos) {
+    GUARD_PTR({
+        xrt::hw_context::qos_type q;
+        std::string s(qos ? qos : "");
+        for (size_t at = 0; at < s.size();) {
+            size_t end = s.find(',', at);
+            if (end == std::string::npos) end = s.size();
+            const std::string item = s.substr(at, end - at);
+            const size_t eq = item.find('=');
+            const std::string value = eq == std::string::npos ? "" : item.substr(eq + 1);
+            if (eq == 0 || value.empty() || value.find_first_not_of("0123456789") != std::string::npos ||
+                value.size() > 9)
+                throw std::invalid_argument("malformed quality-of-service request \"" + s + "\"");
+            q[item.substr(0, eq)] = static_cast<uint32_t>(std::stoul(value));
+            at = end + 1;
+        }
+        auto *d = static_cast<ShimDevice *>(dev);
+        xrt::xclbin xcl{std::string(xclbin_path)};
+        auto uuid = d->dev.register_xclbin(xcl);
+        auto *c = new ShimCtx{xrt::hw_context(d->dev, uuid, q)};
+        return static_cast<xrtsh_ctx>(c);
+    })
+}
+
 void xrtsh_hwctx_free(xrtsh_ctx ctx) { delete static_cast<ShimCtx *>(ctx); }
 
 xrtsh_kernel xrtsh_kernel_create(xrtsh_ctx ctx, const char *elf_path) {
