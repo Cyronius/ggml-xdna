@@ -87,6 +87,8 @@ unsigned long long xrtsh_bo_address(xrtsh_bo bo);
 int xrtsh_run_start(xrtsh_run r);
 /* Returns ert_cmd_state (4 == COMPLETED) or <0 on exception. */
 int xrtsh_run_wait(xrtsh_run r);
+/* The same, giving up after timeout_ms (0: never), with 8 == TIMEOUT. */
+int xrtsh_run_wait_ms(xrtsh_run r, unsigned timeout_ms);
 void xrtsh_run_free(xrtsh_run r);
 
 /* xrt::runlist(ctx). NULL on failure. Runs added must outlive the wait. */

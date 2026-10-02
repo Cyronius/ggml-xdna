@@ -277,6 +277,13 @@ int xrtsh_run_wait(xrtsh_run r) {
     })
 }
 
+int xrtsh_run_wait_ms(xrtsh_run r, unsigned timeout_ms) {
+    GUARD_INT({
+        ert_cmd_state st = static_cast<ShimRun *>(r)->run.wait(std::chrono::milliseconds(timeout_ms));
+        return static_cast<int>(st);
+    })
+}
+
 void xrtsh_run_free(xrtsh_run r) { delete static_cast<ShimRun *>(r); }
 
 xrtsh_runlist xrtsh_runlist_create(xrtsh_ctx ctx) {

@@ -8,9 +8,15 @@ including writing the reply.
 ## Requirements
 
 - Windows 11
-- A Ryzen AI 300 series processor (Strix Point). Tested on the Ryzen AI 9
-  HX 370 with Radeon 890M graphics. Other chips are turned down at start
-  (see [Troubleshooting](#troubleshooting)).
+- A Ryzen AI processor with an NPU. Only tested on Strix Point: the Ryzen AI
+  9 HX 370 with Radeon 890M graphics. At start the add-on runs a small test
+  multiply on the NPU and turns on only if it gets it right, so it decides
+  by what the NPU does, not by the chip's name (see
+  [Troubleshooting](#troubleshooting) if it turns itself off). Strix Halo
+  (Ryzen AI Max) and Krackan Point (Ryzen AI 7 350, Ryzen AI 5 340) have the
+  same NPU as Strix Point and should pass, but nobody has run it on one
+  yet. Strix Halo's GPU is much bigger, so there the GPU may be faster on
+  its own.
 - The AMD NPU driver. Tested with 32.0.20102.3930.
 - A GPU driver with Vulkan. Tested with Radeon driver 32.0.31041.1004.
 - llama.cpp release **b10944**, Windows Vulkan build
@@ -177,7 +183,8 @@ contexts of 32,768 tokens, and two models served at once by its router.
 ## Limitations
 
 - **Windows only.** Linux is planned for later.
-- **Ryzen AI 300 only.** `GGML_XDNA_ANY_NPU=1` tries another NPU, untested.
+- **Only tested on Strix Point.** Other Ryzen AI chips whose NPU passes the
+  test at start are let in, untested.
 - **Prompt reading only.** Replies are written one token at a time, and that
   stays on the GPU.
 - **Pieces under 1,024 tokens stay on the GPU**, so short prompts don't use
@@ -248,8 +255,9 @@ Without the launcher, the add-on offers no XDNA0 device and logs
 | no NPU driver (xrt_coreutil.dll not found) | install the AMD NPU driver |
 | the NPU driver's xrt_coreutil.dll lacks a function this backend uses | the driver is older or newer than the add-on was built for; report it |
 | no NPU found (...) | the driver doesn't see an NPU |
-| the NPU "..." hasn't been tested with this backend | a chip other than Ryzen AI 300; `GGML_XDNA_ANY_NPU=1` tries it |
-| the NPU won't load ... | another program may be holding the whole NPU |
+| the NPU won't load ... | another program may be holding the whole NPU, or this NPU can't take the add-on's program |
+| the NPU "..." couldn't run a test multiply (...) | this NPU can't run the add-on's program; report it with your chip |
+| the NPU "..." got a test multiply wrong (...) | this NPU runs the add-on's program wrong; report it with your chip |
 | the add-on didn't load | `ggml-xdna.dll` isn't next to `npu.exe`, or `GGML_BACKEND_PATH` points elsewhere |
 
 **Is it doing anything?** `npu` prints `npu: prompts on the NPU` when it
@@ -276,7 +284,6 @@ An empty value counts as unset.
 | variable | default | |
 |---|---|---|
 | `GGML_XDNA_KERNELS` | `bfp16_gemm.xclbin` next to the DLL | another xclbin |
-| `GGML_XDNA_ANY_NPU` | 0 | 1 tries an NPU the add-on hasn't been tested on |
 | `GGML_XDNA_MIN_BATCH` | 1024 | the smallest piece of a prompt, in tokens, the NPU takes (`npu --min-chunk` sets it) |
 | `GGML_XDNA_MIN_MFLOP` | 256 | the smallest multiply the NPU takes, in millions of operations |
 | `GGML_XDNA_COPY_AT_LOAD` | 1 | 0 builds the NPU's weight copies during the first prompt instead of while the model loads |

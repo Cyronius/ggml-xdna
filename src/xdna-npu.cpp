@@ -112,9 +112,55 @@ const std::string & xdna_xclbin() {
     return path;
 }
 
-// NPUs the backend was tested on, as XRT names them: "NPU Strix" is Strix
-// Point (Ryzen AI 300, e.g. the HX 370).
-static const char * const TESTED_NPUS[] = { "NPU Strix" };
+// One small multiply on the NPU, checked against the same multiply done here:
+// whether this NPU runs the kernel right, not just loads it. That decides it,
+// with no list of chips; only Strix Point ("NPU Strix") has been tested. The
+// inputs are small whole numbers, which the kernel's 8-bit blocks hold
+// exactly and its float32 sums add exactly, so every answer must match.
+// Empty when it passes, else what failed.
+static std::string npu_self_test(const std::string & name) {
+    constexpr int64_t M = SMALL, K = 128, N = 512;  // the smallest size the kernel takes
+    std::vector<int8_t> ai((size_t) (M * K)), wi((size_t) (N * K));
+    uint32_t seed = 1;
+    auto next = [&](int span) {
+        seed = seed * 1664525u + 1013904223u;
+        return (int8_t) ((int) (seed >> 24) % span - span / 2);
+    };
+    for (int8_t & v : ai) v = next(5);  // -2..2
+    for (int8_t & v : wi) v = next(7);  // -3..3
+    const std::vector<float> a(ai.begin(), ai.end()), w(wi.begin(), wi.end());
+    std::vector<uint8_t> pa, pw;
+    bfp16_pack_a(a.data(), M, K, TILE, pa, 1);
+    bfp16_pack_b(w.data(), N, K, TILE, pw, 1);
+
+    auto npu = std::make_unique<npu_bfp16>();
+    std::string err;
+    if (!npu->open(xdna_xclbin(), err)) return "the NPU won't load " + xdna_xclbin() + " (" + err + ")";
+    npu->wait_ms = 5000;
+    const int s = npu->add_shape(bfp16_insts(M, K, N, 0), M, K, N, err);
+    const int h = s < 0 ? -1 : npu->add_weights(pw, err);
+    std::vector<float> c((size_t) (M * N));
+    if (h < 0 || !npu->set_a(s, pa, err) || !npu->run(s, h, c.data(), err)) {
+        // a run still on the NPU: freeing what it uses could wait for it too
+        if (npu->timed_out) (void) npu.release();
+        return "the NPU \"" + name + "\" couldn't run a test multiply (" + err + ")";
+    }
+    std::vector<float> row((size_t) N);
+    for (int64_t r = 0; r < M; r++) {
+        bfp16_c_row(c.data(), M, N, TILE, r, N, row.data());
+        for (int64_t n = 0; n < N; n++) {
+            int want = 0;
+            for (int64_t k = 0; k < K; k++) want += ai[r * K + k] * wi[n * K + k];
+            if (row[n] != (float) want) {
+                char where[96];
+                snprintf(where, sizeof(where), "row %lld, column %lld: %g instead of %d", (long long) r, (long long) n,
+                         row[n], want);
+                return "the NPU \"" + name + "\" got a test multiply wrong (" + where + ")";
+            }
+        }
+    }
+    return {};
+}
 
 // The NPU driver's xrt_coreutil.dll is delay-loaded, so this DLL loads on a
 // machine without the driver. Before the first call into it, bind every
@@ -157,23 +203,13 @@ bool xdna_npu_usable(std::string & why) {
         }
         char name[256] = {};
         xrtsh_device_name(dev, name, sizeof(name));
-        const char * any = xdna_env("GGML_XDNA_ANY_NPU");
-        bool tested = any && atoi(any) != 0;
-        for (const char * t : TESTED_NPUS) tested |= strcmp(name, t) == 0;
-        if (!tested) {
-            reason = std::string("the NPU \"") + name + "\" hasn't been tested with this backend (GGML_XDNA_ANY_NPU=1 tries it)";
-            xrtsh_device_free(dev);
-            return false;
-        }
-        xrtsh_ctx ctx = xrtsh_hwctx_create(dev, xdna_xclbin().c_str());
-        if (!ctx) {
-            reason = "the NPU won't load " + xdna_xclbin() + " (" + xrtsh_last_error() + ")";
-            xrtsh_device_free(dev);
-            return false;
-        }
-        xrtsh_hwctx_free(ctx);
         xrtsh_device_free(dev);
-        reason = std::string("NPU \"") + name + "\", " + xdna_xclbin();
+        const clk::time_point t0 = clk::now();
+        reason = npu_self_test(name);
+        if (!reason.empty()) return false;
+        char took[64];
+        snprintf(took, sizeof(took), ", test multiply right (%.0f ms)", ms_since(t0));
+        reason = std::string("NPU \"") + name + "\", " + xdna_xclbin() + took;
         return true;
     }();
     why = reason;

@@ -63,6 +63,12 @@ public:
 
     const std::string & device_name() const { return device_name_; }
 
+    // How long run and run_mapped wait for the NPU, in ms (0: as long as it
+    // takes), and whether the last one gave up. A run that gave up may still
+    // be on the NPU.
+    unsigned wait_ms = 0;
+    bool timed_out = false;
+
     // Time spent syncing buffers (cache flushes to and from the NPU), in
     // both run_mapped and batches: operands going to the NPU, outputs coming
     // back, and the two together. The caller resets them.

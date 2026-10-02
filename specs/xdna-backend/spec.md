@@ -387,9 +387,14 @@ driver is installed, and offer the XDNA0 device only if all of these hold:
   is delay-loaded, and all of its functions are bound here, so a missing one
   turns the backend off instead of failing at a call;
 - the NPU opens;
-- it's a chip the backend was tested on (XRT's name "NPU Strix": Strix
-  Point, Ryzen AI 300), unless `GGML_XDNA_ANY_NPU=1`;
-- it loads the xclbin.
+- it loads the xclbin;
+- it gets a test multiply right: 512 x 128 times 128 x 512, of small whole
+  numbers the kernel holds and adds exactly, every answer equal to the same
+  multiply done on the CPU, within 5 seconds.
+
+There is no list of chips: any NPU that passes the test is taken. Only Strix
+Point (XRT's name "NPU Strix") has been tested. Strix Halo and Krackan Point
+have the same NPU and should pass.
 
 Otherwise it shall offer no device and log one line saying which check
 failed, so llama.cpp runs as if the backend weren't there. The exception is
@@ -411,11 +416,15 @@ Known gap (found 2026-09-30): with no device offered, a command that names
 - `--no-driver`, on a machine without the NPU driver (CI): with the real
   kernel, the backend loads and XDNA0 is not offered.
 
-**Verification (manual, the other checks):** on this machine, `llama-cli
---list-devices` with no settings lists XDNA0. The chip check was seen
-refusing "NPU Strix" before it was added to the tested list, with the line
-`xdna: not offering XDNA0: the NPU "NPU Strix" hasn't been tested with this
-backend`. Measured 2026-09-30.
+**Verification (manual, the other checks):** on this machine, `llama-bench
+--list-devices` with no settings lists XDNA0 and logs `xdna: NPU "NPU
+Strix", ..., test multiply right (20 ms)` (19-22 ms over 13 starts). With
+`GGML_XDNA_KERNELS` naming an older build that loads but never finishes
+(`kernels/bfp16_gemm/build/whole_array_bfp_acc_bf16d2/
+1024x2048x2048_128x64x64_c8`), it logs `not offering XDNA0: the NPU "NPU
+Strix" couldn't run a test multiply (no answer within 5000 ms)`, llama-bench
+exits normally 9.3 s after starting, and the next start passes again.
+Measured 2026-10-02. The wrong-answer path has not been seen on hardware.
 
 ---
 

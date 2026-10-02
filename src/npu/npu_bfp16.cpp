@@ -347,8 +347,13 @@ bool npu_bfp16::submit(const shape & s, int slot, const wbuf & w, std::string & 
 
     const auto t0 = std::chrono::steady_clock::now();
     if (xrtsh_run_start(run_) < 0) { err = shim_error("submit"); return false; }
-    const int state = xrtsh_run_wait(run_);
+    const int state = xrtsh_run_wait_ms(run_, wait_ms);
     if (ms) *ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
+    timed_out = state == 8;
+    if (timed_out) {
+        err = "no answer within " + std::to_string(wait_ms) + " ms";
+        return false;
+    }
     if (state != 4) {
         err = "the kernel did not complete (state " + std::to_string(state) + "): " + xrtsh_last_error();
         return false;
