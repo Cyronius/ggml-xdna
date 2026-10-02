@@ -60,6 +60,18 @@ rest of your command reaches llama.cpp exactly as typed. `npu server` works
 for `npu llama-server` too. Put the folder on your `PATH` to run `npu` from
 anywhere.
 
+`npu`'s own options go before the program's name:
+
+```
+npu --memory-gb 20 llama-server -m model.gguf
+```
+
+`--memory-gb` is the most memory the NPU's copies of the weights may take,
+in GB (`0.5` works; `0` keeps the NPU out). Without it, the limit is the
+memory free once the model is loaded, less 4 GB or a tenth of the machine's
+memory, whichever is larger. Layers that don't fit stay on the GPU.
+`npu -h` lists the options.
+
 **Without the launcher,** set `GGML_BACKEND_PATH` to the add-on and name
 the NPU yourself:
 
@@ -117,7 +129,16 @@ contexts of 32,768 tokens, and two models served at once by its router.
   the NPU.
 - **Memory:** the NPU keeps its own 8-bit copy of each weight it uses,
   about 1.1 GB per billion parameters, on top of llama.cpp's. It's built
-  during the first prompt, which takes a few seconds (4.4 s for Qwen3-4B).
+  in the background while the model loads, which takes a few seconds (4.4 s
+  for Qwen3-4B). llama-server is usually ready before the first request; a
+  prompt given on the command line waits for the rest.
+  The copies are kept within the memory free once the model is loaded, less
+  4 GB or a tenth of the machine's memory, whichever is larger. When they
+  don't all fit, the first layers that do go to the NPU and the rest stay
+  on the GPU, and the add-on says so:
+  `xdna: NPU weight copies limited to 20.0 GB (...): the first 40 layers on
+  the NPU, the rest on the GPU`. `npu --memory-gb` (or
+  `GGML_XDNA_MAX_COPY_GB`) sets the limit.
 - **Some layers stay on the GPU:** mixture-of-experts layers, and a few
   variants the NPU side doesn't implement yet (bias adds, some rotary
   settings). Output is still correct; less of the work moves.
@@ -169,7 +190,6 @@ Without the launcher, the add-on offers no XDNA0 device and logs
 | no NPU found (...) | the driver doesn't see an NPU |
 | the NPU "..." hasn't been tested with this backend | a chip other than Ryzen AI 300; `GGML_XDNA_ANY_NPU=1` tries it |
 | the NPU won't load ... | another program may be holding the whole NPU |
-
 | the add-on didn't load | `ggml-xdna.dll` isn't next to `npu.exe`, or `GGML_BACKEND_PATH` points elsewhere |
 
 **Is it doing anything?** `npu` prints `npu: prompts on the NPU` when it
@@ -192,6 +212,8 @@ An empty value counts as unset.
 | `GGML_XDNA_ANY_NPU` | 0 | 1 tries an NPU the add-on hasn't been tested on |
 | `GGML_XDNA_MIN_BATCH` | 512 | the smallest piece of a prompt, in tokens, the NPU takes |
 | `GGML_XDNA_MIN_MFLOP` | 256 | the smallest multiply the NPU takes, in millions of operations |
+| `GGML_XDNA_COPY_AT_LOAD` | 1 | 0 builds the NPU's weight copies during the first prompt instead of while the model loads |
+| `GGML_XDNA_MAX_COPY_GB` | memory free at load, less 4 GB or a tenth of memory | the most memory, in GB, the NPU's weight copies may take; 0 keeps the NPU out (`npu --memory-gb` sets it) |
 | `GGML_XDNA_BLOCKS` | 1 | 0 takes only the multiplies, not the steps between them |
 | `GGML_XDNA_STREAMS` | 2 | how many parts a piece is split into, so the CPU and NPU overlap |
 | `GGML_XDNA_N_THREADS` | all cores | CPU threads for the add-on's own work |

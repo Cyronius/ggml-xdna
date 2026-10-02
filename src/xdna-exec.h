@@ -15,6 +15,8 @@
 
 #include <functional>
 #include <string>
+#include <utility>
+#include <vector>
 
 class xdna_npu;
 class thread_pool;
@@ -50,6 +52,12 @@ extern int64_t xdna_passes;
 // Whether the executor implements this op, in this variant. The policy asks
 // this before claiming anything but a matmul.
 bool xdna_exec_supports(const ggml_tensor * op);
+
+// The NPU weight copies the piece will use, as running it would make them:
+// (weight, null) for a plain one, (gate, up) for a fused pair. Only
+// io.needed_outside is used.
+void xdna_exec_weights(const ggml_cgraph * g, const xdna_io & io,
+                       std::vector<std::pair<const ggml_tensor *, const ggml_tensor *>> & out);
 
 // Runs the piece: its matmuls on `npu`, or with `npu` null on the host (the
 // fallback when the NPU fails; slow, but the same results within rounding).
