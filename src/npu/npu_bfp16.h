@@ -19,11 +19,7 @@
 class npu_bfp16 {
 public:
     ~npu_bfp16();
-    // qos: a quality-of-service request for the driver (xrt_shim.h's
-    // format), or empty for none. A request that's malformed or refused is
-    // dropped and the context opened without it; qos_refused() then says why.
-    bool open(const std::string & xclbin_path, std::string & err, const std::string & qos = {});
-    const std::string & qos_refused() const { return qos_refused_; }
+    bool open(const std::string & xclbin_path, std::string & err);
     void close();
 
     // One shape's instruction stream (a build directory's insts.bin). Returns
@@ -142,5 +138,4 @@ private:
     std::vector<shape> shapes_;
     std::vector<wbuf>  weights_;
     std::string device_name_;
-    std::string qos_refused_;
 };

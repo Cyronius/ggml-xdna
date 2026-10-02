@@ -783,4 +783,11 @@ doesn't depend on it, and the model-level speed numbers cover it. Measured
   backend declines and reports any of its own results no declined op was seen
   reading. It is the basis for deciding which results block claiming must
   write back.
+- Tried and removed, 2026-10-02: asking the NPU driver for a quality of
+  service when the add-on opens its NPU context (`xrt::hw_context` with
+  `gops=50000` or `latency=1`). The driver received it (xrt-smi showed the
+  values on the context), but on the NPU's "Default" power mode it made no
+  difference: Qwen3-1.7B, 2,048-token prompt, 26 paired rounds, 0.99x and
+  1.01x the speed with no request. Only xrt-smi's power mode changed the
+  speed (README, "Faster: the NPU's power mode").
 - Which llama.cpp release we pin.
