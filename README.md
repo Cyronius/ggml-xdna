@@ -99,9 +99,9 @@ Without `-dev XDNA0,...`, llama.cpp runs as if the add-on weren't there.
 
 The NPU has a power setting of its own, separate from Windows'. AMD
 recommends "Performance" for language models. In our tests it made no
-clear difference: in one pair of runs the add-on read Qwen3-1.7B's prompts
-about 10% faster with it, and in another no faster (see
-[Results](#results)).
+difference to the add-on: switching between "Default" and "Performance"
+every few minutes for 24 rounds, the add-on read Qwen3-1.7B's prompts at
+the same speed in both (median 1.00x, half the rounds within 3%).
 
 To change it, open a terminal as administrator (Start, type `cmd`, then
 "Run as administrator") and run:
@@ -149,12 +149,10 @@ Qwen3-4B at about 530.
 
 - **The bigger model gains more.** On Qwen3-1.7B the add-on is about level
   with the GPU; on Qwen3-4B it's about a third faster.
-- **The power mode made no clear difference.** The two columns were measured
-  about 80 minutes apart. Earlier the same day, another pair of runs on
-  Qwen3-1.7B at 2,048 tokens gave 1.06x on "Default" and 1.15x on
-  "Performance". The whole chip's speed drifts over time, so runs taken at
-  different times can't settle it; that would take switching the mode back
-  and forth within one run.
+- **The power mode made no difference.** The two columns were measured
+  about 80 minutes apart, so they differ by the usual drift. Switching the
+  mode back and forth within one run (24 rounds) gave the add-on 1.00x its
+  "Default" speed on "Performance".
 - **Speeds vary from run to run.** Single runs of the same test differed by
   as much as 40%. The processor, GPU and NPU share one chip and its power
   budget, and both the add-on and the GPU speed up and slow down with it.
@@ -272,9 +270,7 @@ hundred multiplies. A prompt under 1,024 tokens never reaches the NPU
 
 **Slower than the Results table?** Speeds vary from run to run on the same
 machine, because the processor, GPU and NPU share one chip and its power
-budget. Compare medians of several runs, not single runs. You can also try
-the NPU's "Performance" mode (see
-[The NPU's power mode](#the-npus-power-mode)).
+budget. Compare medians of several runs, not single runs.
 
 **Reporting a problem:** open an issue with your chip, the NPU and GPU driver
 versions, the model, the command, and the output with `GGML_XDNA_TRACE=1`.
