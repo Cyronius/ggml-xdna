@@ -10,7 +10,6 @@ EXPORTS
     ??0bo@xrt@@QEAA@AEBVdevice@1@_KW4flags@01@I@Z
     ??0device@xrt@@QEAA@I@Z
     ??0elf@xrt@@QEAA@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
-    ??0hw_context@xrt@@QEAA@AEBVdevice@1@AEBVuuid@1@AEBV?$map@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@IU?$less@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@2@V?$allocator@U?$pair@$$CBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@I@std@@@2@@std@@@Z
     ??0hw_context@xrt@@QEAA@AEBVdevice@1@AEBVuuid@1@W4access_mode@01@@Z
     ??0kernel@ext@xrt@@QEAA@AEBVhw_context@2@AEBVmodule@2@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z
     ??0kernel@xrt@@QEAA@AEBVhw_context@1@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z

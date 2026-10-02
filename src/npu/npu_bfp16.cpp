@@ -43,18 +43,13 @@ void npu_bfp16::close() {
     c_bytes_ = 0;
 }
 
-bool npu_bfp16::open(const std::string & xclbin_path, std::string & err, const std::string & qos) {
+bool npu_bfp16::open(const std::string & xclbin_path, std::string & err) {
     dev_ = xrtsh_device_open(0);
     if (!dev_) { err = shim_error("cannot open the NPU"); return false; }
     char name[256];
     if (xrtsh_device_name(dev_, name, sizeof(name)) > 0) device_name_ = name;
 
-    qos_refused_.clear();
-    if (!qos.empty()) {
-        ctx_ = xrtsh_hwctx_create_qos(dev_, xclbin_path.c_str(), qos.c_str());
-        if (!ctx_) qos_refused_ = xrtsh_last_error();
-    }
-    if (!ctx_) ctx_ = xrtsh_hwctx_create(dev_, xclbin_path.c_str());
+    ctx_ = xrtsh_hwctx_create(dev_, xclbin_path.c_str());
     if (!ctx_) { err = shim_error("cannot load " + xclbin_path); close(); return false; }
     kern_ = xrtsh_kernel_create_xclbin(ctx_, "MLIR_AIE");
     if (!kern_) { err = shim_error("cannot create the kernel"); close(); return false; }
