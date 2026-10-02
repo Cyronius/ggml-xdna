@@ -93,8 +93,9 @@ Without `-dev XDNA0,...`, llama.cpp runs as if the add-on weren't there.
 
 The NPU has a power setting of its own, separate from Windows'. On
 "Default" it picks its own speed, and in our tests it often picked a slower
-one. Set to "Performance", the add-on read prompts about 9% faster (see
-[Results](#results)). AMD recommends the same setting for language models.
+one. Set to "Performance", the add-on read Qwen3-1.7B's prompts about 10%
+faster (see [Results](#results)). AMD recommends the same setting for
+language models.
 
 To change it, open a terminal as administrator (Start, type `cmd`, then
 "Run as administrator") and run:
@@ -118,32 +119,45 @@ C:\Windows\System32\AMD\xrt-smi.exe configure --pmode default
 
 - It applies to everything that uses the NPU, not just llama.cpp, and it
   uses more power. We haven't measured how much.
-- It may go back to "Default" after a restart. Run the `examine` command to
-  check.
+- In our tests it went back to "Default" after a restart, so check it with
+  the `examine` command after restarting.
 - `--pmode turbo` also exists. It needs the charger plugged in (otherwise it
   acts as `performance`). We haven't measured it.
 
 ## Results
 
-Qwen3-1.7B, Q4_0. Prompt reading speed with the add-on, against the GPU
-alone at the same settings. Measured 2026-09-30.
+Prompt reading speed with the add-on, against the GPU alone, both reading
+in 2,048-token chunks (what `npu` uses). Ryzen AI 9 HX 370, measured
+2026-10-02. Each figure is the median of paired runs; the slowest and
+fastest runs are in brackets.
 
-| prompt tokens | default settings (`-ub 512`) | `-ub 2048` |
-|---|---|---|
-| 512 | 1.07x | (one piece either way; not measured) |
-| 1,024 | 1.00x | 1.16x |
-| 2,048 | 0.98x | 1.13x |
-| 4,096 | 1.02x | 1.18x |
+| model | prompt tokens | NPU power mode "Default" | "Performance" |
+|---|---|---|---|
+| Qwen3-1.7B Q4_0 | 1,024 | 1.04x (0.96–1.24x) | not measured yet |
+| Qwen3-1.7B Q4_0 | 2,048 | 1.04x (0.94–1.19x) | 1.15x (0.94–1.35x) |
+| Qwen3-1.7B Q4_0 | 4,096 | 1.03x (0.93–1.16x) | not measured yet |
+| Qwen3-4B Q4_K_M | 2,048 | 1.32x (1.13–1.50x) | not measured yet |
 
-At default settings the NPU about ties the GPU. With 2,048-token pieces it
-reads prompts 13–18% faster. The GPU alone read 512 tokens at about 1,700
-tokens a second.
+On its own, the GPU read Qwen3-1.7B at about 1,500 tokens a second and
+Qwen3-4B at about 525.
 
-**How it was measured:** `llama-bench -r 3`, run alternately with
-`-dev Vulkan0` and `-dev XDNA0,Vulkan0`, five rounds each; the table gives
-the median of the five per-round ratios. The machine was otherwise idle.
-Single timings on this machine vary by more than the differences above, so
-compare only paired, repeated runs like these.
+- **The bigger model gains more.** On Qwen3-1.7B the add-on is about level
+  with the GPU unless the NPU is set to "Performance"; on Qwen3-4B it's
+  about a third faster.
+- **Speeds vary from run to run.** Single runs of the same test differed by
+  as much as 40%. The processor, GPU and NPU share one chip and its power
+  budget, and both the add-on and the GPU speed up and slow down with it.
+- **Smaller chunks are slower.** At llama.cpp's default 512-token chunks the
+  add-on was slower than the GPU (median 0.80x on "Default", 0.87x on
+  "Performance"), which is why it takes only chunks of 1,024 tokens or more
+  unless told otherwise (`npu --min-chunk`).
+
+**How it was measured:** `llama-bench -r 3 -n 0 -ub 2048 -b 2048`, the GPU
+alone (`-dev Vulkan0`) and with the add-on (`-dev XDNA0/Vulkan0`) taking
+turns in each round, 10 rounds on "Default" and 22 on "Performance"; each
+round's ratio compares the two runs next to each other. The machine was
+otherwise idle, and its load was logged throughout. Compare only paired,
+repeated runs like these: on this machine a single run proves little.
 
 ## Accuracy
 
