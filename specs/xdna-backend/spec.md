@@ -102,20 +102,30 @@ our pieces never have copied inputs.
 **Test category:** unit
 
 `supports_op` shall return false for `GGML_OP_MUL_MAT` whose batch dimension
-(`ne[1]`) is below `GGML_XDNA_MIN_BATCH` (default 512), and true at or above
-it for the weights XDNA-SIZE-POLICY accepts.
+(`ne[1]`) is below `GGML_XDNA_MIN_BATCH` (default 1,024), and true at or
+above it for the weights XDNA-SIZE-POLICY accepts. `npu --min-chunk N` sets
+the variable (XDNA-LAUNCHER).
 
 This is the whole split between the NPU and the GPU for matmuls: reply
 generation (batch 1) and short prompts fail the gate, and Vulkan runs them.
-The default is llama.cpp's default prompt chunk (`-ub 512`). On an idle
-machine the NPU ties the GPU there (0.98–1.07x) and leads by 13–18% at
-`-ub 2048`, and the owner prefers the NPU on ties (2026-09-30; it was 1,024
-until then). The kernel's smallest call is 512 rows.
+
+Why 1,024: at llama.cpp's default prompt chunk (`-ub 512`) the NPU loses to
+the GPU in every NPU power mode tried. Qwen3-1.7B, 2,048-token prompt, 20–22
+paired runs each (2026-10-02): median 0.80x with the NPU's power mode on
+"Default", 0.87x on "Performance", single runs 0.64–0.95x. At `-ub 2048` it
+leads (1.06x and 1.15x). The kernel works in blocks of 512 rows, so a chunk
+between 512 and 1,024 costs about what 1,024 does.
+
+History: 1,024 until 2026-09-30, then 512 on a 5-round measurement that
+showed a tie at 512 (0.98–1.07x). Those rounds happened to land on the
+add-on's faster level every time (see XDNA-CHUNK-WARNING); back to 1,024 on
+2026-10-02.
 
 **Acceptance criteria:**
 - batch 1 → not claimed
-- batch 511 → not claimed
-- batch 512, q4_K, 2048x2048 → claimed
+- batch 512 → not claimed
+- batch 1,023 → not claimed
+- batch 1,024, q4_K, 2048x2048 → claimed
 
 ---
 
@@ -130,6 +140,11 @@ the default costs nothing; it just forgoes the 13–18% that 2,048-token chunks
 give. Lesson kept for any future message of this kind: llama.cpp's memory
 fitting sets up a trial context with warnings hidden and no weight data, and
 a once-only message fired there is never seen.
+
+Correction, 2026-10-02: the tie at 512 didn't hold up. The add-on's speed
+lands at one of a few levels per run, about 20–25% apart, and the 5 rounds
+behind "0.98–1.07x" all landed on the faster one. Over 20+ paired runs it
+loses at 512 (0.80x); see XDNA-BATCH-GATE.
 
 ---
 
@@ -655,6 +670,10 @@ llama.cpp programs) shall run that program so that:
   `GGML_XDNA_MAX_COPY_GB` to N for the program, replacing any value already
   set (XDNA-MEMORY-BUDGET), and the `npu: prompts on the NPU (...)` line
   shall end with `; NPU weight copies limited to N GB`;
+- `--min-chunk N` (a whole number, 1 or more) shall set
+  `GGML_XDNA_MIN_BATCH` to N for the program, replacing any value already
+  set (XDNA-BATCH-GATE), and the `npu:` line shall end with
+  `; NPU takes chunks of N tokens or more`;
 - a bad or missing value, or an option `npu` doesn't know, shall stop `npu`
   with one line saying what's wrong, before any program starts, and exit 1;
 - `-h` or `--help` there shall print the usage, options included.
@@ -695,6 +714,17 @@ avoids XDNA-SAFE-START's gap: a command naming XDNA0 when there isn't one.
   copies limited to 1 GB`, the add-on's warning follows, and the tokens
   match the GPU's. `--memory-gb lots`, `--memory-gb -1`, `--memory-gb`
   alone and a misspelled option: one line each, exit 1, nothing started.
+- The first check again with `--min-chunk 512` and with
+  `--min-chunk=2048 --memory-gb 20`, the stand-in also printing
+  `GGML_XDNA_MIN_BATCH`: the same arguments arrive, the variables are as
+  given, the exit code comes back. With `GGML_XDNA_MIN_BATCH=4096` already
+  set, `--min-chunk 512` gives 512. `npu --min-chunk 32 llama-completion`
+  on the second check's prompt (105 tokens): the `npu:` line ends with
+  `; NPU takes chunks of 32 tokens or more`, the add-on builds its weight
+  copies (`-v` shows the line), and the tokens match the GPU's; without the
+  option, no copies are built. `--min-chunk lots`, `0`, `1.5`, `-1`,
+  `--min-chunk` alone and `--min-chunks 512`: one line each, exit 1, nothing
+  started.
 
 **Passing 2026-09-30:** all of the above but `--memory-gb` (added
 2026-10-01). The menu listed 38 models from LM Studio and the Hugging Face
@@ -706,6 +736,10 @@ code 7 came back each time. `--memory-gb 1`: 18 of 28 layers on the NPU,
 reply identical to the GPU's; `--memory-gb=0.01`: no layer, identical.
 The router's copying of its environment was checked in its source
 (`tools/server/server-models.cpp`, b10944), not by a run.
+
+**Passing 2026-10-02 (`--min-chunk`):** all of its checks. Qwen3-1.7B
+Q4_0: with `--min-chunk 32`, 1.5 GB of copies for 196 weights and a reply
+identical to the GPU's; without it, no copies and the same reply.
 
 ---
 

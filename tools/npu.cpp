@@ -2,8 +2,9 @@
 //
 //   npu [npu's options] llama-server [its arguments]   (or: npu server ...)
 //
-// npu's options (--memory-gb) come before the program's name, so they never
-// mix with the program's own, and reach the add-on as its variables.
+// npu's options (--memory-gb, --min-chunk) come before the program's name,
+// so they never mix with the program's own, and reach the add-on as its
+// variables.
 //
 // It points llama.cpp at ggml-xdna.dll next to itself, asks llama.cpp
 // whether the NPU is usable, and if it is adds -dev XDNA0,Vulkan0 (and
@@ -415,12 +416,17 @@ void usage() {
         L"                  (0.5 and the like work; 0 keeps the NPU out). Default: the\n"
         L"                  memory free once the model is loaded, less 4 GB or a tenth of\n"
         L"                  the machine's memory, whichever is larger. Layers that don't\n"
-        L"                  fit stay on the GPU.");
+        L"                  fit stay on the GPU.\n"
+        L"  --min-chunk N   the smallest piece of a prompt, in tokens, the NPU takes.\n"
+        L"                  Default 1024; smaller pieces go to the GPU, which read them\n"
+        L"                  faster in our tests. 512 also uses the NPU with llama.cpp's\n"
+        L"                  default chunk size.");
 }
 
 // npu's own options, before the program's name.
 struct options {
     std::wstring memory_gb;  // as typed; empty when not given
+    std::wstring min_chunk;
 };
 
 // A size in GB: a number, 0 or more.
@@ -429,6 +435,12 @@ bool is_gb(const std::wstring & s) {
     wchar_t * end = nullptr;
     const double v = wcstod(s.c_str(), &end);
     return *end == 0 && v >= 0 && v < 1e6;
+}
+
+// A token count: a whole number, 1 or more.
+bool is_tokens(const std::wstring & s) {
+    if (s.empty() || s.size() > 9) return false;
+    return std::all_of(s.begin(), s.end(), [](wchar_t c) { return c >= L'0' && c <= L'9'; }) && std::stol(s) >= 1;
 }
 
 // Reads npu's options from argv[1] on, as "--name value" or "--name=value".
@@ -442,19 +454,27 @@ int read_options(int argc, LPWSTR * argv, options & o) {
         if (a.rfind(L"-", 0) != 0) break;
         const size_t eq = a.find(L'=');
         const std::wstring name = lower(a.substr(0, eq));
-        if (name != L"--memory-gb") {
+        if (name != L"--memory-gb" && name != L"--min-chunk") {
             say(L"npu: unknown option " + a + L" (npu's options go before the program's name; npu -h lists them)");
             return -1;
         }
         std::wstring value;
         if (eq != std::wstring::npos) value = a.substr(eq + 1);
         else if (i + 1 < argc) value = argv[++i];
-        if (!is_gb(value)) {
-            say(L"npu: --memory-gb takes a size in GB, such as 20 or 0.5 (0 keeps the NPU out)" +
-                (value.empty() ? std::wstring() : L", not \"" + value + L"\""));
-            return -1;
+        const std::wstring not_this = value.empty() ? std::wstring() : L", not \"" + value + L"\"";
+        if (name == L"--memory-gb") {
+            if (!is_gb(value)) {
+                say(L"npu: --memory-gb takes a size in GB, such as 20 or 0.5 (0 keeps the NPU out)" + not_this);
+                return -1;
+            }
+            o.memory_gb = value;
+        } else {
+            if (!is_tokens(value)) {
+                say(L"npu: --min-chunk takes a number of tokens, such as 512 or 2048" + not_this);
+                return -1;
+            }
+            o.min_chunk = value;
         }
-        o.memory_gb = value;
     }
     return i;
 }
@@ -501,6 +521,10 @@ int wmain() {
     if (!opt.memory_gb.empty()) {
         SetEnvironmentVariableW(L"GGML_XDNA_MAX_COPY_GB", opt.memory_gb.c_str());
         set += L"; NPU weight copies limited to " + opt.memory_gb + L" GB";
+    }
+    if (!opt.min_chunk.empty()) {
+        SetEnvironmentVariableW(L"GGML_XDNA_MIN_BATCH", opt.min_chunk.c_str());
+        set += L"; NPU takes chunks of " + opt.min_chunk + L" tokens or more";
     }
 
     // which programs take which of our additions

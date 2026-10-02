@@ -57,10 +57,12 @@ int main() {
 
     check(!ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, k, n, 1)),
           "batch 1 (reply generation) is not claimed");
-    check(!ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, k, n, 511)),
-          "batch 511 is not claimed (below the default threshold of 512)");
-    check(ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, k, n, 512)),
-          "batch 512, q4_K 2048x2048 is claimed");
+    check(!ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, k, n, 512)),
+          "batch 512 (llama.cpp's default chunk) is not claimed");
+    check(!ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, k, n, 1023)),
+          "batch 1023 is not claimed (below the default threshold of 1024)");
+    check(ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_K, k, n, 1024)),
+          "batch 1024, q4_K 2048x2048 is claimed");
     check(ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_0, k, n, 2048)),
           "batch 2048, q4_0 is claimed");
 
