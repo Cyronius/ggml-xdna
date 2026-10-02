@@ -752,6 +752,45 @@ identical to the GPU's; without it, no copies and the same reply.
 
 ---
 
+### XDNA-RELEASE: A tag builds the release zip in CI
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+Pushing a tag `v*` shall run `.github/workflows/release.yml` on a GitHub
+Windows machine, which builds and tests as XDNA-BUILD does, then makes
+`ggml-xdna-<tag>-llama-<llama.cpp release>-win-x64.zip`
+(`tools/package.ps1`) and publishes it, with a `.sha256` file holding the
+zip's checksum, as a GitHub pre-release whose notes are
+`.github/release-notes.md`. The zip shall hold, at its top level:
+- the pinned llama.cpp release's Windows Vulkan zip, unpacked and
+  unmodified, from a fresh download;
+- `ggml-xdna.dll`, `npu.exe` from that build, and
+  `bfp16_gemm.xclbin` from `kernels/bfp16_gemm/prebuilt`;
+- `README.md`, `LICENSE`, `NOTICE`, and `LICENSES\` with llama.cpp's
+  license (from the same tag's source; its zip carries only OpenMP's), the
+  XRT license and notice, and the mlir-aie license;
+- `SHA256SUMS.txt`, every other file's SHA-256 in `sha256sum -c` format.
+
+Nothing else: none of the test programs the build copies next to llama.cpp.
+Started by hand, or by a pull request that changes the packaging, the
+workflow publishes nothing and keeps the zip as the run's artifact.
+
+The zip is unsigned, like llama.cpp's own Windows builds.
+
+**Verification (manual):** a dry run. Start the workflow by hand (or open a
+pull request touching the packaging), download the artifact, unzip it into
+an empty folder, and from there, with no `GGML_*` or `LLAMA_*` variable set:
+- `npu llama-completion -m <Qwen3-4B Q4_K_M> -f <a 2,000+-token prompt>
+  -n 24 --temp 0 -no-cnv`: prints `npu: prompts on the NPU`, and the reply
+  is sensible;
+- `npu llama-server -m <the same>`, one chat request of 2,000+ tokens: a
+  sensible reply, and the server's log shows the NPU took pieces
+  (`GGML_XDNA_TRACE=1` for this one);
+- every line of `SHA256SUMS.txt` checks, and the file list matches the
+  above.
+
+---
+
 ### XDNA-DISPATCH-COST: Submission overhead stays under a millisecond — RETIRED 2026-09-30
 
 Retired with the move of the research code out of the tree. It measured the

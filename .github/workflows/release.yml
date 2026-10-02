@@ -1,0 +1,77 @@
+# Builds the release zip on GitHub's machines, never on a dev box: the same
+# build and tests as ci.yml, then tools\package.ps1. Pushing a tag v* publishes
+# a GitHub pre-release with the zip. Starting it by hand (Actions, "Run
+# workflow"), or a pull request that changes the packaging, is a dry run that
+# keeps the zip as the run's artifact.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+  pull_request:
+    paths: ['.github/workflows/release.yml', 'tools/package.ps1']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: build, test and package (Windows)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the llama.cpp release
+        uses: actions/cache@v4
+        with:
+          path: third_party
+          key: llama-b10944-${{ hashFiles('tools/fetch-llama.ps1') }}
+
+      - name: Vulkan loader and a software Vulkan device
+        uses: jakoch/install-vulkan-sdk-action@v1.6.0
+        with:
+          vulkan_version: 1.4.313.0
+          install_runtime_only: true
+          install_lavapipe: true
+          cache: true
+
+      - name: Put the Vulkan loader on PATH
+        shell: pwsh
+        run: Add-Content $env:GITHUB_PATH "$env:VULKAN_SDK\$env:VULKAN_VERSION\runtime\x64"
+
+      - name: Build and test
+        shell: cmd
+        env:
+          GGML_VK_VISIBLE_DEVICES: "0"
+          GGML_VK_DISABLE_F16: "1"
+          GGML_VK_DISABLE_COOPMAT: "1"
+          GGML_XDNA_PINNED: "0"
+        run: build.cmd
+
+      - name: Package
+        id: package
+        shell: pwsh
+        run: |
+          $v = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME } else { "dev-$($env:GITHUB_SHA.Substring(0, 7))" }
+          tools\package.ps1 -Version $v
+          "name=ggml-xdna-$v-llama-b10944-win-x64" >> $env:GITHUB_OUTPUT
+
+      - name: Keep the zip with this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: |
+            dist/${{ steps.package.outputs.name }}.zip
+            dist/${{ steps.package.outputs.name }}.zip.sha256
+
+      # A pre-release until the long server test is done.
+      - name: Publish the pre-release
+        if: github.ref_type == 'tag'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $n = "${{ steps.package.outputs.name }}"
+          gh release create $env:GITHUB_REF_NAME "dist\$n.zip" "dist\$n.zip.sha256" `
+            --prerelease --title "ggml-xdna $env:GITHUB_REF_NAME" --notes-file .github\release-notes.md
