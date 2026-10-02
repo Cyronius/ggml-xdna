@@ -51,7 +51,7 @@ int main() {
     ggml_init_params ip = { ggml_tensor_overhead() * 256, NULL, true };
     ggml_context * ctx = ggml_init(ip);
     auto claimed = [&](ggml_tensor * weight) {
-        ggml_tensor * x = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, weight->ne[0], 512);
+        ggml_tensor * x = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, weight->ne[0], 1024);  // the default chunk floor
         return ggml_backend_dev_supports_op(dev, ggml_mul_mat(ctx, weight, x));
     };
 

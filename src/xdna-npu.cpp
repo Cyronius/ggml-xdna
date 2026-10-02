@@ -1,6 +1,7 @@
 #include "xdna-npu.h"
 
 #include "xdna-env.h"
+#include "ggml-impl.h"
 
 #include "bfp16_insts.h"
 #include "bfp16_pack.h"
@@ -212,7 +213,17 @@ int xdna_npu::shape(int64_t M, int64_t K, int64_t N, int mode, std::string & err
     auto it = shapes_.find(key);
     if (it != shapes_.end()) return it->second;
     if (!opened_) {
-        if (!npu_->open(xdna_xclbin(), err)) return -1;
+        // GGML_XDNA_NPU_QOS: a quality-of-service request for the driver
+        // ("gops=...,latency=...", xrt_shim.h), to test whether it changes how
+        // fast the NPU runs. Unset or 0: none.
+        const char * qos = xdna_env("GGML_XDNA_NPU_QOS");
+        const std::string q = qos && strcmp(qos, "0") != 0 ? qos : "";
+        if (!npu_->open(xdna_xclbin(), err, q)) return -1;
+        if (!npu_->qos_refused().empty())
+            GGML_LOG_WARN("xdna: NPU quality-of-service request \"%s\" not taken (%s); running without it\n",
+                          q.c_str(), npu_->qos_refused().c_str());
+        else if (!q.empty())
+            GGML_LOG_INFO("xdna: NPU opened with the quality-of-service request \"%s\"\n", q.c_str());
         opened_ = true;
     }
     const std::vector<uint32_t> words = bfp16_insts(M, K, N, mode);

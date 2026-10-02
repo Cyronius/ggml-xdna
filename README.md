@@ -53,7 +53,8 @@ What `npu` does for you:
   it adds nothing, says why in one line, and llama.cpp runs on the GPU;
 - adds `-ub 2048 -b 2048` for llama-server, llama-cli and llama-completion
   when the NPU is on, so prompts reach it in bigger pieces (faster, see
-  below). Pass `-ub 512` to keep llama.cpp's default.
+  below). You can pass `-ub 512` to keep llama.cpp's default, but then the
+  NPU sits out unless you also pass `--min-chunk 512` (below).
 
 Anything you give yourself (`-m`, `-dev`, `-ub`, `-b`) is kept, and the
 rest of your command reaches llama.cpp exactly as typed. `npu server` works
@@ -70,6 +71,12 @@ npu --memory-gb 20 llama-server -m model.gguf
 in GB (`0.5` works; `0` keeps the NPU out). Without it, the limit is the
 memory free once the model is loaded, less 4 GB or a tenth of the machine's
 memory, whichever is larger. Layers that don't fit stay on the GPU.
+
+`--min-chunk` is the smallest piece of a prompt, in tokens, the NPU takes.
+The default is 1,024: smaller pieces go to the GPU, which read them faster
+in our tests. `npu --min-chunk 512 llama-bench ...` puts llama.cpp's
+default 512-token chunks on the NPU too.
+
 `npu -h` lists the options.
 
 **Without the launcher,** set `GGML_BACKEND_PATH` to the add-on and name
@@ -82,27 +89,75 @@ llama-server -m model.gguf -dev XDNA0,Vulkan0
 
 Without `-dev XDNA0,...`, llama.cpp runs as if the add-on weren't there.
 
+## Faster: the NPU's power mode
+
+The NPU has a power setting of its own, separate from Windows'. On
+"Default" it picks its own speed, and in our tests it often picked a slower
+one. Set to "Performance", the add-on read Qwen3-1.7B's prompts about 10%
+faster (see [Results](#results)). AMD recommends the same setting for
+language models.
+
+To change it, open a terminal as administrator (Start, type `cmd`, then
+"Run as administrator") and run:
+
+```
+C:\Windows\System32\AMD\xrt-smi.exe configure --pmode performance
+```
+
+`xrt-smi` comes with the NPU driver. It isn't on the `PATH`, so give its
+full path. To check the setting:
+
+```
+C:\Windows\System32\AMD\xrt-smi.exe examine -r platform
+```
+
+It shows `Power Mode : Performance`. To go back:
+
+```
+C:\Windows\System32\AMD\xrt-smi.exe configure --pmode default
+```
+
+- It applies to everything that uses the NPU, not just llama.cpp, and it
+  uses more power. We haven't measured how much.
+- In our tests it went back to "Default" after a restart, so check it with
+  the `examine` command after restarting.
+- `--pmode turbo` also exists. It needs the charger plugged in (otherwise it
+  acts as `performance`). We haven't measured it.
+
 ## Results
 
-Qwen3-1.7B, Q4_0. Prompt reading speed with the add-on, against the GPU
-alone at the same settings. Measured 2026-09-30.
+Prompt reading speed with the add-on, against the GPU alone, both reading
+in 2,048-token chunks (what `npu` uses). Ryzen AI 9 HX 370, measured
+2026-10-02. Each figure is the median of paired runs; the slowest and
+fastest runs are in brackets.
 
-| prompt tokens | default settings (`-ub 512`) | `-ub 2048` |
-|---|---|---|
-| 512 | 1.07x | (one piece either way; not measured) |
-| 1,024 | 1.00x | 1.16x |
-| 2,048 | 0.98x | 1.13x |
-| 4,096 | 1.02x | 1.18x |
+| model | prompt tokens | NPU power mode "Default" | "Performance" |
+|---|---|---|---|
+| Qwen3-1.7B Q4_0 | 1,024 | 1.04x (0.96–1.24x) | not measured yet |
+| Qwen3-1.7B Q4_0 | 2,048 | 1.04x (0.94–1.19x) | 1.15x (0.94–1.35x) |
+| Qwen3-1.7B Q4_0 | 4,096 | 1.03x (0.93–1.16x) | not measured yet |
+| Qwen3-4B Q4_K_M | 2,048 | 1.32x (1.13–1.50x) | not measured yet |
 
-At default settings the NPU about ties the GPU. With 2,048-token pieces it
-reads prompts 13–18% faster. The GPU alone read 512 tokens at about 1,700
-tokens a second.
+On its own, the GPU read Qwen3-1.7B at about 1,500 tokens a second and
+Qwen3-4B at about 525.
 
-**How it was measured:** `llama-bench -r 3`, run alternately with
-`-dev Vulkan0` and `-dev XDNA0,Vulkan0`, five rounds each; the table gives
-the median of the five per-round ratios. The machine was otherwise idle.
-Single timings on this machine vary by more than the differences above, so
-compare only paired, repeated runs like these.
+- **The bigger model gains more.** On Qwen3-1.7B the add-on is about level
+  with the GPU unless the NPU is set to "Performance"; on Qwen3-4B it's
+  about a third faster.
+- **Speeds vary from run to run.** Single runs of the same test differed by
+  as much as 40%. The processor, GPU and NPU share one chip and its power
+  budget, and both the add-on and the GPU speed up and slow down with it.
+- **Smaller chunks are slower.** At llama.cpp's default 512-token chunks the
+  add-on was slower than the GPU (median 0.80x on "Default", 0.87x on
+  "Performance"), which is why it takes only chunks of 1,024 tokens or more
+  unless told otherwise (`npu --min-chunk`).
+
+**How it was measured:** `llama-bench -r 3 -n 0 -ub 2048 -b 2048`, the GPU
+alone (`-dev Vulkan0`) and with the add-on (`-dev XDNA0/Vulkan0`) taking
+turns in each round, 10 rounds on "Default" and 22 on "Performance"; each
+round's ratio compares the two runs next to each other. The machine was
+otherwise idle, and its load was logged throughout. Compare only paired,
+repeated runs like these: on this machine a single run proves little.
 
 ## Accuracy
 
@@ -125,8 +180,13 @@ contexts of 32,768 tokens, and two models served at once by its router.
 - **Ryzen AI 300 only.** `GGML_XDNA_ANY_NPU=1` tries another NPU, untested.
 - **Prompt reading only.** Replies are written one token at a time, and that
   stays on the GPU.
-- **Pieces under 512 tokens stay on the GPU**, so short prompts don't use
-  the NPU.
+- **Pieces under 1,024 tokens stay on the GPU**, so short prompts don't use
+  the NPU. `npu --min-chunk` changes that.
+- **Small models are slower on the NPU.** In our tests, models under about
+  1 billion parameters read prompts at 35–85% of the GPU's speed with the
+  add-on, depending on the model and the chunk size. The add-on doesn't turn
+  them away: if you start it, it runs. For those models, use the GPU alone
+  (`-dev Vulkan0`, or llama.cpp without `npu`).
 - **Memory:** the NPU keeps its own 8-bit copy of each weight it uses,
   about 1.1 GB per billion parameters, on top of llama.cpp's. It's built
   in the background while the model loads, which takes a few seconds (4.4 s
@@ -159,8 +219,8 @@ flowchart LR
 The add-on registers a device, XDNA0, that shares the GPU's memory. llama.cpp
 keeps every weight in GPU memory as usual, so work can move between the two
 without copies. The add-on accepts only large prompt work: a model's weight
-multiplies on pieces of 512 tokens or more, and the small steps between them,
-so each hand-over covers most of a transformer block.
+multiplies on pieces of 1,024 tokens or more, and the small steps between
+them, so each hand-over covers most of a transformer block.
 
 On the NPU, one kernel program serves every model: the add-on makes the NPU
 instructions for each matrix size itself, so there's nothing to build per
@@ -194,7 +254,14 @@ Without the launcher, the add-on offers no XDNA0 device and logs
 
 **Is it doing anything?** `npu` prints `npu: prompts on the NPU` when it
 turns it on. `set GGML_XDNA_TRACE=1` prints where the time goes every few
-hundred multiplies. A prompt under 512 tokens never reaches the NPU.
+hundred multiplies. A prompt under 1,024 tokens never reaches the NPU
+(`npu --min-chunk` changes that).
+
+**Slower than the Results table?** Check the NPU's power mode (see
+[Faster: the NPU's power mode](#faster-the-npus-power-mode)). Speeds also
+vary from run to run on the same machine, because the processor, GPU and
+NPU share one chip and its power budget. Compare medians of several runs,
+not single runs.
 
 **Reporting a problem:** open an issue with your chip, the NPU and GPU driver
 versions, the model, the command, and the output with `GGML_XDNA_TRACE=1`.
@@ -210,7 +277,7 @@ An empty value counts as unset.
 |---|---|---|
 | `GGML_XDNA_KERNELS` | `bfp16_gemm.xclbin` next to the DLL | another xclbin |
 | `GGML_XDNA_ANY_NPU` | 0 | 1 tries an NPU the add-on hasn't been tested on |
-| `GGML_XDNA_MIN_BATCH` | 512 | the smallest piece of a prompt, in tokens, the NPU takes |
+| `GGML_XDNA_MIN_BATCH` | 1024 | the smallest piece of a prompt, in tokens, the NPU takes (`npu --min-chunk` sets it) |
 | `GGML_XDNA_MIN_MFLOP` | 256 | the smallest multiply the NPU takes, in millions of operations |
 | `GGML_XDNA_COPY_AT_LOAD` | 1 | 0 builds the NPU's weight copies during the first prompt instead of while the model loads |
 | `GGML_XDNA_MAX_COPY_GB` | memory free at load, less 4 GB or a tenth of memory | the most memory, in GB, the NPU's weight copies may take; 0 keeps the NPU out (`npu --memory-gb` sets it) |

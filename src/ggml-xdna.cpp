@@ -65,13 +65,14 @@ static int64_t xdna_op_batch_size(const ggml_tensor * op) {
 
 static int64_t env_int(const char * name, int64_t def) { return xdna_env_int(name, def); }
 
-// Batch size at or above which a matmul is ours: llama.cpp's default prompt
-// chunk (-ub 512). There the NPU ties the GPU (0.98-1.07x, idle machine,
-// 2026-09-30), and ties go to the NPU; at -ub 2048 it leads by 13-18%.
-// The kernel's smallest call is 512 rows, so smaller chunks would be mostly
-// padding.
+// Batch size at or above which a matmul is ours. At llama.cpp's default
+// prompt chunk (-ub 512) the NPU loses to the GPU in every NPU power mode
+// tried (median 0.80-0.87x over 20+ paired runs, 2026-10-02); at 2,048 it
+// leads (1.06-1.15x). The kernel works in blocks of 512 rows, so a chunk
+// between 512 and 1,024 costs about what 1,024 does. `npu --min-chunk`
+// sets it.
 static int64_t xdna_min_batch() {
-    static int64_t v = env_int("GGML_XDNA_MIN_BATCH", 512);
+    static int64_t v = env_int("GGML_XDNA_MIN_BATCH", 1024);
     return v;
 }
 

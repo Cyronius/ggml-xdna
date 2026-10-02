@@ -40,6 +40,11 @@ void xrtsh_device_free(xrtsh_dev dev);
 
 /* xrt::xclbin(path) -> register_xclbin -> hw_context. NULL on failure. */
 xrtsh_ctx xrtsh_hwctx_create(xrtsh_dev dev, const char *xclbin_path);
+/* The same, asking the driver for a quality of service: "key=value,..." with
+ * the keys xrt_hw_context.h lists (gops, fps, dma_bandwidth, latency,
+ * frame_execution_time, priority) and whole-number values. NULL on failure,
+ * including a malformed request. */
+xrtsh_ctx xrtsh_hwctx_create_qos(xrtsh_dev dev, const char *xclbin_path, const char *qos);
 void xrtsh_hwctx_free(xrtsh_ctx ctx);
 
 /* xrt::elf(path) -> module -> ext::kernel(ctx, module, "MLIR_AIE").
