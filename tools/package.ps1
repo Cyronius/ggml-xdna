@@ -59,7 +59,8 @@ $sums = Get-ChildItem -Recurse -File $stage | Sort-Object FullName | ForEach-Obj
     $rel = $_.FullName.Substring($stage.Length + 1).Replace('\', '/')
     "{0}  {1}" -f (Get-FileHash -Algorithm SHA256 $_.FullName).Hash.ToLower(), $rel
 }
-[IO.File]::WriteAllLines((Join-Path $stage "SHA256SUMS.txt"), [string[]] $sums)
+# (LF line endings: with CRLF, sha256sum -c takes the CR as part of each name)
+[IO.File]::WriteAllText((Join-Path $stage "SHA256SUMS.txt"), (($sums -join "`n") + "`n"))
 
 Compress-Archive -Path (Join-Path $stage "*") -DestinationPath $zip
 $h = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLower()
