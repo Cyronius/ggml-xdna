@@ -984,6 +984,17 @@ static int64_t xdna_tokens(const ggml_tensor * t) {
 
 static bool xdna_supports_op_policy(const ggml_tensor * op, int depth = 0);
 
+// Whether a tensor may live in host memory once allocated: a graph input, an
+// embedding lookup (llama.cpp keeps the token embeddings on the CPU), or one
+// already in a host buffer.
+static bool xdna_maybe_host(const ggml_tensor * t) {
+    for (; t; t = t->view_src) {
+        if ((t->flags & GGML_TENSOR_FLAG_INPUT) || t->op == GGML_OP_GET_ROWS) return true;
+        if (t->buffer && ggml_backend_buffer_is_host(t->buffer)) return true;
+    }
+    return false;
+}
+
 static bool ggml_backend_xdna_device_supports_op(ggml_backend_dev_t dev, const ggml_tensor * op) {
     if (xdna_blocks() || xdna_trace()) xdna_note_readers(op);
     return xdna_supports_op_policy(op);
@@ -1035,6 +1046,14 @@ static bool xdna_supports_op_policy(const ggml_tensor * op, int depth) {
         const ggml_tensor * w = op->src[1];  // a scale row: a plain leaf, kept once
         if (w->op != GGML_OP_NONE || w->view_src) return false;
     }
+    // ggml's allocator may put an op's result in the memory of an input the
+    // same shape (in place), without checking that the input is in the same
+    // kind of memory. An input in host memory (the token embeddings, or a
+    // graph input) would then take our result there, and Vulkan, reading it
+    // next, crashes. LFM2's first residual add is one: add(embeddings, x).
+    for (int j = 0; j < GGML_MAX_SRC; j++)
+        if (const ggml_tensor * s = op->src[j])
+            if (xdna_maybe_host(s) && ggml_are_same_shape(op, s)) return false;
     for (int j = 0; j < GGML_MAX_SRC; j++) {
         const ggml_tensor * s = op->src[j];
         if (s && s->op != GGML_OP_NONE && xdna_supports_op_policy(s, depth + 1)) return true;

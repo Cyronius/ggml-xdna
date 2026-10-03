@@ -55,14 +55,16 @@ serves every model in the list and loads each when a request names it.
 
 What `npu` does for you:
 - points llama.cpp at the add-on next to it;
-- checks the NPU can run, and if so adds `-dev XDNA0,Vulkan0`. If it can't,
-  it adds nothing, says why in one line, and llama.cpp runs on the GPU;
+- checks the NPU can run, and if so adds `-dev XDNA0,Vulkan0 -ts 0,1`
+  (`-ts 0,1`: none of the model's layers belong to the NPU; see below). If
+  it can't, it adds nothing, says why in one line, and llama.cpp runs on
+  the GPU;
 - adds `-ub 2048 -b 2048` for llama-server, llama-cli and llama-completion
   when the NPU is on, so prompts reach it in bigger pieces (faster, see
   below). You can pass `-ub 512` to keep llama.cpp's default, but then the
   NPU sits out unless you also pass `--min-chunk 512` (below).
 
-Anything you give yourself (`-m`, `-dev`, `-ub`, `-b`) is kept, and the
+Anything you give yourself (`-m`, `-dev`, `-ts`, `-ub`, `-b`) is kept, and the
 rest of your command reaches llama.cpp exactly as typed. `npu server` works
 for `npu llama-server` too. Put the folder on your `PATH` to run `npu` from
 anywhere.
@@ -90,10 +92,17 @@ the NPU yourself:
 
 ```
 set GGML_BACKEND_PATH=C:\path\to\llama-b10944\ggml-xdna.dll
-llama-server -m model.gguf -dev XDNA0,Vulkan0
+llama-server -m model.gguf -dev XDNA0,Vulkan0 -ts 0,1
 ```
 
 Without `-dev XDNA0,...`, llama.cpp runs as if the add-on weren't there.
+
+`-ts 0,1` keeps every layer on the GPU, which is where llama.cpp puts them
+anyway. Without it, llama.cpp's automatic memory fitting crashes while
+loading a mixture-of-experts model (a divide by zero in its layer search).
+With it, llama.cpp prints one harmless line at load:
+`failed to fit params to free device memory: model_params::tensor_split
+already set by user, abort`. It still fits the context size.
 
 ## The NPU's power mode
 

@@ -185,8 +185,18 @@ shall also accept a small op when all of these hold: the backend's
 executor implements it in that variant (RMS_NORM; MUL by a scale row; ADD of
 two same-shape tensors; ROPE, normal or NeoX, with no YaRN ramp and no
 frequency factors; SwiGLU, split and not swapped; RESHAPE); it covers at
-least `GGML_XDNA_MIN_BATCH` tokens; and one of its inputs comes from an op
-the policy accepts. It shall decline every other op.
+least `GGML_XDNA_MIN_BATCH` tokens; one of its inputs comes from an op
+the policy accepts; and none of its inputs has its shape and may sit in
+host memory (a graph input, a `GET_ROWS` result such as the token
+embeddings, or a tensor already in a host buffer). It shall decline every
+other op.
+
+The last condition is there because ggml's allocator may put an op's result
+in the memory of a same-shape input (in place) without checking that the
+input is in the same kind of memory. An input in host memory would take the
+backend's result there, and Vulkan, reading it next as one of its own
+buffers, crashes. LFM2's first residual add, `add(embeddings, x)`, did
+(2026-10-02).
 
 Anything accepted is taken from Vulkan (the scheduler moves an op to the
 higher-priority backend sharing its buffer type). Accepting too much
@@ -204,11 +214,21 @@ on the NPU):**
 - a matmul whose left side is a view of a larger tensor → not claimed
 - a matmul whose left side is the result of another op → not claimed
 - `ADD` of two leaf tensors at any size → not claimed
+- `ADD` of two claimable matmuls (batch 2048) → claimed on the NPU; not
+  claimed host-only (no block claiming there)
+- `ADD` of a claimable matmul and the token embeddings (`GET_ROWS`), in
+  either order → not claimed
+- `ADD` of a claimable matmul and a graph input → not claimed
 
 **Verification (manual, block claiming):** run with `GGML_XDNA_DUMP=1` and
 check that each `xdna piece:` line on Qwen3-1.7B spans o-projection through
 the next layer's k rope, and no piece contains an op outside the list above
 other than views. Measured 2026-09-29: 29 pieces, each as described.
+Again 2026-10-03, after the host-memory condition: 30 pieces per chunk.
+Layer 0's first norm and residual add read the token embeddings and stay on
+the GPU, so layer 0 comes in three pieces (its q/k/v projections, its
+o-projection, then its feed-forward through layer 1's k rope); every other
+piece as described.
 
 ---
 
@@ -348,7 +368,9 @@ and the same with `-dev Vulkan0`. The 24 generated tokens must match.
 
 **Measured 2026-09-29:** identical ("…ides, the town was to be abandoned. The
 people had to leave, and the quay was to be left as"). Again 2026-09-30,
-after the repository cleanup: identical, 269 pieces on the NPU.
+after the repository cleanup: identical, 269 pieces on the NPU. Again
+2026-10-03, with small ops next to host memory declined (XDNA-SIZE-POLICY):
+identical.
 
 ---
 
@@ -657,9 +679,11 @@ llama.cpp programs) shall run that program so that:
 - llama.cpp loads the add-on next to `npu.exe`, unless `GGML_BACKEND_PATH`
   is already set;
 - when llama.cpp offers XDNA0, `-dev XDNA0,Vulkan0` is added
-  (`XDNA0/Vulkan0` for llama-bench), and `-ub 2048 -b 2048` for
-  llama-server, llama-cli and llama-completion. When it doesn't, nothing is
-  added, llama.cpp runs on the GPU, and one line gives the add-on's reason;
+  (`XDNA0/Vulkan0` for llama-bench), then `-ts 0,1` (not for llama-bench)
+  unless the user set a split (`-ts`, `--tensor-split` or
+  `LLAMA_ARG_TENSOR_SPLIT`), and `-ub 2048 -b 2048` for llama-server,
+  llama-cli and llama-completion. When it doesn't, nothing is added,
+  llama.cpp runs on the GPU, and one line gives the add-on's reason;
 - with no model given (no `-m`, `-hf` and the like, nor their
   `LLAMA_ARG_*` variables) and a console to ask on, it lists the `.gguf`
   models in a `models` folder next to it, LM Studio's folder, llama.cpp's
@@ -695,6 +719,14 @@ environment into every model's server, so the option covers them all.
 The launcher is what makes "run it with nothing to set" true. It also
 avoids XDNA-SAFE-START's gap: a command naming XDNA0 when there isn't one.
 
+`-ts 0,1` gives XDNA0 no layers, which is what llama.cpp picks anyway (it
+splits layers by free memory, and XDNA0 reports none). Said outright, it
+stops llama.cpp's memory fitting (`common/fit.cpp`) after the context size
+and before its layer search. That search divides by the change in a
+device's memory use as layers move onto it, which for XDNA0, sharing the
+GPU's memory, is always 0: mixture-of-experts models reach it and crashed
+while loading (2026-10-02). llama-bench doesn't fit unless asked.
+
 **Verification (manual):**
 - From cmd, `npu llama-echo -p "a & b | c * d! e" -x "say \"hi\"" --path
   "C:\dir with space\\" plain*.gguf ^& "" last`, with a program that
@@ -702,12 +734,20 @@ avoids XDNA-SAFE-START's gap: a command naming XDNA0 when there isn't one.
   unchanged, and the exit code comes back.
 - `npu llama-completion -m Qwen3-1.7B-Q4_0.gguf -f <XDNA-BLOCK-AGREES'
   prompt> -n 24 --temp 0 -no-cnv -fa on` with `GGML_XDNA_MIN_BATCH=32`:
-  prints `npu: prompts on the NPU (added -dev XDNA0,Vulkan0 -ub 2048
-  -b 2048)`, and the 24 tokens match the GPU's.
+  prints `npu: prompts on the NPU (added -dev XDNA0,Vulkan0 -ts 0,1
+  -ub 2048 -b 2048)`, and the 24 tokens match the GPU's.
 - The same with `GGML_XDNA_KERNELS` naming nothing: prints
   `npu: running on the GPU only: ...` and runs.
-- With `-dev Vulkan0`: nothing added. With `-ub 512`: only `-dev` added.
-  `npu llama-bench`: `-dev XDNA0/Vulkan0`.
+- With `-dev Vulkan0`: nothing added. With `-ub 512`: only `-dev` and
+  `-ts` added. With `-ts 1,1`: no `-ts` added. `npu llama-bench`:
+  `-dev XDNA0/Vulkan0` only.
+- `npu llama-completion` on gpt-oss-20b and LFM2.5-8B-A1B (mixture of
+  experts): loads, and the `npu:` line shows `-ts 0,1`.
+
+  Measured 2026-10-03: as listed, for `-ts 1,1`, `--tensor-split 1,1`,
+  `LLAMA_ARG_TENSOR_SPLIT=1,1`, `-ub 512` and llama-bench; gpt-oss-20b,
+  LFM2.5-8B-A1B and Ornith 35B (Qwen3.6 35B-A3B) load and finish (all three
+  crashed while loading before).
 - In a console (a script can drive one with a pseudo console): with no
   model, the list shows; a number runs that model; next time Enter runs it
   again; 0 for llama-server lists every model in the router's `/models`,
