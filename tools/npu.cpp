@@ -7,8 +7,8 @@
 // variables.
 //
 // It points llama.cpp at ggml-xdna.dll next to itself, asks llama.cpp
-// whether the NPU is usable, and if it is adds -dev XDNA0,Vulkan0 (and
-// -ub 2048 -b 2048 for the programs people chat with). If it isn't, it adds
+// whether the NPU is usable, and if it is adds -dev XDNA0,Vulkan0 -ts 0,1
+// (and -ub 2048 -b 2048 for the programs people chat with). If it isn't, it adds
 // nothing, so llama.cpp runs on the GPU as usual, and says why. With no model
 // given, it lists the models it finds and asks which. What the user typed is
 // passed on exactly as typed, and anything they set themselves is kept.
@@ -407,9 +407,9 @@ void usage() {
         L"  npu llama-cli -m model.gguf\n"
         L"\n"
         L"It points llama.cpp at the NPU add-on next to it and, when the NPU can run, adds\n"
-        L"-dev XDNA0,Vulkan0 (plus -ub 2048 -b 2048 for llama-server, llama-cli and\n"
-        L"llama-completion). With no model given, it lists the models it finds. Anything\n"
-        L"you set yourself is kept.\n"
+        L"-dev XDNA0,Vulkan0 -ts 0,1 (plus -ub 2048 -b 2048 for llama-server, llama-cli\n"
+        L"and llama-completion). With no model given, it lists the models it finds.\n"
+        L"Anything you set yourself is kept.\n"
         L"\n"
         L"npu's options, before the program's name:\n"
         L"  --memory-gb N   the most memory the NPU's copies of the weights may take, in GB\n"
@@ -541,6 +541,14 @@ int wmain() {
         const npu_check c = check_npu(dir);
         if (c.usable) {
             added += bench ? L" -dev XDNA0/Vulkan0" : L" -dev XDNA0,Vulkan0";
+            // No layers on XDNA0, as llama.cpp would pick anyway (it reports no
+            // free memory). Said outright, it also stops llama.cpp's memory
+            // fitting before its layer search, which divides by zero on
+            // mixture-of-experts models with XDNA0 listed: XDNA0 shares the
+            // GPU's memory, so its use never changes as layers move onto it.
+            // llama-bench doesn't fit unless asked.
+            if (!bench && !given(args, { L"-ts", L"--tensor-split" }, { L"LLAMA_ARG_TENSOR_SPLIT" }))
+                added += L" -ts 0,1";
             if (chat && !given(args, { L"-b", L"--batch-size", L"-ub", L"--ubatch-size" },
                                { L"LLAMA_ARG_BATCH", L"LLAMA_ARG_UBATCH" }))
                 added += L" -ub 2048 -b 2048";

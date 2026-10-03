@@ -9,12 +9,20 @@
 #include "ggml-backend.h"
 
 #include <cstdio>
+#include <cstdlib>
+#include <cstring>
 
 static int failures = 0;
 
 static void check(bool ok, const char * what) {
     printf("%s %s\n", ok ? "PASS" : "FAIL", what);
     if (!ok) failures++;
+}
+
+// Whether this run is on the NPU (ctest's npu label) rather than host-only.
+static bool xdna_npu_mode() {
+    const char * h = getenv("GGML_XDNA_HOST_ONLY");
+    return !(h && *h && strcmp(h, "0") != 0);
 }
 
 // A MUL_MAT of the given shape, without allocating any data.
@@ -82,6 +90,29 @@ int main() {
         check(!ggml_backend_dev_supports_op(dev, ggml_mul_mat(ctx, computed, b)),
               "a matmul whose left side is computed (not a weight) is not claimed");
         check(!ggml_backend_dev_supports_op(dev, computed), "other ops (ADD) are not claimed");
+    }
+
+    // Small ops next to our matmuls (block claiming, on the NPU only), except
+    // those reading a same-shape tensor that may sit in host memory: ggml may
+    // put the op's result in that tensor's memory, where Vulkan can't read it.
+    {
+        const bool npu = xdna_npu_mode();
+        ggml_tensor * x = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, k, 2048);
+        ggml_tensor * mm1 = ggml_mul_mat(ctx, ggml_new_tensor_2d(ctx, GGML_TYPE_Q4_0, k, n), x);
+        ggml_tensor * mm2 = ggml_mul_mat(ctx, ggml_new_tensor_2d(ctx, GGML_TYPE_Q4_0, k, n), x);
+        check(ggml_backend_dev_supports_op(dev, ggml_add(ctx, mm1, mm2)) == npu,
+              npu ? "an ADD of two claimed matmuls is claimed (block claiming)"
+                  : "an ADD of two claimed matmuls is not claimed (no block claiming off the NPU)");
+        ggml_tensor * emb = ggml_get_rows(ctx, ggml_new_tensor_2d(ctx, GGML_TYPE_Q4_0, k, 32000),
+                                          ggml_new_tensor_1d(ctx, GGML_TYPE_I32, 2048));
+        check(!ggml_backend_dev_supports_op(dev, ggml_add(ctx, emb, mm1)),
+              "an ADD of a claimed matmul and the token embeddings (GET_ROWS) is not claimed");
+        check(!ggml_backend_dev_supports_op(dev, ggml_add(ctx, mm1, emb)),
+              "... in either order");
+        ggml_tensor * in = ggml_new_tensor_2d(ctx, GGML_TYPE_F32, k, 2048);
+        ggml_set_input(in);
+        check(!ggml_backend_dev_supports_op(dev, ggml_add(ctx, in, mm1)),
+              "an ADD of a claimed matmul and a graph input is not claimed");
     }
 
     // offload_op is deliberately absent: that path copies the weight per op.
