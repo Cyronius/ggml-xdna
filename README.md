@@ -25,12 +25,20 @@ including writing the reply.
 
 ## Quick start
 
-There's no release zip yet. [Build from source](#building-from-source):
-`build.cmd` downloads llama.cpp b10944 into `third_party\llama-b10944` and
-puts the add-on (`ggml-xdna.dll`), the NPU kernel (`bfp16_gemm.xclbin`) and
-the launcher (`npu.exe`) next to it.
+Download `ggml-xdna-<version>-llama-b10944-win-x64.zip` from the
+[releases page](https://github.com/Cyronius/ggml-xdna/releases) and unzip it
+into a folder of its own. It's llama.cpp's own Windows Vulkan release
+(b10944), unmodified, with the add-on (`ggml-xdna.dll`), its NPU kernel
+(`bfp16_gemm.xclbin`) and the launcher (`npu.exe`) next to it.
 
-From that folder, put `npu` in front of the llama.cpp command:
+The zip isn't signed, so Windows may warn the first time you run something
+from it ("Windows protected your PC": click "More info", then "Run
+anyway"). To check the download, compare the zip's SHA-256 with the
+`.sha256` file next to it on the releases page; `SHA256SUMS.txt` inside the
+zip lists every file's.
+
+Open a terminal in that folder and put `npu` in front of the llama.cpp
+command:
 
 ```
 npu llama-server
@@ -374,8 +382,9 @@ build.cmd
 ```
 
 It downloads llama.cpp b10944 and its matching headers into `third_party\`,
-builds the add-on and its tests, copies the DLL and the kernel next to the
-llama.cpp binaries, and runs the tests. The NPU tests run only where the NPU
+builds the add-on and its tests, copies the DLL, the kernel and `npu.exe`
+next to the llama.cpp binaries in `third_party\llama-b10944`, and runs the
+tests. Run `npu` from there as in [Quick start](#quick-start). The NPU tests run only where the NPU
 driver is installed; the others need a Vulkan GPU. `build.cmd notest` skips
 the tests.
 
