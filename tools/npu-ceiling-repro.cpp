@@ -1,12 +1,15 @@
-// npu-ceiling-repro: the NPU's buffers lose their contents, silently, once the
-// NPU holds more memory than Windows keeps resident for it.
+// npu-ceiling-repro: past about 26 GiB of buffers, the NPU silently reads some
+// of them wrong.
 //
 // Seen on a Ryzen AI 9 HX 370 (Strix Point), 96 GB, Windows 11 build 26200,
-// NPU driver 32.0.20102.3930, firmware 1.1.2.64, XRT 2.21.0: past about 26 GiB
-// of NPU buffers, buffers used earlier come back from the NPU as NaN or wrong
-// values, and neither XRT nor the driver reports an error. Found running
-// llama.cpp with the ggml-xdna add-on; this program shows it with the NPU
-// alone (no llama.cpp, no model files, no GPU).
+// NPU driver 32.0.20102.3930, firmware 1.1.2.64, XRT 2.21.0 (2026-10-04, three
+// runs): every buffer is right up to 26.0 GiB in all; at 27.9 GiB one or two
+// buffers give all-NaN results, every time they run, while their bytes as the
+// CPU sees them are exactly as written. Neither XRT nor the driver reports an
+// error. Windows' count of the NPU's memory stops at 26.0 GiB. Holding 14.8 GiB
+// on the GPU at the same time doesn't move any of it. Found running llama.cpp
+// with the ggml-xdna add-on; this program shows it with the NPU alone (no
+// llama.cpp, no model files, no GPU).
 //
 // What it does: it fills the NPU with weight buffers a step at a time and,
 // after each step, runs one matmul (the add-on's bfp16 kernel, 512 x 5120 x
