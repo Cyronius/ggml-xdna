@@ -78,7 +78,8 @@ npu --memory-gb 20 llama-server -m model.gguf
 `--memory-gb` is the most memory the NPU's copies of the weights may take,
 in GB (`0.5` works; `0` keeps the NPU out). Without it, the limit is the
 memory free once the model is loaded, less 4 GB or a tenth of the machine's
-memory, whichever is larger. Layers that don't fit stay on the GPU.
+memory, whichever is larger, and at most 20 GB (see Limitations). Layers
+that don't fit stay on the GPU.
 
 `--min-chunk` is the smallest piece of a prompt, in tokens, the NPU takes.
 The default is 1,024: smaller pieces go to the GPU, which read them faster
@@ -212,12 +213,21 @@ contexts of 32,768 tokens, and two models served at once by its router.
   for Qwen3-4B). llama-server is usually ready before the first request; a
   prompt given on the command line waits for the rest.
   The copies are kept within the memory free once the model is loaded, less
-  4 GB or a tenth of the machine's memory, whichever is larger. When they
-  don't all fit, the first layers that do go to the NPU and the rest stay
-  on the GPU, and the add-on says so:
-  `xdna: NPU weight copies limited to 20.0 GB (...): the first 40 layers on
+  4 GB or a tenth of the machine's memory, whichever is larger, and at most
+  20 GB. When they don't all fit, the first layers that do go to the NPU
+  and the rest stay on the GPU, and the add-on says so:
+  `xdna: NPU weight copies limited to 20.0 GB (...): the first 49 layers on
   the NPU, the rest on the GPU`. `npu --memory-gb` (or
   `GGML_XDNA_MAX_COPY_GB`) sets the limit.
+- **The NPU holds only so much.** On our 88 GB machine, once the NPU's
+  memory passes 26 GB, some of it comes back damaged, with no error. That
+  limit is the NPU's own: what the GPU uses doesn't change it. That's why
+  the default stops at 20 GB. If you
+  raise it with `--memory-gb` and that happens, the add-on notices the
+  broken results, says so in one line, and hands the work to the CPU and
+  GPU: the answer stays right, but the rest of that prompt runs on the CPU.
+  On a big model that takes many minutes (22 instead of 1 for Qwen3.8-27B
+  in our test). Later prompts run on the GPU at its usual speed.
 - **Some layers stay on the GPU:** mixture-of-experts layers, and a few
   variants the NPU side doesn't implement yet (bias adds, some rotary
   settings). Output is still correct; less of the work moves.
@@ -297,7 +307,7 @@ An empty value counts as unset.
 | `GGML_XDNA_MIN_BATCH` | 1024 | the smallest piece of a prompt, in tokens, the NPU takes (`npu --min-chunk` sets it) |
 | `GGML_XDNA_MIN_MFLOP` | 256 | the smallest multiply the NPU takes, in millions of operations |
 | `GGML_XDNA_COPY_AT_LOAD` | 1 | 0 builds the NPU's weight copies during the first prompt instead of while the model loads |
-| `GGML_XDNA_MAX_COPY_GB` | memory free at load, less 4 GB or a tenth of memory | the most memory, in GB, the NPU's weight copies may take; 0 keeps the NPU out (`npu --memory-gb` sets it) |
+| `GGML_XDNA_MAX_COPY_GB` | memory free at load, less 4 GB or a tenth of memory, at most 20 | the most memory, in GB, the NPU's weight copies may take; 0 keeps the NPU out (`npu --memory-gb` sets it) |
 | `GGML_XDNA_BLOCKS` | 1 | 0 takes only the multiplies, not the steps between them |
 | `GGML_XDNA_STREAMS` | 2 | how many parts a piece is split into, so the CPU and NPU overlap |
 | `GGML_XDNA_N_THREADS` | all cores | CPU threads for the add-on's own work |

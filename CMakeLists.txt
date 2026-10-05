@@ -143,6 +143,10 @@ foreach(t dispatch-gate mul-mat)
     set_tests_properties(${t}-host PROPERTIES LABELS host ENVIRONMENT "${XDNA_ENV};GGML_XDNA_HOST_ONLY=1")
     set_tests_properties(${t}-npu PROPERTIES LABELS npu ENVIRONMENT "${XDNA_ENV};GGML_XDNA_HOST_ONLY=")
 endforeach()
+# every NPU result comes back as NaN: the backend has to catch it and still
+# give the right answer
+add_test(NAME mul-mat-npu-nan COMMAND "${GGML_DIST}/test-mul-mat.exe")
+set_tests_properties(mul-mat-npu-nan PROPERTIES LABELS npu ENVIRONMENT "${XDNA_ENV};GGML_XDNA_HOST_ONLY=;GGML_XDNA_NAN_AFTER=0")
 add_test(NAME memory-budget-host COMMAND "${GGML_DIST}/test-memory-budget.exe")
 add_test(NAME memory-budget-npu COMMAND "${GGML_DIST}/test-memory-budget.exe")
 set(XDNA_BUDGET_ENV "${XDNA_ENV};GGML_XDNA_MAX_COPY_GB=0.05")
