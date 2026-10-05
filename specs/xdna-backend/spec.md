@@ -256,12 +256,27 @@ asked with no context alive shall not count. Host-only mode
 
 The limit is the memory available when the first weight is asked about,
 less what's kept back for llama.cpp's work buffers and the rest of the
-machine: the larger of 4 GB and a tenth of the machine's memory.
-`GGML_XDNA_MAX_COPY_GB` (in GiB, fractions allowed) sets it instead.
+machine: the larger of 4 GB and a tenth of the machine's memory, and at most
+20 GiB. `GGML_XDNA_MAX_COPY_GB` (in GiB, fractions allowed) sets it instead,
+with no cap.
 
 Without a limit, a big model's copies pass the machine's memory and Windows
 starts paging, which looks like the add-on being slow, not like a memory
 problem.
+
+Why at most 20 GiB (added 2026-10-04): the NPU holds only so much. On the
+88 GB test machine its memory in use flattens at about 25.9 GiB, and copies
+past that come back damaged, silently: Qwen3.8-27B with all 64 layers on
+the NPU (27 GB of copies) answered `////`, and with copies capped at 12, 16,
+20 or 24 GB it answered right (2026-10-03; `sweep-crash-fixes.md`). A
+standalone repro (`tools/npu-ceiling-repro.cpp`, branch
+`tools/npu-ceiling-repro`, 2026-10-04, 3 runs) puts the ceiling at 26.0 GiB
+of NPU buffers in all: fine at 26.0, broken at 27.9. It's the NPU's own:
+a llama-server holding 14.8 GiB on the GPU didn't lower it. Broken buffers
+read as 100% NaN on the NPU, with no error from the driver, while the CPU
+still sees their bytes intact. The 20 GiB cap leaves room for the add-on's
+other NPU buffers and for other programs using the NPU. Why the ceiling is
+where it is isn't known; XDNA-NPU-RESULT-CHECK catches it when it's passed.
 
 One budget covers the process, since `supports_op` is asked without a
 context. Two contexts alive at once on the same model would each build the
@@ -481,6 +496,64 @@ submission after the n-th fail.
   failures.
 - The rest of that 6-chunk run took 65 s on the CPU, against 8 s on the
   GPU: the known limit.
+
+---
+
+### XDNA-NPU-RESULT-CHECK: Damaged NPU results are caught, not passed on
+**Applies to:** ggml-xdna
+**Test category:** unit
+
+Every value the backend reads back from the NPU shall be checked for NaN and
+infinity as it's decoded. If one is found, that piece (or matmul) shall
+count as an NPU failure under XDNA-NPU-FAILURE: one error line saying the
+NPU's results held NaN or infinity, the piece run again on the CPU before
+anything is written back, and the GPU for everything after.
+
+Why: past the NPU's memory ceiling (XDNA-MEMORY-BUDGET), Windows moves the
+NPU's buffers out and they come back damaged, with no error. A damaged
+weight copy turns every result that uses it into NaN, and everything after
+it in the model. Without the check the reply is garbage (`////`) and
+nothing says why. The check is a bit test on values the decoder already
+reads. Damage that gives finite wrong values isn't caught; none has been
+seen.
+
+**Acceptance criteria** (`tests/test-mul-mat.cpp`, run as `mul-mat-npu-nan`
+on the NPU with `GGML_XDNA_NAN_AFTER=0`, which turns every NPU result to NaN
+once it's back):
+- every case passes against the fp64 reference, as in `mul-mat-npu`
+
+Before the check (2026-10-04) the five cases the NPU takes failed there with
+NaN; with it, all pass.
+
+**Verification (manual, block claiming):**
+- Qwen3-1.7B Q4_0, a prompt over 1,024 tokens, `-n 24 --temp 0`, with
+  `GGML_XDNA_NAN_AFTER=20`: the run completes, logs one `the NPU failed (the
+  NPU's results held NaN or infinity ...)` line, and the reply matches the
+  GPU's.
+- Qwen3.8-27B UD-IQ3_S, the 3,846-token prompt: with `npu --memory-gb 30`
+  (all 64 layers, past the ceiling) the line appears and the reply is
+  sensible, not `////`; with the default limit (20 GiB) no line, and a
+  sensible reply.
+
+**Measured 2026-10-05**, against a build of main without the check
+(2efeefe), one run each unless noted, the NPU otherwise unused:
+- Qwen3-1.7B, `NAN_AFTER=20`: one line; the reply is the GPU's, word for
+  word.
+- Qwen3.8-27B:
+
+  | build, limit | NPU copies | reply | prompt time |
+  |---|---|---|---|
+  | without the check, `--memory-gb 30` | all 64 layers | `////`, no error | 59 s |
+  | with it, `--memory-gb 30` | all 64 layers | the line at 47 s, then the GPU's reply | 1,304 s |
+  | with it, default | 49 layers (20.0 GB) | the GPU's reply, no line | 70 s |
+
+  The 1,304 s is XDNA-NPU-FAILURE's known limit: the rest of that prompt
+  ran on the CPU.
+- Cost of the check: Qwen3-1.7B, `llama-bench -p 2048 -ub 2048 -b 2048
+  -r 3`, 6 rounds alternating the two builds. Time in the host passes,
+  where the check runs: 295.5 ms per trace line with it, 295.1 without.
+  Prompt speed: median 0.98x, single rounds 0.97-1.06x, within the
+  round-to-round spread.
 
 ---
 

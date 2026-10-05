@@ -7,7 +7,10 @@
 // Same measure the open_kernels tests use, so numbers here are comparable to
 // the ones in tools/open-kernels/.
 //
-// Traces: XDNA-MUL-MAT-AGREES
+// Run with GGML_XDNA_NAN_AFTER=0 (ctest's mul-mat-npu-nan), every NPU result
+// comes back as NaN, and the backend has to catch that and compute it again.
+//
+// Traces: XDNA-MUL-MAT-AGREES, XDNA-NPU-RESULT-CHECK
 
 #include "ggml.h"
 #include "ggml-alloc.h"

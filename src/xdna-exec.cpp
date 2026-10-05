@@ -7,6 +7,7 @@
 #include "thread_pool.h"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -274,11 +275,13 @@ struct piece {
     }
 
     // A segment over one stream's rows [t0, t1), tile by tile. NPU rows count
-    // from the stream's first.
-    void run_pass(const segment & seg, const std::vector<group> & groups, int si, int64_t t0, int64_t t1) {
+    // from the stream's first. False if the NPU's results held NaN or
+    // infinity; the piece then stops before anything is written back.
+    bool run_pass(const segment & seg, const std::vector<group> & groups, int si, int64_t t0, int64_t t1) {
         const group * done = seg.done >= 0 ? &groups[seg.done] : nullptr;
         const group * next = seg.next >= 0 ? &groups[seg.next] : nullptr;
         const int64_t tiles = (t1 - t0 + TILE_ROWS - 1) / TILE_ROWS;
+        std::atomic<bool> bad{ false };
         pool.parallel_for(tiles, [&](int64_t i0, int64_t i1) {
             thread_local std::vector<float> scratch;
             if (scratch.size() < scratch_floats) scratch.resize(scratch_floats);
@@ -286,12 +289,14 @@ struct piece {
                 const tile tl = { t0 + i * TILE_ROWS, std::min(t1, t0 + (i + 1) * TILE_ROWS), scratch.data() };
                 if (done && npu)
                     for (size_t k = 0; k < done->outs.size(); k++)
-                        for (int64_t r = tl.r0; r < tl.r1; r++) npu->decode_row(si, (int) k, r - t0, row(done->outs[k], r, tl));
+                        for (int64_t r = tl.r0; r < tl.r1; r++)
+                            if (!npu->decode_row(si, (int) k, r - t0, row(done->outs[k], r, tl))) bad = true;
                 for (const ggml_tensor * n : seg.ops) run_rows(n, tl);
                 if (next && npu)
                     for (int64_t r = tl.r0; r < tl.r1; r++) npu->encode_row(si, r - t0, row(next->x, r, tl));
             }
         });
+        return !bad;
     }
 };
 
@@ -516,9 +521,13 @@ bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu * npu, thread_pool & pool, 
             const segment & seg = segs[s.seg++];
             if (npu && seg.next >= 0 && !npu->begin(si, groups[seg.next].keys, s.t1 - s.t0, err)) return false;
             const auto h0 = std::chrono::steady_clock::now();
-            P.run_pass(seg, groups, si, s.t0, s.t1);
+            const bool finite = P.run_pass(seg, groups, si, s.t0, s.t1);
             xdna_pass_ms += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - h0).count();
             xdna_passes++;
+            if (!finite) {
+                err = xdna_npu::not_finite_error();
+                return false;
+            }
             if (seg.next >= 0 && npu) {
                 if (!npu->submit(si, err)) return false;
                 s.waiting = true;

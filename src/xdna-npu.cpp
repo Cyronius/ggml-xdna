@@ -49,9 +49,23 @@ bool out16_enabled() {
     return v;
 }
 
+// Whether every value is a finite number. A bit test, so /fp:fast can't
+// assume the answer.
+bool all_finite(const float * v, int64_t n) {
+    uint32_t bad = 0;
+    for (int64_t i = 0; i < n; i++) {
+        uint32_t b;
+        memcpy(&b, v + i, sizeof(b));
+        bad |= (uint32_t) ((b & 0x7f800000u) == 0x7f800000u);
+    }
+    return bad == 0;
+}
+
 // One row of an NPU output, in its mode, into `row` (N values, or N/2 in mode
-// 2), of which the first `n_out` are kept.
-void read_row(const float * c, int64_t M, int64_t N, int mode, int64_t r, int64_t n_out, float * row) {
+// 2), of which the first `n_out` are kept. False if any of them is NaN or
+// infinite: a weight copy pushed out of the NPU's memory comes back damaged,
+// silently, and its results come out NaN (Qwen3.8-27B, 2026-10-03).
+bool read_row(const float * c, int64_t M, int64_t N, int mode, int64_t r, int64_t n_out, float * row) {
     const int64_t n_all = mode == 2 ? N / 2 : N;
     float * dst = row;
     thread_local std::vector<float> padded;
@@ -62,7 +76,10 @@ void read_row(const float * c, int64_t M, int64_t N, int mode, int64_t r, int64_
     if (mode) bfp16_c16_row(c, M, N, TILE, mode, r, dst);
     else bfp16_c_row(c, M, N, TILE, r, N, dst);
     if (dst != row) memcpy(row, dst, (size_t) n_out * sizeof(float));
+    return all_finite(row, n_out);
 }
+
+const char * const NOT_FINITE = "the NPU's results held NaN or infinity (a damaged weight copy)";
 
 // GGML_XDNA_FAIL_AFTER=n: every NPU submission after the n-th fails, to test
 // the backend's fallback to the CPU.
@@ -75,6 +92,18 @@ bool injected_failure(std::string & err) {
     if (after < 0 || ++n <= after) return false;
     err = "an injected failure (GGML_XDNA_FAIL_AFTER)";
     return true;
+}
+
+// GGML_XDNA_NAN_AFTER=n: every NPU result after the n-th submission comes back
+// as NaN, as it does when a weight copy is damaged in the NPU's memory, to test
+// that such results are caught.
+bool injected_nan() {
+    static const long long after = [] {
+        const char * s = xdna_env("GGML_XDNA_NAN_AFTER");
+        return s ? atoll(s) : -1LL;
+    }();
+    static std::atomic<long long> n{ 0 };
+    return after >= 0 && ++n > after;
 }
 
 } // namespace
@@ -349,15 +378,22 @@ bool xdna_npu::mul_mat(const wkey & key, const float * x, int64_t T, float * y, 
     if (injected_failure(err) || !batch_->run(err)) return false;
     times_.npu_ms += ms_since(t0);
     times_.calls += n;
+    if (injected_nan())
+        for (int j = 0; j < n; j++) memset((void *) batch_->c(j), 0xff, (size_t) (m_of(j) * N) * sizeof(float));
 
     t0 = clk::now();
+    std::atomic<bool> bad{ false };
     pool_->parallel_for(T, [&](int64_t t0r, int64_t t1r) {
         for (int64_t t = t0r; t < t1r; t++) {
             const int j = (int) (t / BIG);
-            read_row(batch_->c(j), m_of(j), N, w.mode, t % BIG, w.N_out, y + t * w.N_out);
+            if (!read_row(batch_->c(j), m_of(j), N, w.mode, t % BIG, w.N_out, y + t * w.N_out)) bad = true;
         }
     });
     times_.decode_ms += ms_since(t0);
+    if (bad) {
+        err = NOT_FINITE;
+        return false;
+    }
     return true;
 }
 
@@ -453,17 +489,22 @@ bool xdna_npu::wait(int stream, std::string & err) {
     const clk::time_point t0 = clk::now();
     if (!f.batch->wait(err)) return false;
     times_.npu_ms += ms_since(t0);  // what the host actually waited
+    if (injected_nan())
+        for (size_t k = 0; k < f.w.size(); k++)
+            memset((void *) f.batch->c((int) k), 0xff, (size_t) (f.M * f.w[k]->N) * sizeof(float));
     f.w_out = f.w;
     f.M_out = f.M;
     f.readable = true;
     return true;
 }
 
-void xdna_npu::decode_row(int stream, int k, int64_t r, float * row) const {
+bool xdna_npu::decode_row(int stream, int k, int64_t r, float * row) const {
     const flight & f = flights_[stream];
     const weight & w = *f.w_out[k];
-    read_row(f.batch->c(k), f.M_out, w.N, w.mode, r, w.N_out, row);
+    return read_row(f.batch->c(k), f.M_out, w.N, w.mode, r, w.N_out, row);
 }
+
+const char * xdna_npu::not_finite_error() { return NOT_FINITE; }
 
 xdna_npu::times xdna_npu::take_times() {
     times t = times_;

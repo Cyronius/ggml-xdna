@@ -81,13 +81,15 @@ public:
     //   wait        waits for it; its outputs can then be read until the
     //               next submit
     //   decode_row  reads row r of call k's output (out_width values); any
-    //               thread
+    //               thread. False if a value is NaN or infinite: then the
+    //               NPU's results can't be trusted (not_finite_error says so)
     bool reserve(int stream, const std::vector<std::vector<wkey>> & groups, std::string & err);
     bool begin(int stream, const std::vector<wkey> & keys, int64_t rows, std::string & err);
     void encode_row(int stream, int64_t r, const float * row);
     bool submit(int stream, std::string & err);
     bool wait(int stream, std::string & err);
-    void decode_row(int stream, int k, int64_t r, float * row) const;
+    bool decode_row(int stream, int k, int64_t r, float * row) const;
+    static const char * not_finite_error();
 
     thread_pool & pool() { return *pool_; }
 

@@ -439,7 +439,11 @@ static constexpr double GB = 1024.0 * 1024 * 1024;
 // The limit is the memory free when the first weight is asked about (the
 // model and its context are loaded by then), less what's kept back for
 // llama.cpp's work buffers and the rest of the machine: the larger of 4 GB and
-// a tenth of memory. GGML_XDNA_MAX_COPY_GB sets it instead.
+// a tenth of memory. It's also at most 20 GB: the NPU holds only so much (about
+// 25.9 GiB on the 88 GB test machine), and past that Windows moves its buffers
+// out and they come back damaged, silently (Qwen3.8-27B, 2026-10-03; the NPU's
+// results are checked for that too, xdna-npu.cpp). GGML_XDNA_MAX_COPY_GB sets
+// it instead.
 //
 // supports_op is asked with no context, so there's one budget per process:
 // two contexts alive at once on the same model would each build the copies it
@@ -447,7 +451,8 @@ static constexpr double GB = 1024.0 * 1024 * 1024;
 struct xdna_budget {
     std::mutex mu;
     int contexts = 0;  // backends alive
-    bool started = false, cut = false, running = false, overridden = false;
+    static constexpr double DEFAULT_MAX = 20 * GB;
+    bool started = false, cut = false, running = false, overridden = false, capped = false;
     double limit = 0, free = 0, kept_back = 0, taken = 0;
     struct entry { int layer; double bytes; };
     std::unordered_map<xdna_context::wkey, entry, xdna_context::wkey_hash> in, out;  // taken; left to the GPU
@@ -456,12 +461,13 @@ struct xdna_budget {
     std::string source() const {
         char s[96];
         if (overridden) snprintf(s, sizeof(s), "set by GGML_XDNA_MAX_COPY_GB");
+        else if (capped) snprintf(s, sizeof(s), "the most by default; npu --memory-gb raises it");
         else snprintf(s, sizeof(s), "%.1f GB free, less %.1f GB kept back", free / GB, kept_back / GB);
         return s;
     }
 
     void reset() {
-        started = cut = running = overridden = false;
+        started = cut = running = overridden = capped = false;
         limit = free = kept_back = taken = 0;
         in.clear();
         out.clear();
@@ -491,7 +497,8 @@ static bool xdna_budget_takes(const ggml_tensor * w) {
         b.kept_back = std::max(4 * GB, (double) m.ullTotalPhys / 10);
         const char * s = xdna_env("GGML_XDNA_MAX_COPY_GB");
         b.overridden = s != nullptr;
-        b.limit = s ? atof(s) * GB : b.free - b.kept_back;
+        b.capped = !s && b.free - b.kept_back > xdna_budget::DEFAULT_MAX;
+        b.limit = s ? atof(s) * GB : std::min(b.free - b.kept_back, xdna_budget::DEFAULT_MAX);
     }
     const xdna_budget::entry e = { xdna_layer_of(w), xdna_copy_bytes(w->ne[0], w->ne[1]) };
     if (!b.cut && b.taken + e.bytes <= b.limit) {
