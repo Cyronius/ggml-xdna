@@ -1,4 +1,6 @@
 .claude/plans/
 build/
+build-*/
+dist/
 third_party/
 hybrid/logs/
