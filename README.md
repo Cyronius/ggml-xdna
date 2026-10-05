@@ -202,11 +202,20 @@ contexts of 32,768 tokens, and two models served at once by its router.
   stays on the GPU.
 - **Pieces under 1,024 tokens stay on the GPU**, so short prompts don't use
   the NPU. `npu --min-chunk` changes that.
-- **Small models are slower on the NPU.** In our tests, models under about
-  1 billion parameters read prompts at 35–85% of the GPU's speed with the
-  add-on, depending on the model and the chunk size. The add-on doesn't turn
-  them away: if you start it, it runs. For those models, use the GPU alone
-  (`-dev Vulkan0`, or llama.cpp without `npu`).
+- **Narrow models are slower on the NPU.** Every model we tested with a width
+  (embedding size) under 2,048 read prompts at 35–85% of the GPU's speed with
+  the add-on, depending on the model and the chunk size; at 2,048 the two tie.
+  Roughly, that's models under about 1.5 billion parameters. The add-on
+  doesn't turn them away: if you start it, it runs, and it says this once on
+  the first prompt:
+
+  ```
+  xdna: narrow model (width 1536): the GPU alone was faster than the NPU on
+  every model this size we tested. Running it on the NPU as asked
+  ```
+
+  For those models, use the GPU alone (`-dev Vulkan0`, or llama.cpp without
+  `npu`).
 - **Memory:** the NPU keeps its own 8-bit copy of each weight it uses,
   about 1.1 GB per billion parameters, on top of llama.cpp's. It's built
   in the background while the model loads, which takes a few seconds (4.4 s
@@ -228,9 +237,24 @@ contexts of 32,768 tokens, and two models served at once by its router.
   GPU: the answer stays right, but the rest of that prompt runs on the CPU.
   On a big model that takes many minutes (22 instead of 1 for Qwen3.8-27B
   in our test). Later prompts run on the GPU at its usual speed.
-- **Some layers stay on the GPU:** mixture-of-experts layers, and a few
-  variants the NPU side doesn't implement yet (bias adds, some rotary
-  settings). Output is still correct; less of the work moves.
+- **Mixture-of-experts models are a poor fit.** The NPU can't run the expert
+  step, so only the attention and shared weights move to it. Their answers
+  also drifted further from the GPU's than any dense model's in our tests
+  (LFM2.5 8B-A1B and gpt-oss-20b reached a KL of 0.020 and 0.037 against the
+  0.01 we hold dense models to), most likely because rounding each layer's
+  router multiply to 8 bits changes which experts a token uses. The add-on
+  runs them anyway and says this once on the first prompt:
+
+  ```
+  xdna: mixture-of-experts model: the NPU cannot take the expert step, so it
+  gets only part of the work, and in our tests these models' answers drifted
+  further from the GPU's than any dense model's. Running it on the NPU as
+  asked; -dev Vulkan0 would use the GPU alone
+  ```
+
+- **A few other layers stay on the GPU:** variants the NPU side doesn't
+  implement yet (bias adds, some rotary settings). Output is still correct;
+  less of the work moves.
 - If the NPU fails during a run, the add-on finishes that step on the CPU
   and hands everything to the GPU from then on. The rest of that prompt is
   slow.
