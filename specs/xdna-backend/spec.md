@@ -671,6 +671,56 @@ concatenated (`docs`, `tools` and `examples` `*.md`, 265k tokens).
   44; 38 of 44 replies identical; both processes on the NPU throughout.
 - No crash in any run.
 
+**Measured 2026-10-06, speed at 32k:** the 32k runs above took 120-137 s
+with the backend against 94 s for the GPU, but those times included writing
+or reading the 5 GB comparison file. Timed alone (`llama-bench -p 32768 -n 0
+-ub 2048 -b 2048`, both devices in one process, one round each), the backend
+is not slower: Qwen3-1.7B Q4_0 99 s against 102 s (1.03x), Qwen3-4B Q4_K_M
+278 s against 301 s (1.09x). Attention runs on the GPU either way and takes a
+larger share as the prompt grows, so the gain shrinks toward even.
+
+---
+
+### XDNA-MODELS: Every model the README lists has been run, checked and timed
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+Every model in the README's Results and Accuracy tables shall have passed
+three checks with the llama.cpp release the add-on ships with:
+
+1. **It runs.** `npu llama-completion` with a prompt over 1,024 tokens, 32
+   greedy tokens, `GGML_XDNA_TRACE=1`: it finishes, prints no `xdna: the NPU
+   failed` line, and the trace shows NPU pieces.
+2. **Its answers are close to the GPU's.** Mean KL divergence against the GPU
+   alone under about 0.01 for a dense model. Mixture-of-experts models are
+   listed with what they measure, since they run under XDNA-MODEL-WARNINGS
+   rather than being turned away.
+3. **Its speed is measured, not assumed.** The paired run below, reported as
+   measured, including the models that come out slower.
+
+The tables are rerun whenever the pinned llama.cpp release changes, since a
+change to llama.cpp's GPU code moves the ratio as much as a change to ours.
+
+Why: speed against the GPU varies 0.77x to 1.88x across the models tested,
+and Qwen3-1.7B, the model the first numbers were all taken on, turned out to
+be among the weakest. One model's figure can't stand in for the rest.
+
+**Verification (manual):** `tools/bench.ps1 -Model <gguf> [-Kl -Text <file>]`
+does checks 2 and 3. Each round is one `llama-bench` process testing both
+`-dev Vulkan0` and `-dev XDNA0/Vulkan0` (`-p 2048 -n 0 -ub 2048 -b 2048 -r
+3`), so the model loads once and the pair sits next to each other in time;
+the table gives the median of the per-round ratios with the slowest and
+fastest round. `-Kl` runs `llama-perplexity -c 512 -b 2048 -ub 2048` on the
+GPU alone and then with the add-on over the same text, as in
+XDNA-SERVER-USE. On models under about 3B the ratio moves 8-14% between
+rounds however many are run, so use 9 or more rounds there; larger models
+hold to 1-5% in 3.
+
+**Measured 2026-10-05:** eleven models, recorded in the README's Results
+and Accuracy sections. Dense models: KL 0.0034-0.0073, speed 0.77x
+(Qwen2.5-1.5B, width 1,536) to 1.88x (Qwen3.8-27B). Mixture-of-experts: KL
+0.011 and 0.020, speed 0.92x and 0.97x.
+
 ---
 
 ### XDNA-NO-WEIGHT-TRANSFER: No weight is copied between backends
@@ -927,6 +977,59 @@ The router's copying of its environment was checked in its source
 **Passing 2026-10-02 (`--min-chunk`):** all of its checks. Qwen3-1.7B
 Q4_0: with `--min-chunk 32`, 1.5 GB of copies for 196 weights and a reply
 identical to the GPU's; without it, no copies and the same reply.
+
+---
+
+### XDNA-RELEASE: A tag builds the release zip in CI
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+Pushing a tag `v*` shall run `.github/workflows/release.yml` on a GitHub
+Windows machine, which builds and tests as XDNA-BUILD does, then makes
+`ggml-xdna-<tag>-llama-<llama.cpp release>-win-x64.zip`
+(`tools/package.ps1`) and publishes it, with a `.sha256` file holding the
+zip's checksum, as a GitHub release whose notes are
+`.github/release-notes.md`. The zip shall hold, at its top level:
+- the pinned llama.cpp release's Windows Vulkan zip, unpacked and
+  unmodified, from a fresh download;
+- `ggml-xdna.dll`, `npu.exe` from that build, and
+  `bfp16_gemm.xclbin` from `kernels/bfp16_gemm/prebuilt`;
+- `bench.ps1` from `tools/`, so anyone can rerun the README's measurements
+  (XDNA-MODELS);
+- `README.md`, `LICENSE`, `NOTICE`, and `LICENSES\` with llama.cpp's
+  license (from the same tag's source; its zip carries only OpenMP's), the
+  XRT license and notice, and the mlir-aie license;
+- `SHA256SUMS.txt`, every other file's SHA-256 in `sha256sum -c` format.
+
+Nothing else: none of the test programs the build copies next to llama.cpp.
+Started by hand, or by a pull request that changes the packaging, the
+workflow publishes nothing and keeps the zip as the run's artifact.
+
+The zip is unsigned, like llama.cpp's own Windows builds.
+
+**Verification (manual):** a dry run. Start the workflow by hand (or open a
+pull request touching the packaging), download the artifact, unzip it into
+an empty folder, and from there, with no `GGML_*` or `LLAMA_*` variable set:
+- `npu llama-completion -m <Qwen3-4B Q4_K_M> -f <a 2,000+-token prompt>
+  -n 24 --temp 0 -no-cnv`: prints `npu: prompts on the NPU`, and the reply
+  is sensible;
+- `npu llama-server -m <the same>`, one chat request of 2,000+ tokens: a
+  sensible reply, and the server's log shows the NPU took pieces
+  (`GGML_XDNA_TRACE=1` for this one);
+- every line of `SHA256SUMS.txt` checks, and the file list matches the
+  above;
+- `powershell -ExecutionPolicy Bypass -File bench.ps1 -Model <the same>
+  -Rounds 1` from the unzipped folder prints a table row.
+
+**Passing 2026-10-06**, the zip from PR #6's CI run (31.6 MB), unzipped into
+an empty folder, no `GGML_*` or `LLAMA_*` variable set: the zip's checksum
+and all 63 lines of `SHA256SUMS.txt` check; `bench.ps1` is there and no test
+program is. `npu llama-completion` on a 3,236-token prompt printed `npu:
+prompts on the NPU` and continued the text sensibly. `npu llama-server`
+answered a 3,258-token chat request with about 200 matmuls in 30 NPU pieces
+per chunk; the reply was odd (the prompt was a fragment of docs about chat
+formats), and the GPU alone gave the same reply but for two words. `bench.ps1`
+found `npu.exe` next to itself and printed a row.
 
 ---
 

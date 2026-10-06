@@ -25,12 +25,20 @@ including writing the reply.
 
 ## Quick start
 
-There's no release zip yet. [Build from source](#building-from-source):
-`build.cmd` downloads llama.cpp b10944 into `third_party\llama-b10944` and
-puts the add-on (`ggml-xdna.dll`), the NPU kernel (`bfp16_gemm.xclbin`) and
-the launcher (`npu.exe`) next to it.
+Download `ggml-xdna-<version>-llama-b10944-win-x64.zip` from the
+[releases page](https://github.com/Cyronius/ggml-xdna/releases) and unzip it
+into a folder of its own. It's llama.cpp's own Windows Vulkan release
+(b10944), unmodified, with the add-on (`ggml-xdna.dll`), its NPU kernel
+(`bfp16_gemm.xclbin`) and the launcher (`npu.exe`) next to it.
 
-From that folder, put `npu` in front of the llama.cpp command:
+The zip isn't signed, so Windows may warn the first time you run something
+from it ("Windows protected your PC": click "More info", then "Run
+anyway"). To check the download, compare the zip's SHA-256 with the
+`.sha256` file next to it on the releases page; `SHA256SUMS.txt` inside the
+zip lists every file's.
+
+Open a terminal in that folder and put `npu` in front of the llama.cpp
+command:
 
 ```
 npu llama-server
@@ -65,7 +73,8 @@ What `npu` does for you:
   NPU sits out unless you also pass `--min-chunk 512` (below).
 
 Anything you give yourself (`-m`, `-dev`, `-ts`, `-ub`, `-b`) is kept, and the
-rest of your command reaches llama.cpp exactly as typed. `npu server` works
+rest of your command reaches llama.cpp exactly as typed. If you give `-dev`
+yourself, `npu` adds none of the above, so pass `-ts 0,1` too. `npu server` works
 for `npu llama-server` too. Put the folder on your `PATH` to run `npu` from
 anywhere.
 
@@ -183,11 +192,19 @@ What the spread of results says:
 - **Don't read these to two decimal places.** On models below about 3B a
   measurement takes seconds, and the ratio moved 8–14% from round to round
   however many rounds we ran. A second sitting on four of those models
-  disagreed with the first by up to 14%. The figures for the larger models
-  held to within 1–5%.
+  disagreed with the first by up to 14%. The larger models held to within
+  1–5% *within a sitting*, but not from one day to the next: the NPU tends
+  to settle at one of two speeds about 25% apart and stay there for a while.
+  Qwen3-4B read 1.33x in every round on 2026-10-05 and 1.41–1.63x the next
+  day; the table keeps the lower figure. Any single row may be either draw.
 - **The NPU's power mode made no difference.** Switching it back and forth
   within one run (24 rounds) gave the add-on 1.00x its "Default" speed on
   "Performance".
+- **Long prompts gain less, but aren't slower.** A 32,768-token prompt took
+  99 s with the add-on against 102 s on the GPU alone for Qwen3-1.7B, and
+  278 s against 301 s for Qwen3-4B (one run each, 2026-10-06). Attention
+  runs on the GPU either way, and the longer the prompt the bigger its share
+  of the work, so the gain shrinks toward even.
 - **Smaller chunks are slower.** At llama.cpp's default 512-token chunks the
   add-on was slower than the GPU (median 0.80–0.87x over 20+ runs), which is
   why it takes only chunks of 1,024 tokens or more unless told otherwise
@@ -203,17 +220,54 @@ benchmark's own work, so the steadiness of the rounds within a model is the
 better evidence that nothing else interfered. Compare only paired, repeated
 runs like these: on this machine a single run proves little.
 
+**To measure your own models:** `bench.ps1` runs the same paired
+measurement and prints a row of this table for each model you give it. It's
+in `tools\` in the repo and next to `npu.exe` in the release zip.
+
+```
+powershell -ExecutionPolicy Bypass -File bench.ps1 -Model C:\models\Qwen3-4B-Q4_K_M.gguf
+```
+
+`-Rounds 9` for models under about 3B. `-Kl -Text <a long text file>` also
+measures how far the answers drift from the GPU's, as in the Accuracy table.
+
 ## Accuracy
 
 The NPU works in 8-bit blocks, so its results differ from the GPU's by
 rounding. Measured with `llama-perplexity --kl-divergence` against the GPU
-alone, on Qwen3-1.7B, Qwen3-4B and Qwen2.5-1.5B:
+alone. "Same top token" is how often both pick the same most likely next
+token. The reply column compares a 32-token greedy reply to a prompt of about
+3,700 tokens from llama.cpp's documentation.
 
-- mean KL divergence 0.004–0.008;
-- the same most likely next token about 95% of the time.
+| model | mean KL divergence | same top token | reply |
+|---|---|---|---|
+| Qwen3-1.7B, Qwen3-4B, Qwen2.5-1.5B | 0.004–0.008 | about 95% | usually word for word |
+| LFM2.5 1.2B Q8_0 | 0.0034 | 96.7% | word for word |
+| Gemma 4 E4B UD-Q4_K_XL | 0.0043 | 97.8% | the same up to token 18 |
+| LFM2.5 2.6B Q8_0 | 0.0045 | 96.7% | word for word |
+| Granite 4.1 3B Q4_K_S | 0.0073 | 96.1% | word for word |
+| Ornith 35B (mixture of experts) | 0.011 | 95.7% | word for word |
+| LFM2.5 8B-A1B (mixture of experts) | 0.020 | 93.4% | the same up to token 10 |
+| Qwen3.8-27B UD-IQ3_S | not measured | | the GPU's reply |
 
-The GPU agrees with itself across llama.cpp builds about as well. Short
-greedy replies usually come out word for word the same.
+- **Every dense model stays under 0.01**, about as close as the GPU is to
+  itself across llama.cpp builds. In the server tests on Qwen3-1.7B, the
+  replies that differed split at a near-tie between two likely words
+  ("--model-name" against "--model_name").
+- **Mixture-of-experts models drift further.** Most likely the 8-bit rounding
+  of each layer's router step, which picks the experts a token goes to, now
+  and then picks differently. The add-on warns about these models (see
+  Limitations).
+- **Qwen3.8-27B was checked at the default memory limit** (49 of its 65
+  layers on the NPU). Past about 26 GB of weight copies the NPU's memory gets
+  damaged; the add-on catches that rather than answering wrongly (see
+  Limitations).
+- **KL depends on the text it's measured over,** so don't expect your
+  figures to match these to the digit. `bench.ps1 -Kl` over 40,000
+  characters of llama.cpp's own docs gave 0.0047 (96.0% same top token) for
+  Qwen3-1.7B and 0.031 (92.2%) for LFM2.5 8B-A1B, against the table's
+  0.004–0.008 and 0.020. The picture is the same: dense models well under
+  0.01, mixture-of-experts models over it.
 
 The same holds with llama-server's parallel slots, cached conversations,
 contexts of 32,768 tokens, and two models served at once by its router.
@@ -374,8 +428,9 @@ build.cmd
 ```
 
 It downloads llama.cpp b10944 and its matching headers into `third_party\`,
-builds the add-on and its tests, copies the DLL and the kernel next to the
-llama.cpp binaries, and runs the tests. The NPU tests run only where the NPU
+builds the add-on and its tests, copies the DLL, the kernel and `npu.exe`
+next to the llama.cpp binaries in `third_party\llama-b10944`, and runs the
+tests. Run `npu` from there as in [Quick start](#quick-start). The NPU tests run only where the NPU
 driver is installed; the others need a Vulkan GPU. `build.cmd notest` skips
 the tests.
 
