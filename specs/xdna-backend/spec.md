@@ -1021,6 +1021,16 @@ an empty folder, and from there, with no `GGML_*` or `LLAMA_*` variable set:
 - `powershell -ExecutionPolicy Bypass -File bench.ps1 -Model <the same>
   -Rounds 1` from the unzipped folder prints a table row.
 
+**Passing 2026-10-06**, the zip from PR #6's CI run (31.6 MB), unzipped into
+an empty folder, no `GGML_*` or `LLAMA_*` variable set: the zip's checksum
+and all 63 lines of `SHA256SUMS.txt` check; `bench.ps1` is there and no test
+program is. `npu llama-completion` on a 3,236-token prompt printed `npu:
+prompts on the NPU` and continued the text sensibly. `npu llama-server`
+answered a 3,258-token chat request with about 200 matmuls in 30 NPU pieces
+per chunk; the reply was odd (the prompt was a fragment of docs about chat
+formats), and the GPU alone gave the same reply but for two words. `bench.ps1`
+found `npu.exe` next to itself and printed a row.
+
 ---
 
 ### XDNA-DISPATCH-COST: Submission overhead stays under a millisecond — RETIRED 2026-09-30
