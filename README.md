@@ -192,8 +192,11 @@ What the spread of results says:
 - **Don't read these to two decimal places.** On models below about 3B a
   measurement takes seconds, and the ratio moved 8–14% from round to round
   however many rounds we ran. A second sitting on four of those models
-  disagreed with the first by up to 14%. The figures for the larger models
-  held to within 1–5%.
+  disagreed with the first by up to 14%. The larger models held to within
+  1–5% *within a sitting*, but not from one day to the next: the NPU tends
+  to settle at one of two speeds about 25% apart and stay there for a while.
+  Qwen3-4B read 1.33x in every round on 2026-10-05 and 1.41–1.63x the next
+  day; the table keeps the lower figure. Any single row may be either draw.
 - **The NPU's power mode made no difference.** Switching it back and forth
   within one run (24 rounds) gave the add-on 1.00x its "Default" speed on
   "Performance".
