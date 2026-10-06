@@ -53,7 +53,10 @@ if (-not $LlamaDir) {
 $npu = Join-Path $LlamaDir 'npu.exe'
 if (-not (Test-Path $npu)) { throw "no npu.exe in $LlamaDir; pass -LlamaDir" }
 if ($Kl -and -not $Text) { throw "-Kl needs -Text, a plain-text file of at least $($Chunks * 512) tokens" }
-foreach ($m in $Model) { if (-not (Test-Path $m)) { throw "no such model: $m" } }
+# Started with powershell -File, "-Model a.gguf,b.gguf" arrives as one string.
+$Model = $Model | ForEach-Object { if (Test-Path -LiteralPath $_) { $_ } else { $_ -split ',' } } |
+         ForEach-Object { $_.Trim() } | Where-Object { $_ }
+foreach ($m in $Model) { if (-not (Test-Path -LiteralPath $m)) { throw "no such model: $m" } }
 
 # Runs npu.exe with the given arguments and returns its exit code, stdout and
 # stderr. Both streams are read at once, so a full pipe never stalls the run.
