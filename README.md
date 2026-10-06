@@ -227,12 +227,12 @@ contexts of 32,768 tokens, and two models served at once by its router.
   stays on the GPU.
 - **Pieces under 1,024 tokens stay on the GPU**, so short prompts don't use
   the NPU. `npu --min-chunk` changes that.
-- **Narrow models are slower on the NPU.** Every model we tested with a width
-  (embedding size) under 2,048 read prompts at 35–85% of the GPU's speed with
-  the add-on, depending on the model and the chunk size; at 2,048 the two tie.
-  Roughly, that's models under about 1.5 billion parameters. The add-on
-  doesn't turn them away: if you start it, it runs, and it says this once on
-  the first prompt:
+- **Narrow models are slower on the NPU.** Both models we tested with a width
+  (embedding size) under 2,048 read prompts more slowly with the add-on than
+  without it: 0.77x at width 1,536 and 0.89x at width 1,024 (see Results).
+  Width 2,048 and up gain. Roughly, the losing bracket is models under about
+  1.5 billion parameters. The add-on doesn't turn them away: if you start it,
+  it runs, and it says this once on the first prompt:
 
   ```
   xdna: narrow model (width 1536): the GPU alone was faster than the NPU on
