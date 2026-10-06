@@ -73,7 +73,8 @@ What `npu` does for you:
   NPU sits out unless you also pass `--min-chunk 512` (below).
 
 Anything you give yourself (`-m`, `-dev`, `-ts`, `-ub`, `-b`) is kept, and the
-rest of your command reaches llama.cpp exactly as typed. `npu server` works
+rest of your command reaches llama.cpp exactly as typed. If you give `-dev`
+yourself, `npu` adds none of the above, so pass `-ts 0,1` too. `npu server` works
 for `npu llama-server` too. Put the folder on your `PATH` to run `npu` from
 anywhere.
 
@@ -196,6 +197,11 @@ What the spread of results says:
 - **The NPU's power mode made no difference.** Switching it back and forth
   within one run (24 rounds) gave the add-on 1.00x its "Default" speed on
   "Performance".
+- **Long prompts gain less, but aren't slower.** A 32,768-token prompt took
+  99 s with the add-on against 102 s on the GPU alone for Qwen3-1.7B, and
+  278 s against 301 s for Qwen3-4B (one run each, 2026-10-06). Attention
+  runs on the GPU either way, and the longer the prompt the bigger its share
+  of the work, so the gain shrinks toward even.
 - **Smaller chunks are slower.** At llama.cpp's default 512-token chunks the
   add-on was slower than the GPU (median 0.80–0.87x over 20+ runs), which is
   why it takes only chunks of 1,024 tokens or more unless told otherwise
@@ -253,6 +259,12 @@ token. The reply column compares a 32-token greedy reply to a prompt of about
   layers on the NPU). Past about 26 GB of weight copies the NPU's memory gets
   damaged; the add-on catches that rather than answering wrongly (see
   Limitations).
+- **KL depends on the text it's measured over,** so don't expect your
+  figures to match these to the digit. `bench.ps1 -Kl` over 40,000
+  characters of llama.cpp's own docs gave 0.0047 (96.0% same top token) for
+  Qwen3-1.7B and 0.031 (92.2%) for LFM2.5 8B-A1B, against the table's
+  0.004–0.008 and 0.020. The picture is the same: dense models well under
+  0.01, mixture-of-experts models over it.
 
 The same holds with llama-server's parallel slots, cached conversations,
 contexts of 32,768 tokens, and two models served at once by its router.
