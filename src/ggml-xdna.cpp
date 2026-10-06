@@ -542,6 +542,79 @@ static void xdna_budget_report() {
                   std::max(0.0, b.limit) / GB, b.source().c_str());
 }
 
+//
+// what we noticed about the model, said once as its first prompt runs
+//
+
+// If the user asked for the NPU, the NPU runs the model. A model the NPU
+// handles badly gets a warning, never a refusal. Two so far:
+//
+//   mixture of experts   The expert step is a MUL_MAT_ID, which we don't
+//                        take, so only the attention and shared weights are
+//                        left for us. In the sweep these models' answers also
+//                        drifted further from the GPU's than any dense
+//                        model's (LFM2.5 8B-A1B 0.020, gpt-oss-20b 0.037,
+//                        against a 0.01 bar), most likely because rounding
+//                        each layer's router multiply to 8 bits flips which
+//                        experts a token uses.
+//   a narrow model       Below a width of 2,048 the GPU alone was faster in
+//                        every test (0.34-0.84x). 2,048 ties.
+//
+// Both are noticed while llama.cpp plans the graph and said from
+// graph_compute: llama.cpp's memory-fitting trial plans graphs with warnings
+// hidden, but never computes one.
+struct xdna_notes {
+    std::atomic<bool>    moe{ false };
+    std::atomic<int64_t> width{ 0 };
+    std::atomic<bool>    said{ false };
+    void reset() {
+        moe   = false;
+        width = 0;
+        said  = false;
+    }
+};
+static xdna_notes g_notes;
+
+static constexpr int64_t XDNA_NARROW_WIDTH = 2048;
+
+// Whether a name is "blk.<layer>.<tail>", as llama.cpp names a layer's weights.
+static bool xdna_name_in_layer(const char * name, const char * tail) {
+    if (strncmp(name, "blk.", 4) != 0) return false;
+    const char * p = name + 4;
+    while (*p >= '0' && *p <= '9') p++;
+    return *p == '.' && strcmp(p + 1, tail) == 0;
+}
+
+static void xdna_note_model(const ggml_tensor * op) {
+    if (op->op == GGML_OP_MUL_MAT_ID && !g_notes.moe.load(std::memory_order_relaxed))
+        g_notes.moe.store(true, std::memory_order_relaxed);
+    if (g_notes.width.load(std::memory_order_relaxed) != 0) return;
+    // The width is the first dimension of the token embedding, or of a
+    // layer's q weight if we're never shown the embedding.
+    for (int j = 0; j < GGML_MAX_SRC; j++) {
+        const ggml_tensor * s = op->src[j];
+        if (!s) continue;
+        if (strcmp(s->name, "token_embd.weight") == 0 || xdna_name_in_layer(s->name, "attn_q.weight") ||
+            xdna_name_in_layer(s->name, "attn_qkv.weight")) {
+            g_notes.width.store(s->ne[0], std::memory_order_relaxed);
+            return;
+        }
+    }
+}
+
+static void xdna_say_notes() {
+    if (g_notes.said.exchange(true)) return;
+    if (g_notes.moe.load())
+        GGML_LOG_WARN("xdna: mixture-of-experts model: the NPU cannot take the expert step, so it gets only part of "
+                      "the work, and in our tests these models' answers drifted further from the GPU's than any dense "
+                      "model's. Running it on the NPU as asked; -dev Vulkan0 would use the GPU alone\n");
+    const int64_t width = g_notes.width.load();
+    if (width != 0 && width < XDNA_NARROW_WIDTH)
+        GGML_LOG_WARN("xdna: narrow model (width %lld): the GPU alone was faster than the NPU on every model this "
+                      "size we tested. Running it on the NPU as asked\n",
+                      (long long) width);
+}
+
 static const char * ggml_backend_xdna_get_name(ggml_backend_t backend) {
     return GGML_XDNA_DEVICE_NAME;
     GGML_UNUSED(backend);
@@ -551,7 +624,10 @@ static void ggml_backend_xdna_free(ggml_backend_t backend) {
     delete (xdna_context *) backend->context;
     delete backend;
     std::lock_guard<std::mutex> lk(g_budget.mu);
-    if (--g_budget.contexts == 0) g_budget.reset();
+    if (--g_budget.contexts == 0) {
+        g_budget.reset();
+        g_notes.reset();  // the next model gets its own warnings
+    }
 }
 
 static bool xdna_mul_mat(xdna_context & ctx, ggml_tensor * node) {
@@ -622,6 +698,7 @@ static int xdna_streams() {
 static ggml_status ggml_backend_xdna_graph_compute(ggml_backend_t backend, ggml_cgraph * cgraph) {
     xdna_context & ctx = *(xdna_context *) backend->context;
     xdna_budget_report();
+    xdna_say_notes();
 #ifdef XDNA_HAVE_NPU
     ctx.finish_copies();
 #endif
@@ -1004,6 +1081,7 @@ static bool xdna_maybe_host(const ggml_tensor * t) {
 
 static bool ggml_backend_xdna_device_supports_op(ggml_backend_dev_t dev, const ggml_tensor * op) {
     if (xdna_blocks() || xdna_trace()) xdna_note_readers(op);
+    xdna_note_model(op);
     return xdna_supports_op_policy(op);
     GGML_UNUSED(dev);
 }

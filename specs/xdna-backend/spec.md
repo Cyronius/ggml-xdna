@@ -557,6 +557,71 @@ NaN; with it, all pass.
 
 ---
 
+### XDNA-MODEL-WARNINGS: A model the NPU suits badly is warned about, not refused
+**Applies to:** ggml-xdna
+**Test category:** unit
+
+If the user asked for the NPU, the NPU runs the model. Where the backend knows
+the NPU is a poor fit it shall say so once and carry on; it shall not hand the
+model back to the GPU on its own. Two cases:
+
+- **Mixture of experts.** A `MUL_MAT_ID` anywhere in the graph marks one. The
+  backend shall not claim that op, shall still claim the model's ordinary
+  matmuls, and shall warn that the NPU cannot take the expert step, that these
+  models' answers drifted further from the GPU's than any dense model's in our
+  tests, and that `-dev Vulkan0` would use the GPU alone.
+- **A narrow model.** Width under 2,048, read from the first dimension of
+  `token_embd.weight` or of a layer's `attn_q.weight` / `attn_qkv.weight`. The
+  backend shall warn that the GPU alone was faster on every model this size we
+  tested.
+
+Each warning is said at most once per model, from `graph_compute` rather than
+from `supports_op`, because llama.cpp's memory fitting plans graphs with
+warnings hidden but never computes one — the lesson of the retired
+XDNA-CHUNK-WARNING. The record resets when the last context goes, so a second
+model in the same process gets its own warnings.
+
+Why: the owner's rule, 2026-10-04 — "if the user asks to run it on the NPU by
+using our utility, we should respect that; for the known bad models at best we
+should output a warning". It replaces the earlier XDNA-MOE-DECLINE idea, which
+would have refused these models outright. The evidence behind each warning is
+the model sweep: LFM2.5 8B-A1B and gpt-oss-20b reached KL 0.020 and 0.037
+against a 0.01 bar, while every dense model stayed under it, most likely
+because rounding each layer's router multiply to 8 bits flips which experts a
+token uses; and models narrower than 2,048 ran at 0.34-0.84x the GPU, while
+2,048 ties.
+
+**Acceptance criteria** (`tests/test-dispatch-gate.cpp`, both modes):
+- a `MUL_MAT_ID` (experts `[2048, 2048, 8]`, rows `[2048, 1, 2048]`, ids
+  `[1, 2048]`) is not claimed
+- an ordinary q4_0 2048x2048 matmul at batch 2,048 is still claimed after that
+
+These guard the rule rather than the warning: they pass on the build before
+the warnings too, and fail if the backend is ever made to decline a
+mixture-of-experts model.
+
+**Verification (manual):** a prompt over 1,024 tokens through `npu
+llama-completion` (which passes `-ub 2048`), `-n 8 --temp 0`:
+- a mixture-of-experts model: the mixture-of-experts line appears exactly
+  once, the run finishes, and the reply is sensible
+- a model of width under 2,048: the narrow line appears exactly once, with the
+  right width
+- Qwen3-1.7B (width 2,048): neither line, and `GGML_XDNA_TRACE=1` shows NPU
+  pieces, so the silence is the width rule and not an idle backend
+- the same narrow model through `npu llama-server`: no line while it loads,
+  then the line on the first real prompt
+
+**Measured 2026-10-05**, a 3,175-3,246-token prompt from llama.cpp's docs:
+
+| model | width | lines |
+|---|---|---|
+| qwen2.5-1.5b-instruct Q4_0 | 1,536 | narrow x1 |
+| Qwen3-1.7B Q4_0 | 2,048 | none; 196 matmuls in 31 NPU pieces |
+| gpt-oss-20b MXFP4 (mixture of experts) | 2,880 | mixture-of-experts x1; ran to the end |
+| qwen2.5-1.5b through `llama-server` | 1,536 | none at load, narrow x1 on the first prompt |
+
+---
+
 ### XDNA-SERVER-USE: Works with llama.cpp as people run it
 **Applies to:** ggml-xdna
 **Test category:** manual

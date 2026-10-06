@@ -3,7 +3,8 @@
 // decide. So they're checked directly rather than inferred from a model run.
 // Run with GGML_XDNA_MIN_BATCH and GGML_XDNA_MIN_MFLOP unset (the defaults).
 //
-// Traces: XDNA-SHARED-BUFT, XDNA-BATCH-GATE, XDNA-WORK-FLOOR, XDNA-NO-OFFLOAD-OP, XDNA-SIZE-POLICY
+// Traces: XDNA-SHARED-BUFT, XDNA-BATCH-GATE, XDNA-WORK-FLOOR, XDNA-NO-OFFLOAD-OP, XDNA-SIZE-POLICY,
+//         XDNA-MODEL-WARNINGS
 
 #include "ggml.h"
 #include "ggml-backend.h"
@@ -59,7 +60,7 @@ int main() {
     ggml_backend_dev_memory(dev, &free, &total);
     check(free == 0 && total > 0, "reports no free memory, so llama.cpp gives it no layers");
 
-    ggml_init_params ip = { ggml_tensor_overhead() * 64, NULL, true };
+    ggml_init_params ip = { ggml_tensor_overhead() * 96, NULL, true };
     ggml_context * ctx = ggml_init(ip);
     const int64_t k = 2048, n = 2048;
 
@@ -113,6 +114,20 @@ int main() {
         ggml_set_input(in);
         check(!ggml_backend_dev_supports_op(dev, ggml_add(ctx, in, mm1)),
               "an ADD of a claimed matmul and a graph input is not claimed");
+    }
+
+    // A mixture-of-experts model's expert step is a MUL_MAT_ID, which the NPU
+    // can't run. The user asked for the NPU, so seeing one only costs us that
+    // op: the model's ordinary matmuls are still claimed, and the backend
+    // warns instead of handing the whole model back.
+    {
+        ggml_tensor * experts = ggml_new_tensor_3d(ctx, GGML_TYPE_Q4_0, k, n, 8);
+        ggml_tensor * rows    = ggml_new_tensor_3d(ctx, GGML_TYPE_F32, k, 1, 2048);
+        ggml_tensor * ids     = ggml_new_tensor_2d(ctx, GGML_TYPE_I32, 1, 2048);
+        check(!ggml_backend_dev_supports_op(dev, ggml_mul_mat_id(ctx, experts, rows, ids)),
+              "the expert step (MUL_MAT_ID) is not claimed");
+        check(ggml_backend_dev_supports_op(dev, make_mul_mat(ctx, GGML_TYPE_Q4_0, k, n, 2048)),
+              "... and an ordinary matmul is still claimed afterwards (we warn, we don't give up the model)");
     }
 
     // offload_op is deliberately absent: that path copies the weight per op.
