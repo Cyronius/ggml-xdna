@@ -43,6 +43,8 @@ foreach ($f in "ggml-xdna.dll", "npu.exe") {
     Copy-Item $p $stage
 }
 Copy-Item (Join-Path $Root "kernels\bfp16_gemm\prebuilt\bfp16_gemm.xclbin") $stage
+# the README's measurements, for anyone to rerun; it finds npu.exe next to it
+Copy-Item (Join-Path $Root "tools\bench.ps1") $stage
 foreach ($f in "README.md", "LICENSE", "NOTICE") { Copy-Item (Join-Path $Root $f) $stage }
 
 # Each part's license. llama.cpp's zip carries only OpenMP's (it stays where

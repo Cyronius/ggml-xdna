@@ -1,6 +1,6 @@
 # Builds the release zip on GitHub's machines, never on a dev box: the same
 # build and tests as ci.yml, then tools\package.ps1. Pushing a tag v* publishes
-# a GitHub pre-release with the zip. Starting it by hand (Actions, "Run
+# a GitHub release with the zip. Starting it by hand (Actions, "Run
 # workflow"), or a pull request that changes the packaging, is a dry run that
 # keeps the zip as the run's artifact.
 name: Release
@@ -65,8 +65,7 @@ jobs:
             dist/${{ steps.package.outputs.name }}.zip
             dist/${{ steps.package.outputs.name }}.zip.sha256
 
-      # A pre-release until the long server test is done.
-      - name: Publish the pre-release
+      - name: Publish the release
         if: github.ref_type == 'tag'
         shell: pwsh
         env:
@@ -74,4 +73,4 @@ jobs:
         run: |
           $n = "${{ steps.package.outputs.name }}"
           gh release create $env:GITHUB_REF_NAME "dist\$n.zip" "dist\$n.zip.sha256" `
-            --prerelease --title "ggml-xdna $env:GITHUB_REF_NAME" --notes-file .github\release-notes.md
+            --title "ggml-xdna $env:GITHUB_REF_NAME" --notes-file .github\release-notes.md

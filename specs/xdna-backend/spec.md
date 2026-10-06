@@ -671,6 +671,14 @@ concatenated (`docs`, `tools` and `examples` `*.md`, 265k tokens).
   44; 38 of 44 replies identical; both processes on the NPU throughout.
 - No crash in any run.
 
+**Measured 2026-10-06, speed at 32k:** the 32k runs above took 120-137 s
+with the backend against 94 s for the GPU, but those times included writing
+or reading the 5 GB comparison file. Timed alone (`llama-bench -p 32768 -n 0
+-ub 2048 -b 2048`, both devices in one process, one round each), the backend
+is not slower: Qwen3-1.7B Q4_0 99 s against 102 s (1.03x), Qwen3-4B Q4_K_M
+278 s against 301 s (1.09x). Attention runs on the GPU either way and takes a
+larger share as the prompt grows, so the gain shrinks toward even.
+
 ---
 
 ### XDNA-MODELS: Every model the README lists has been run, checked and timed
@@ -980,12 +988,14 @@ Pushing a tag `v*` shall run `.github/workflows/release.yml` on a GitHub
 Windows machine, which builds and tests as XDNA-BUILD does, then makes
 `ggml-xdna-<tag>-llama-<llama.cpp release>-win-x64.zip`
 (`tools/package.ps1`) and publishes it, with a `.sha256` file holding the
-zip's checksum, as a GitHub pre-release whose notes are
+zip's checksum, as a GitHub release whose notes are
 `.github/release-notes.md`. The zip shall hold, at its top level:
 - the pinned llama.cpp release's Windows Vulkan zip, unpacked and
   unmodified, from a fresh download;
 - `ggml-xdna.dll`, `npu.exe` from that build, and
   `bfp16_gemm.xclbin` from `kernels/bfp16_gemm/prebuilt`;
+- `bench.ps1` from `tools/`, so anyone can rerun the README's measurements
+  (XDNA-MODELS);
 - `README.md`, `LICENSE`, `NOTICE`, and `LICENSES\` with llama.cpp's
   license (from the same tag's source; its zip carries only OpenMP's), the
   XRT license and notice, and the mlir-aie license;
@@ -1007,7 +1017,9 @@ an empty folder, and from there, with no `GGML_*` or `LLAMA_*` variable set:
   sensible reply, and the server's log shows the NPU took pieces
   (`GGML_XDNA_TRACE=1` for this one);
 - every line of `SHA256SUMS.txt` checks, and the file list matches the
-  above.
+  above;
+- `powershell -ExecutionPolicy Bypass -File bench.ps1 -Model <the same>
+  -Rounds 1` from the unzipped folder prints a table row.
 
 ---
 
