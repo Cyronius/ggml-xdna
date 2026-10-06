@@ -142,41 +142,66 @@ C:\Windows\System32\AMD\xrt-smi.exe configure --pmode default
 
 ## Results
 
-Prompt reading speed with the add-on, against the GPU alone, both reading
-in 2,048-token chunks (what `npu` uses). Ryzen AI 9 HX 370, measured
-2026-10-02. Each figure is the median of paired runs; the slowest and
-fastest runs are in brackets.
+Prompt reading speed with the add-on, against the GPU alone, both reading in
+2,048-token chunks (what `npu` uses). Ryzen AI 9 HX 370, measured 2026-10-05.
+Each figure is the median of the per-round ratios, with the slowest and
+fastest round in brackets.
 
-| model | prompt tokens | NPU power mode "Default" | "Performance" |
-|---|---|---|---|
-| Qwen3-1.7B Q4_0 | 1,024 | 1.04x (0.96–1.24x) | 1.00x (0.94–1.05x) |
-| Qwen3-1.7B Q4_0 | 2,048 | 1.04x (0.94–1.19x) | 0.99x (0.90–1.27x) |
-| Qwen3-1.7B Q4_0 | 4,096 | 1.03x (0.93–1.16x) | 0.96x (0.94–1.11x) |
-| Qwen3-4B Q4_K_M | 2,048 | 1.32x (1.13–1.50x) | 1.33x (1.22–1.46x) |
+| model | quant | width | GPU alone, tokens/s | with the add-on | rounds |
+|---|---|---|---|---|---|
+| Qwen3.8-27B | UD-IQ3_S | 5,120 | 48 | **1.88x** (1.82–1.90) | 3 |
+| LFM2.5 2.6B | Q8_0 | 2,048 | 899 | **1.46x** (1.36–1.55) | 9 |
+| Qwen3-4B | Q4_K_M | 2,560 | 492 | **1.33x** (1.32–1.35) | 3 |
+| LFM2.5 1.2B | Q8_0 | 2,048 | 1,986 | **1.31x** (1.25–1.34) | 9 |
+| Granite 4.1 3B | Q4_K_S | 2,560 | 648 | **1.30x** (1.29–1.40) | 9 |
+| Gemma 4 E4B | UD-Q4_K_XL | 2,560 | 356 | 1.01x (0.98–1.03) | 3 |
+| Qwen3-1.7B | Q4_0 | 2,048 | 1,599 | 0.97x (0.91–0.99) | 9 |
+| LFM2.5 8B-A1B | UD-Q4_K_S | 2,048 | 1,050 | 0.97x (0.96–1.01) | 3 |
+| Ornith 35B (Qwen3.6 35B-A3B) | APEX-I-Mini | 2,048 | 207 | 0.92x (0.91–0.92) | 3 |
+| LFM2.5-350M | Q8_0 | 1,024 | 6,137 | 0.89x (0.88–0.91) | 3 |
+| Qwen2.5-1.5B | Q4_0 | 1,536 | 1,793 | 0.77x (0.76–0.87) | 3 |
 
-On its own, the GPU read Qwen3-1.7B at 1,500–1,600 tokens a second and
-Qwen3-4B at about 530.
+What the spread of results says:
 
-- **The bigger model gains more.** On Qwen3-1.7B the add-on is about level
-  with the GPU; on Qwen3-4B it's about a third faster.
-- **The power mode made no difference.** The two columns were measured
-  about 80 minutes apart, so they differ by the usual drift. Switching the
-  mode back and forth within one run (24 rounds) gave the add-on 1.00x its
-  "Default" speed on "Performance".
-- **Speeds vary from run to run.** Single runs of the same test differed by
-  as much as 40%. The processor, GPU and NPU share one chip and its power
-  budget, and both the add-on and the GPU speed up and slow down with it.
+- **Most models gain, and the biggest gains are on the biggest model.**
+  Qwen3.8-27B nearly doubles, and it does that with only 49 of its 65 layers
+  on the NPU, because the memory limit holds the rest back.
+- **Mixture-of-experts models lose.** Both of them, in every round. The NPU
+  can't run the expert step, so it only gets the attention and shared
+  weights, and that costs more in hand-overs than it saves. The add-on warns
+  and runs them anyway.
+- **Models narrower than 2,048 lose.** Those two are the slowest results
+  here. The add-on warns about them too.
+- **Gemma 4 only breaks even** because its GeGLU isn't implemented on the NPU
+  side yet, so those blocks split to the GPU.
+- **4-bit models gain least.** The NPU converts every weight to its own 8-bit
+  copy whatever the file holds, so its speed doesn't depend on the quant,
+  while the GPU reads the original weights every prompt and so gets most of
+  the benefit of a small one. This is not about precision: the 3-bit model is
+  the best result here, because llama.cpp's GPU kernel for that quant is
+  slower than its well-tuned 4-bit ones.
+- **Don't read these to two decimal places.** On models below about 3B a
+  measurement takes seconds, and the ratio moved 8–14% from round to round
+  however many rounds we ran. A second sitting on four of those models
+  disagreed with the first by up to 14%. The figures for the larger models
+  held to within 1–5%.
+- **The NPU's power mode made no difference.** Switching it back and forth
+  within one run (24 rounds) gave the add-on 1.00x its "Default" speed on
+  "Performance".
 - **Smaller chunks are slower.** At llama.cpp's default 512-token chunks the
-  add-on was slower than the GPU (median 0.80–0.87x over 20+ runs in each
-  power mode), which is why it takes only chunks of 1,024 tokens or more
-  unless told otherwise (`npu --min-chunk`).
+  add-on was slower than the GPU (median 0.80–0.87x over 20+ runs), which is
+  why it takes only chunks of 1,024 tokens or more unless told otherwise
+  (`npu --min-chunk`).
 
-**How it was measured:** `llama-bench -r 3 -n 0 -ub 2048 -b 2048`, the GPU
-alone (`-dev Vulkan0`) and with the add-on (`-dev XDNA0/Vulkan0`) taking
-turns in each round, 10 rounds in each power mode; each round's ratio
-compares the two runs next to each other. The machine was otherwise idle,
-and its load was logged throughout. Compare only paired, repeated runs like
-these: on this machine a single run proves little.
+**How it was measured:** one `llama-bench` process per round tests both
+devices (`-dev Vulkan0,XDNA0/Vulkan0 -p 2048 -n 0 -ub 2048 -b 2048 -r 3`), so
+the model is loaded once and the two measurements sit next to each other in
+time. Each round's ratio compares that pair, and the table reports the median
+of the rounds. The machine was otherwise idle and its processor and GPU load
+was logged every five seconds throughout; note that such a log counts the
+benchmark's own work, so the steadiness of the rounds within a model is the
+better evidence that nothing else interfered. Compare only paired, repeated
+runs like these: on this machine a single run proves little.
 
 ## Accuracy
 
@@ -202,12 +227,12 @@ contexts of 32,768 tokens, and two models served at once by its router.
   stays on the GPU.
 - **Pieces under 1,024 tokens stay on the GPU**, so short prompts don't use
   the NPU. `npu --min-chunk` changes that.
-- **Narrow models are slower on the NPU.** Every model we tested with a width
-  (embedding size) under 2,048 read prompts at 35–85% of the GPU's speed with
-  the add-on, depending on the model and the chunk size; at 2,048 the two tie.
-  Roughly, that's models under about 1.5 billion parameters. The add-on
-  doesn't turn them away: if you start it, it runs, and it says this once on
-  the first prompt:
+- **Narrow models are slower on the NPU.** Both models we tested with a width
+  (embedding size) under 2,048 read prompts more slowly with the add-on than
+  without it: 0.77x at width 1,536 and 0.89x at width 1,024 (see Results).
+  Width 2,048 and up gain. Roughly, the losing bracket is models under about
+  1.5 billion parameters. The add-on doesn't turn them away: if you start it,
+  it runs, and it says this once on the first prompt:
 
   ```
   xdna: narrow model (width 1536): the GPU alone was faster than the NPU on
