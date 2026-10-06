@@ -211,17 +211,48 @@ benchmark's own work, so the steadiness of the rounds within a model is the
 better evidence that nothing else interfered. Compare only paired, repeated
 runs like these: on this machine a single run proves little.
 
+**To measure your own models:** `bench.ps1` runs the same paired
+measurement and prints a row of this table for each model you give it. It's
+in `tools\` in the repo and next to `npu.exe` in the release zip.
+
+```
+powershell -ExecutionPolicy Bypass -File bench.ps1 -Model C:\models\Qwen3-4B-Q4_K_M.gguf
+```
+
+`-Rounds 9` for models under about 3B. `-Kl -Text <a long text file>` also
+measures how far the answers drift from the GPU's, as in the Accuracy table.
+
 ## Accuracy
 
 The NPU works in 8-bit blocks, so its results differ from the GPU's by
 rounding. Measured with `llama-perplexity --kl-divergence` against the GPU
-alone, on Qwen3-1.7B, Qwen3-4B and Qwen2.5-1.5B:
+alone. "Same top token" is how often both pick the same most likely next
+token. The reply column compares a 32-token greedy reply to a prompt of about
+3,700 tokens from llama.cpp's documentation.
 
-- mean KL divergence 0.004–0.008;
-- the same most likely next token about 95% of the time.
+| model | mean KL divergence | same top token | reply |
+|---|---|---|---|
+| Qwen3-1.7B, Qwen3-4B, Qwen2.5-1.5B | 0.004–0.008 | about 95% | usually word for word |
+| LFM2.5 1.2B Q8_0 | 0.0034 | 96.7% | word for word |
+| Gemma 4 E4B UD-Q4_K_XL | 0.0043 | 97.8% | the same up to token 18 |
+| LFM2.5 2.6B Q8_0 | 0.0045 | 96.7% | word for word |
+| Granite 4.1 3B Q4_K_S | 0.0073 | 96.1% | word for word |
+| Ornith 35B (mixture of experts) | 0.011 | 95.7% | word for word |
+| LFM2.5 8B-A1B (mixture of experts) | 0.020 | 93.4% | the same up to token 10 |
+| Qwen3.8-27B UD-IQ3_S | not measured | | the GPU's reply |
 
-The GPU agrees with itself across llama.cpp builds about as well. Short
-greedy replies usually come out word for word the same.
+- **Every dense model stays under 0.01**, about as close as the GPU is to
+  itself across llama.cpp builds. In the server tests on Qwen3-1.7B, the
+  replies that differed split at a near-tie between two likely words
+  ("--model-name" against "--model_name").
+- **Mixture-of-experts models drift further.** Most likely the 8-bit rounding
+  of each layer's router step, which picks the experts a token goes to, now
+  and then picks differently. The add-on warns about these models (see
+  Limitations).
+- **Qwen3.8-27B was checked at the default memory limit** (49 of its 65
+  layers on the NPU). Past about 26 GB of weight copies the NPU's memory gets
+  damaged; the add-on catches that rather than answering wrongly (see
+  Limitations).
 
 The same holds with llama-server's parallel slots, cached conversations,
 contexts of 32,768 tokens, and two models served at once by its router.

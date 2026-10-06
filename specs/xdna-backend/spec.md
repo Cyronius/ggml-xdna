@@ -673,6 +673,48 @@ concatenated (`docs`, `tools` and `examples` `*.md`, 265k tokens).
 
 ---
 
+### XDNA-MODELS: Every model the README lists has been run, checked and timed
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+Every model in the README's Results and Accuracy tables shall have passed
+three checks with the llama.cpp release the add-on ships with:
+
+1. **It runs.** `npu llama-completion` with a prompt over 1,024 tokens, 32
+   greedy tokens, `GGML_XDNA_TRACE=1`: it finishes, prints no `xdna: the NPU
+   failed` line, and the trace shows NPU pieces.
+2. **Its answers are close to the GPU's.** Mean KL divergence against the GPU
+   alone under about 0.01 for a dense model. Mixture-of-experts models are
+   listed with what they measure, since they run under XDNA-MODEL-WARNINGS
+   rather than being turned away.
+3. **Its speed is measured, not assumed.** The paired run below, reported as
+   measured, including the models that come out slower.
+
+The tables are rerun whenever the pinned llama.cpp release changes, since a
+change to llama.cpp's GPU code moves the ratio as much as a change to ours.
+
+Why: speed against the GPU varies 0.77x to 1.88x across the models tested,
+and Qwen3-1.7B, the model the first numbers were all taken on, turned out to
+be among the weakest. One model's figure can't stand in for the rest.
+
+**Verification (manual):** `tools/bench.ps1 -Model <gguf> [-Kl -Text <file>]`
+does checks 2 and 3. Each round is one `llama-bench` process testing both
+`-dev Vulkan0` and `-dev XDNA0/Vulkan0` (`-p 2048 -n 0 -ub 2048 -b 2048 -r
+3`), so the model loads once and the pair sits next to each other in time;
+the table gives the median of the per-round ratios with the slowest and
+fastest round. `-Kl` runs `llama-perplexity -c 512 -b 2048 -ub 2048` on the
+GPU alone and then with the add-on over the same text, as in
+XDNA-SERVER-USE. On models under about 3B the ratio moves 8-14% between
+rounds however many are run, so use 9 or more rounds there; larger models
+hold to 1-5% in 3.
+
+**Measured 2026-10-05:** eleven models, recorded in the README's Results
+and Accuracy sections. Dense models: KL 0.0034-0.0073, speed 0.77x
+(Qwen2.5-1.5B, width 1,536) to 1.88x (Qwen3.8-27B). Mixture-of-experts: KL
+0.011 and 0.020, speed 0.92x and 0.97x.
+
+---
+
 ### XDNA-NO-WEIGHT-TRANSFER: No weight is copied between backends
 **Applies to:** ggml-xdna
 **Test category:** manual
