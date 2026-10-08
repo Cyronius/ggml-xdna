@@ -175,10 +175,12 @@ What the spread of results says:
 - **Most models gain, and the biggest gains are on the biggest model.**
   Qwen3.8-27B nearly doubles, and it does that with only 49 of its 65 layers
   on the NPU, because the memory limit holds the rest back.
-- **Mixture-of-experts models lose.** Both of them, in every round. The NPU
-  can't run the expert step, so it only gets the attention and shared
-  weights, and that costs more in hand-overs than it saves. The add-on warns
-  and runs them anyway.
+- **Mixture-of-experts models depend on the file.** The NPU can't run the
+  expert step, so it only gets the attention and shared weights. The two in
+  this table lost in every round: there the hand-overs cost more than they
+  saved. Qwen3.6 35B-A3B in Q4_K_M and Q8_0 gained, up to 1.31x on long
+  prompts (see [Against other engines](#against-other-engines)). Measure
+  yours with `bench.ps1`.
 - **Models narrower than 2,048 lose.** Those two are the slowest results
   here. The add-on warns about them too.
 - **Gemma 4 only breaks even** because its GeGLU isn't implemented on the NPU
@@ -230,6 +232,60 @@ powershell -ExecutionPolicy Bypass -File bench.ps1 -Model C:\models\Qwen3-4B-Q4_
 
 `-Rounds 9` for models under about 3B. `-Kl -Text <a long text file>` also
 measures how far the answers drift from the GPU's, as in the Accuracy table.
+
+### Against other engines
+
+One model, Qwen3.6 35B-A3B, run four ways on the same laptop: llama.cpp with
+the add-on, the same llama.cpp on the GPU alone, hipfire (an engine for AMD
+GPUs), and [OpenFlowLM](https://github.com/Atomic-Germ/OpenFlowLM-Next) (an
+engine that runs the whole model on the NPU). Tokens per second, by prompt
+length.
+
+**These are one machine's figures, not a ranking.** They come from a Strix
+Point laptop (Ryzen AI 9 HX 370, Radeon 890M) and will differ on others.
+hipfire doesn't officially support this GPU (gfx1150), so its figures are
+probably lower than it gets on hardware it supports. The quants aren't matched
+either: hipfire uses its own 4-bit and 6-bit formats, and OpenFlowLM's
+higher-quality build keeps the experts at 4 bits and only the other weights
+at 8.
+
+Prompt reading:
+
+| engine | runs on | quant | 1k | 2k | 4k | 8k |
+|---|---|---|---|---|---|---|
+| llama.cpp + add-on | NPU + GPU | Q4_K_M | 223 | 216 | 259 | 235 |
+| llama.cpp | GPU | Q4_K_M | 223 | 202 | 197 | 202 |
+| hipfire | GPU | mq4p | 206 | 206 | 187 | 167 |
+| OpenFlowLM | NPU | q4_1 | 134 | 136 | 139 | 137 |
+| llama.cpp + add-on | NPU + GPU | Q8_0 | 170 | 196 | 199 | 198 |
+| llama.cpp | GPU | Q8_0 | 181 | 168 | 199 | 187 |
+| hipfire | GPU | mq6 (6-bit) | 133 | 129 | 117 | 112 |
+| OpenFlowLM | NPU | 8-bit, 4-bit experts | 112 | 116 | 118 | 114 |
+
+Writing the reply, 32 tokens after a prompt of that length:
+
+| engine | runs on | quant | 1k | 2k | 4k | 8k |
+|---|---|---|---|---|---|---|
+| llama.cpp + add-on | GPU | Q4_K_M | 21.0 | 23.2 | 22.2 | 22.1 |
+| llama.cpp | GPU | Q4_K_M | 22.4 | 22.6 | 22.1 | 21.8 |
+| hipfire | GPU | mq4p | 19.2 | 19.4 | 17.3 | 16.4 |
+| OpenFlowLM | NPU | q4_1 | 12.4 | 12.0 | 10.8 | 8.9 |
+| llama.cpp + add-on | GPU | Q8_0 | 14.5 | 12.5 | 14.6 | 14.1 |
+| llama.cpp | GPU | Q8_0 | 14.4 | 14.2 | 13.8 | 12.4 |
+| hipfire | GPU | mq6 (6-bit) | 17.2 | 17.0 | 16.4 | 15.7 |
+| OpenFlowLM | NPU | 8-bit, 4-bit experts | 7.0 | 8.2 | 7.8 | 6.6 |
+
+- **The two llama.cpp reply rows should match,** since the add-on leaves
+  replies to the GPU. They differ by up to 14%, which is about how far any
+  figure here can move.
+- **The add-on ties the GPU on 1k prompts and leads on longer ones**, by up
+  to 1.31x with the 4-bit file and 1.17x with the 8-bit one. In the Results
+  table the same model in another quant (Ornith 35B, APEX-I-Mini) lost, so
+  for mixture-of-experts models the file decides it.
+- **hipfire's 6-bit writes faster than llama.cpp's 8-bit** because it reads
+  fewer bytes per token, but it isn't the same quality.
+- **OpenFlowLM is the slowest here**, and its reply speed drops as the prompt
+  grows, where the GPU engines hold steady. It leaves the GPU free.
 
 ## Accuracy
 
@@ -316,8 +372,9 @@ contexts of 32,768 tokens, and two models served at once by its router.
   GPU: the answer stays right, but the rest of that prompt runs on the CPU.
   On a big model that takes many minutes (22 instead of 1 for Qwen3.8-27B
   in our test). Later prompts run on the GPU at its usual speed.
-- **Mixture-of-experts models are a poor fit.** The NPU can't run the expert
-  step, so only the attention and shared weights move to it. Their answers
+- **Mixture-of-experts models give the NPU only part of the work.** The NPU
+  can't run the expert step, so only the attention and shared weights move to
+  it; whether that's faster depends on the model file (see Results). Their answers
   also drifted further from the GPU's than any dense model's in our tests
   (LFM2.5 8B-A1B and gpt-oss-20b reached a KL of 0.020 and 0.037 against the
   0.01 we hold dense models to), most likely because rounding each layer's
