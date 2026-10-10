@@ -85,6 +85,23 @@ if(GGML_XDNA_NPU)
     target_compile_options(ggml-xdna PRIVATE /Zc:__cplusplus /arch:AVX2 /fp:fast)
     target_link_libraries(ggml-xdna PRIVATE "${XRT_LIB}" delayimp)
     target_link_options(ggml-xdna PRIVATE /DELAYLOAD:xrt_coreutil.dll)
+
+    # A standalone repro, for AMD, of the NPU's buffers going bad past its
+    # memory ceiling: the NPU layer and the kernel only, no ggml. Not shipped.
+    add_executable(npu-ceiling-repro
+        tools/npu-ceiling-repro.cpp
+        src/npu/npu_bfp16.cpp
+        src/npu/bfp16_pack.cpp
+        src/npu/bfp16_insts.cpp
+        vendor/xrt-shim/xrt_shim.cpp
+    )
+    target_include_directories(npu-ceiling-repro PRIVATE src/npu vendor/xrt-shim vendor/xrt/include)
+    target_compile_options(npu-ceiling-repro PRIVATE /Zc:__cplusplus /arch:AVX2)
+    target_link_libraries(npu-ceiling-repro PRIVATE "${XRT_LIB}" pdh)
+    add_dependencies(npu-ceiling-repro xrt-implib)
+    add_custom_command(TARGET npu-ceiling-repro POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different "${XDNA_XCLBIN}" $<TARGET_FILE_DIR:npu-ceiling-repro>
+    )
 endif()
 
 # The launcher: `npu llama-server ...` with nothing to set (XDNA-LAUNCHER).
