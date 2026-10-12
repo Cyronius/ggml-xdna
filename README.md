@@ -368,10 +368,9 @@ contexts of 32,768 tokens, and two models served at once by its router.
   limit is the NPU's own: what the GPU uses doesn't change it. That's why
   the default stops at 20 GB. If you
   raise it with `--memory-gb` and that happens, the add-on notices the
-  broken results, says so in one line, and hands the work to the CPU and
-  GPU: the answer stays right, but the rest of that prompt runs on the CPU.
-  On a big model that takes many minutes (22 instead of 1 for Qwen3.8-27B
-  in our test). Later prompts run on the GPU at its usual speed.
+  broken results, says so in one line, and hands the work to the GPU: the
+  answer stays right, and the rest of that prompt and every later one run
+  at the GPU's usual speed.
 - **Mixture-of-experts models give the NPU only part of the work.** The NPU
   can't run the expert step, so only the attention and shared weights move to
   it; whether that's faster depends on the model file (see Results). Their answers
@@ -391,9 +390,8 @@ contexts of 32,768 tokens, and two models served at once by its router.
 - **A few other layers stay on the GPU:** variants the NPU side doesn't
   implement yet (bias adds, some rotary settings). Output is still correct;
   less of the work moves.
-- If the NPU fails during a run, the add-on finishes that step on the CPU
-  and hands everything to the GPU from then on. The rest of that prompt is
-  slow.
+- If the NPU fails during a run, the add-on says so in one line, finishes
+  that step on the GPU, and hands everything to the GPU from then on.
 
 ## How it works
 
