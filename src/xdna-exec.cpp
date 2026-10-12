@@ -47,12 +47,52 @@ bool is_noop(const ggml_tensor * n) {
 
 bool f32_contig(const ggml_tensor * t) { return t && t->type == GGML_TYPE_F32 && ggml_is_contiguous(t); }
 
+// a single row as wide as a's rows (a norm's scale, a bias), broadcast over every row of a
+bool is_row_of(const ggml_tensor * r, const ggml_tensor * a) {
+    return f32_contig(r) && r->ne[0] == a->ne[0] && r->ne[1] == 1 && r->ne[2] == 1 && r->ne[3] == 1;
+}
+
+// The activations ggml-cpu uses, in float: its GELUs read a 16-bit table, the GPU computes them as here.
 inline float silu(float x) { return x / (1.0f + std::exp(-x)); }
+inline float gelu(float x) { return 0.5f * x * (1.0f + std::tanh(0.7978845608f * x * (1.0f + 0.044715f * x * x))); }
+inline float gelu_erf(float x) { return 0.5f * x * (1.0f + std::erf(x * 0.7071067812f)); }
+inline float gelu_quick(float x) { return x / (1.0f + std::exp(-1.702f * x)); }
+
+bool glu_kind(int g) {
+    return g == GGML_GLU_OP_SWIGLU || g == GGML_GLU_OP_GEGLU || g == GGML_GLU_OP_GEGLU_ERF ||
+           g == GGML_GLU_OP_GEGLU_QUICK || g == GGML_GLU_OP_REGLU;
+}
+
+// ggml's YaRN rotary for one pair of dimensions (rope_yarn in ggml-cpu); the pair's index is i0 / 2.
+void rope_yarn(float theta_extrap, float freq_scale, const float corr[2], int64_t pair, float ext_factor, float mscale,
+               float * c, float * s) {
+    float theta = freq_scale * theta_extrap;
+    if (ext_factor != 0.0f) {
+        const float y = ((float) pair - corr[0]) / std::max(0.001f, corr[1] - corr[0]);
+        const float ramp_mix = (1 - std::min(1.0f, std::max(0.0f, y))) * ext_factor;
+        theta = theta * (1 - ramp_mix) + theta_extrap * ramp_mix;
+        mscale *= 1.0f + 0.1f * std::log(1.0f / freq_scale);
+    }
+    *c = std::cos(theta) * mscale;
+    *s = std::sin(theta) * mscale;
+}
 
 } // namespace
 
 double xdna_pass_ms = 0;
 int64_t xdna_passes = 0;
+
+const ggml_tensor * xdna_exec_param(const ggml_tensor * op) {
+    switch (op->op) {
+        case GGML_OP_MUL: return op->src[1];
+        case GGML_OP_ADD: return op->src[1] && op->src[0] && is_row_of(op->src[1], op->src[0]) &&
+                                         !ggml_are_same_shape(op->src[0], op->src[1])
+                                     ? op->src[1]
+                                     : nullptr;
+        case GGML_OP_ROPE: return op->src[2];
+        default: return nullptr;
+    }
+}
 
 bool xdna_exec_supports(const ggml_tensor * op) {
     const ggml_tensor * a = op->src[0], * b = op->src[1];
@@ -65,18 +105,25 @@ bool xdna_exec_supports(const ggml_tensor * op) {
             return f32_contig(a) && f32_contig(op);
         case GGML_OP_MUL:
             // a row of scales (a norm's weight), broadcast over every row
-            return f32_contig(a) && f32_contig(op) && f32_contig(b) && b->ne[1] == 1 && b->ne[2] == 1 && b->ne[3] == 1 &&
-                   b->ne[0] == a->ne[0] && ggml_are_same_shape(a, op);
+            return f32_contig(a) && f32_contig(op) && is_row_of(b, a) && ggml_are_same_shape(a, op);
         case GGML_OP_ADD:
-            return f32_contig(a) && f32_contig(b) && f32_contig(op) && ggml_are_same_shape(a, b);
+            // two of the same shape, or a bias row added to every row
+            return f32_contig(a) && f32_contig(b) && f32_contig(op) && ggml_are_same_shape(a, op) &&
+                   (ggml_are_same_shape(a, b) || is_row_of(b, a));
+        case GGML_OP_SCALE:
+            return f32_contig(a) && f32_contig(op) && ggml_are_same_shape(a, op);
         case GGML_OP_GLU:
-            return param_i32(op, 0) == GGML_GLU_OP_SWIGLU && param_i32(op, 1) == 0 && f32_contig(a) && f32_contig(b) &&
-                   f32_contig(op) && ggml_are_same_shape(a, b);
+            if (!glu_kind(param_i32(op, 0)) || !f32_contig(a) || !f32_contig(op)) return false;
+            if (b) return param_i32(op, 1) == 0 && f32_contig(b) && ggml_are_same_shape(a, b) && ggml_are_same_shape(a, op);
+            // one tensor: gate and up are its two halves
+            return a->ne[0] == 2 * op->ne[0] && ggml_nrows(a) == ggml_nrows(op);
         case GGML_OP_ROPE: {
-            if (!f32_contig(a) || !f32_contig(op) || !b || b->type != GGML_TYPE_I32 || op->src[2]) return false;
+            if (!f32_contig(a) || !f32_contig(op) || !b || b->type != GGML_TYPE_I32) return false;
             const int n_dims = param_i32(op, 1), mode = param_i32(op, 2), n_offs = param_i32(op, 15);
-            return (mode == GGML_ROPE_TYPE_NEOX || mode == GGML_ROPE_TYPE_NORMAL) && n_dims == a->ne[0] && n_offs == 0 &&
-                   param_f32(op, 7) == 0.0f && a->ne[3] == 1 && b->ne[0] == a->ne[2];
+            const ggml_tensor * ff = op->src[2];  // per-frequency factors
+            if (ff && (!f32_contig(ff) || ff->ne[0] < n_dims / 2)) return false;
+            return (mode == GGML_ROPE_TYPE_NEOX || mode == GGML_ROPE_TYPE_NORMAL) && n_dims > 0 && n_dims % 2 == 0 &&
+                   n_dims <= a->ne[0] && n_offs == 0 && a->ne[3] == 1 && b->ne[0] == a->ne[2];
         }
         default:
             return false;
@@ -150,48 +197,55 @@ struct piece {
     }
 
     // A rope's cos/sin for every token, [T][n_dims] as ggml_rope_cache_init
-    // lays them out (no YaRN ramp: ext_factor 0). Every layer's q and k use
-    // the same positions and parameters, so it's built once and kept until
-    // either changes.
+    // lays them out, with YaRN's ramp and per-frequency factors when the
+    // model has them. Every layer's q and k use the same positions and
+    // parameters, so it's built once and kept until either changes.
     const float * rope_table(const ggml_tensor * n) {
         static std::vector<float> table;
         static std::vector<int32_t> key_pos;
-        static float key_par[4] = {};
+        static float key_par[8] = {};
+        static const float * key_ff = nullptr;
         const ggml_tensor * b = n->src[1];
         const int32_t * pos = (const int32_t *) data(b);
         const int64_t T_ = b->ne[0];
-        const int n_dims = param_i32(n, 1);
-        const float par[4] = { param_f32(n, 5), param_f32(n, 6), param_f32(n, 8), (float) n_dims };
+        const int n_dims = param_i32(n, 1), n_ctx_orig = param_i32(n, 4);
+        const float * ff = n->src[2] ? io.param(n->src[2]) : nullptr;
+        // freq_base, freq_scale, ext_factor, attn_factor, beta_fast, beta_slow
+        const float par[8] = { param_f32(n, 5), param_f32(n, 6), param_f32(n, 7), param_f32(n, 8),
+                               param_f32(n, 9), param_f32(n, 10), (float) n_dims, (float) n_ctx_orig };
         if ((int64_t) key_pos.size() == T_ && memcmp(key_pos.data(), pos, (size_t) T_ * sizeof(int32_t)) == 0 &&
-            memcmp(key_par, par, sizeof(par)) == 0)
+            memcmp(key_par, par, sizeof(par)) == 0 && key_ff == ff)
             return table.data();
-        const float freq_scale = par[1], attn_factor = par[2];
-        const float theta_scale = std::pow(par[0], -2.0f / (float) n_dims);
+        const float freq_base = par[0], freq_scale = par[1], ext_factor = par[2], attn_factor = par[3];
+        float corr[2];
+        ggml_rope_yarn_corr_dims(n_dims, n_ctx_orig, freq_base, par[4], par[5], corr);
+        const float theta_scale = std::pow(freq_base, -2.0f / (float) n_dims);
         table.resize((size_t) (T_ * n_dims));
         pool.parallel_for(T_, [&](int64_t t0, int64_t t1) {
             for (int64_t t = t0; t < t1; t++) {
                 float theta = (float) pos[t];
                 float * cs = table.data() + t * n_dims;
                 for (int p = 0; p < n_dims / 2; p++) {
-                    cs[2 * p] = std::cos(freq_scale * theta) * attn_factor;
-                    cs[2 * p + 1] = std::sin(freq_scale * theta) * attn_factor;
+                    rope_yarn(ff ? theta / ff[p] : theta, freq_scale, corr, p, ext_factor, attn_factor, &cs[2 * p],
+                              &cs[2 * p + 1]);
                     theta *= theta_scale;
                 }
             }
         });
         key_pos.assign(pos, pos + T_);
         memcpy(key_par, par, sizeof(par));
+        key_ff = ff;
         return table.data();
     }
 
     // What a small op needs besides its inputs, fetched before any worker
-    // runs it (the fetches aren't thread-safe): a MUL's scale row, a rope's
-    // cos/sin table.
+    // runs it (the fetches aren't thread-safe): a MUL's scale row, a bias
+    // row, a rope's cos/sin table.
     std::unordered_map<const ggml_tensor *, const float *> prep;
     void prepare(const ggml_tensor * n) {
         if (prep.count(n)) return;
-        if (n->op == GGML_OP_MUL) prep[n] = io.param(n->src[1]);
-        else if (n->op == GGML_OP_ROPE) prep[n] = rope_table(n);
+        if (n->op == GGML_OP_ROPE) prep[n] = rope_table(n);
+        else if (const ggml_tensor * p = xdna_exec_param(n)) prep[n] = io.param(p);
         else prep[n] = nullptr;
     }
 
@@ -222,13 +276,46 @@ struct piece {
                 break;
             }
             case GGML_OP_ADD: {
-                const float * x = row(a, r0, tl), * y = row(b, r0, tl);
+                const float * x = row(a, r0, tl);
+                if (const float * w = prep.at(n)) {  // a bias row
+                    const int64_t d = a->ne[0];
+                    for (int64_t off = 0; off < count; off += d)
+                        for (int64_t j = 0; j < d; j++) out[off + j] = x[off + j] + w[j];
+                    break;
+                }
+                const float * y = row(b, r0, tl);
                 for (int64_t off = 0; off < count; off++) out[off] = x[off] + y[off];
                 break;
             }
+            case GGML_OP_SCALE: {
+                const float s = param_f32(n, 0), bias = param_f32(n, 1);
+                const float * x = row(a, r0, tl);
+                for (int64_t off = 0; off < count; off++) out[off] = x[off] * s + bias;
+                break;
+            }
             case GGML_OP_GLU: {
-                const float * x = row(a, r0, tl), * y = row(b, r0, tl);
-                for (int64_t off = 0; off < count; off++) out[off] = silu(x[off]) * y[off];
+                const int kind = param_i32(n, 0);
+                const int64_t f = n->ne[0];
+                const bool swapped = param_i32(n, 1) != 0;
+                for (int64_t t = r0; t < r1; t++) {
+                    const float * g, * u;
+                    if (b) {
+                        g = row(a, t, tl);
+                        u = row(b, t, tl);
+                    } else {
+                        const float * x = row(a, t, tl);
+                        g = x + (swapped ? f : 0);
+                        u = x + (swapped ? 0 : f);
+                    }
+                    float * o = out + (t - r0) * f;
+                    switch (kind) {
+                        case GGML_GLU_OP_SWIGLU: for (int64_t j = 0; j < f; j++) o[j] = silu(g[j]) * u[j]; break;
+                        case GGML_GLU_OP_GEGLU: for (int64_t j = 0; j < f; j++) o[j] = gelu(g[j]) * u[j]; break;
+                        case GGML_GLU_OP_GEGLU_ERF: for (int64_t j = 0; j < f; j++) o[j] = gelu_erf(g[j]) * u[j]; break;
+                        case GGML_GLU_OP_GEGLU_QUICK: for (int64_t j = 0; j < f; j++) o[j] = gelu_quick(g[j]) * u[j]; break;
+                        default: for (int64_t j = 0; j < f; j++) o[j] = g[j] > 0.0f ? g[j] * u[j] : 0.0f; break;  // REGLU
+                    }
+                }
                 break;
             }
             case GGML_OP_ROPE: {
@@ -248,6 +335,7 @@ struct piece {
                             dst[ic] = x0 * c - x1 * sn;
                             dst[ic + off_n] = x0 * sn + x1 * c;
                         }
+                        for (int64_t i = n_dims; i < d; i++) dst[i] = src[i];  // past the rotated part, unchanged
                     }
                 }
                 break;
@@ -310,7 +398,9 @@ std::vector<ggml_tensor *> piece_nodes(const ggml_cgraph * g) {
 
 // SiLU(gate) * up on the NPU: a SwiGLU whose gate and up are matmuls in
 // this piece on the same input, read by nothing else, runs as one fused
-// matmul (output mode 2) that writes the SwiGLU's result directly.
+// matmul (output mode 2) that writes the SwiGLU's result directly. So does
+// a SwiGLU on one matmul whose weight holds the gate and then the up (Phi):
+// its up is null here.
 struct fusion { ggml_tensor * up, * glu; };
 using fusions = std::unordered_map<const ggml_tensor *, fusion>;  // by the gate matmul
 
@@ -318,18 +408,22 @@ fusions find_fusions(const std::vector<ggml_tensor *> & nodes, const ggml_cgraph
     fusions fused;
     const std::unordered_set<const ggml_tensor *> in_piece(nodes.begin(), nodes.end());
     for (ggml_tensor * n : nodes) {
-        if (n->op != GGML_OP_GLU) continue;
+        if (n->op != GGML_OP_GLU || param_i32(n, 0) != GGML_GLU_OP_SWIGLU || param_i32(n, 1) != 0) continue;
         ggml_tensor * gm = n->src[0], * um = n->src[1];
-        if (gm->op != GGML_OP_MUL_MAT || um->op != GGML_OP_MUL_MAT || !in_piece.count(gm) || !in_piece.count(um)) continue;
-        if (owner(gm->src[1]) != owner(um->src[1]) || gm->src[0]->type != um->src[0]->type ||
-            !ggml_are_same_shape(gm->src[0], um->src[0]))
+        if (gm->op != GGML_OP_MUL_MAT || !in_piece.count(gm) || io.needed_outside(gm, g)) continue;
+        if (um) {
+            if (um->op != GGML_OP_MUL_MAT || !in_piece.count(um) || io.needed_outside(um, g)) continue;
+            if (owner(gm->src[1]) != owner(um->src[1]) || gm->src[0]->type != um->src[0]->type ||
+                !ggml_are_same_shape(gm->src[0], um->src[0]))
+                continue;
+            if (!xdna_npu::has_fused_shape(gm->src[0]->ne[0], gm->src[0]->ne[1])) continue;
+        } else if (gm->src[0]->ne[1] % 2 != 0 || !xdna_npu::has_fused_shape(gm->src[0]->ne[0], gm->src[0]->ne[1] / 2)) {
             continue;
-        if (!xdna_npu::has_fused_shape(gm->src[0]->ne[0], gm->src[0]->ne[1])) continue;
-        if (io.needed_outside(gm, g) || io.needed_outside(um, g)) continue;
+        }
         bool other = false;  // another reader in the piece
         for (ggml_tensor * m : nodes)
             for (int j = 0; j < GGML_MAX_SRC && m != n; j++)
-                if (m->src[j] && (owner(m->src[j]) == gm || owner(m->src[j]) == um)) other = true;
+                if (m->src[j] && (owner(m->src[j]) == gm || (um && owner(m->src[j]) == um))) other = true;
         if (other) continue;
         fused[gm] = { um, n };
     }
@@ -343,11 +437,13 @@ void xdna_exec_weights(const ggml_cgraph * g, const xdna_io & io,
     const std::vector<ggml_tensor *> nodes = piece_nodes(g);
     const fusions fused = find_fusions(nodes, g, io);
     std::unordered_set<const ggml_tensor *> fused_up;
-    for (const auto & f : fused) fused_up.insert(f.second.up);
+    for (const auto & f : fused)
+        if (f.second.up) fused_up.insert(f.second.up);
     for (const ggml_tensor * n : nodes) {
         if (n->op != GGML_OP_MUL_MAT || fused_up.count(n)) continue;
         auto f = fused.find(n);
-        out.emplace_back(n->src[0], f != fused.end() ? f->second.up->src[0] : nullptr);
+        if (f == fused.end()) out.emplace_back(n->src[0], nullptr);
+        else out.emplace_back(n->src[0], f->second.up ? f->second.up->src[0] : n->src[0]);
     }
 }
 
@@ -373,17 +469,19 @@ bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu * npu, thread_pool & pool, 
     fusions fused;
     if (npu) fused = find_fusions(P.nodes, g, io);
     std::unordered_set<const ggml_tensor *> fused_up;
-    for (const auto & f : fused) fused_up.insert(f.second.up);
+    for (const auto & f : fused)
+        if (f.second.up) fused_up.insert(f.second.up);
     std::unordered_map<const ggml_tensor *, size_t> index;
     for (size_t i = 0; i < P.nodes.size(); i++) index[P.nodes[i]] = i;
 
     // inputs from outside: read once. A matmul's weight is the NPU's own copy
-    // and a MUL's scale row is a kept parameter, so neither is read here.
+    // and a scale or bias row or rotary factors are kept parameters, so none is read here.
     for (ggml_tensor * n : P.nodes) {
         if (n->op == GGML_OP_MUL_MAT && npu) {
             auto f = fused.find(n);
             if (f != fused.end()) {
-                if (!io.ensure_fused(n->src[0], f->second.up->src[0], err)) return false;
+                const ggml_tensor * up = f->second.up ? f->second.up->src[0] : n->src[0];
+                if (!io.ensure_fused(n->src[0], up, err)) return false;
             } else if (!fused_up.count(n) && !io.ensure_weight(n->src[0], err)) {
                 return false;
             }
@@ -392,7 +490,7 @@ bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu * npu, thread_pool & pool, 
             const ggml_tensor * s = n->src[j];
             if (!s || P.produced.count(owner(s)) || P.mem.count(s)) continue;
             if (n->op == GGML_OP_MUL_MAT && j == 0) continue;
-            if (n->op == GGML_OP_MUL && j == 1) continue;
+            if (s == xdna_exec_param(n)) continue;
             if (n->op == GGML_OP_RESHAPE) continue;
             void * p = io.alloc(ggml_nbytes(s));
             if (!p) { err = "out of host memory"; return false; }
@@ -428,10 +526,11 @@ bool xdna_exec_piece(const ggml_cgraph * g, xdna_npu * npu, thread_pool & pool, 
                 auto f = fused.find(m);
                 if (f != fused.end()) {
                     // gate, up and their SwiGLU in one call
-                    G.keys.push_back(xdna_npu::fused_key(mm_key(m->src[0])));
+                    const ggml_tensor * up = f->second.up ? f->second.up->src[0] : m->src[0];
+                    G.keys.push_back(xdna_npu::fused_key(xdna_npu::gate_key(m->src[0], up)));
                     G.outs.push_back(f->second.glu);
                     G.mms.push_back(m);
-                    done[index.at(f->second.up)] = 1;
+                    if (f->second.up) done[index.at(f->second.up)] = 1;
                     done[index.at(f->second.glu)] = 1;
                 } else {
                     G.keys.push_back(mm_key(m->src[0]));

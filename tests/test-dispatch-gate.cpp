@@ -60,7 +60,7 @@ int main() {
     ggml_backend_dev_memory(dev, &free, &total);
     check(free == 0 && total > 0, "reports no free memory, so llama.cpp gives it no layers");
 
-    ggml_init_params ip = { ggml_tensor_overhead() * 96, NULL, true };
+    ggml_init_params ip = { ggml_tensor_overhead() * 160, NULL, true };
     ggml_context * ctx = ggml_init(ip);
     const int64_t k = 2048, n = 2048;
 
@@ -114,6 +114,21 @@ int main() {
         ggml_set_input(in);
         check(!ggml_backend_dev_supports_op(dev, ggml_add(ctx, in, mm1)),
               "an ADD of a claimed matmul and a graph input is not claimed");
+
+        // the steps Gemma, Granite, Phi and Qwen2.5 use (XDNA-SIZE-POLICY)
+        ggml_tensor * bias = ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n);
+        check(ggml_backend_dev_supports_op(dev, ggml_add(ctx, mm1, bias)) == npu,
+              npu ? "an ADD of a bias row to a claimed matmul is claimed" : "... not claimed off the NPU");
+        ggml_tensor * made = ggml_scale(ctx, ggml_new_tensor_1d(ctx, GGML_TYPE_F32, n), 2.0f);
+        check(!ggml_backend_dev_supports_op(dev, ggml_add(ctx, mm1, made)),
+              "an ADD of a computed row (not a kept leaf) is not claimed");
+        check(ggml_backend_dev_supports_op(dev, ggml_scale(ctx, mm1, 0.25f)) == npu,
+              npu ? "a SCALE of a claimed matmul is claimed" : "... not claimed off the NPU");
+        check(ggml_backend_dev_supports_op(dev, ggml_geglu_split(ctx, mm1, mm2)) == npu,
+              npu ? "a GeGLU of two claimed matmuls is claimed" : "... not claimed off the NPU");
+        ggml_tensor * fused = ggml_mul_mat(ctx, ggml_new_tensor_2d(ctx, GGML_TYPE_Q4_0, k, 2 * n), x);
+        check(ggml_backend_dev_supports_op(dev, ggml_swiglu(ctx, fused)) == npu,
+              npu ? "a SwiGLU on one claimed matmul holding gate and up is claimed" : "... not claimed off the NPU");
     }
 
     // A mixture-of-experts model's expert step is a MUL_MAT_ID, which the NPU

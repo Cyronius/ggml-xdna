@@ -171,7 +171,7 @@ add_custom_command(TARGET npu POST_BUILD
 
 enable_testing()
 
-foreach(t test-mul-mat test-dispatch-gate test-memory-budget test-safe-start)
+foreach(t test-mul-mat test-dispatch-gate test-memory-budget test-safe-start test-host-ops)
     add_executable(${t} tests/${t}.cpp)
     target_include_directories(${t} PRIVATE "${GGML_HEADERS}/include")
     target_compile_definitions(${t} PRIVATE GGML_SHARED GGML_BACKEND_SHARED)
@@ -217,6 +217,9 @@ add_test(NAME memory-budget-npu COMMAND "${GGML_DIST}/test-memory-budget${EXE}")
 set(XDNA_BUDGET_ENV "${XDNA_ENV};GGML_XDNA_MAX_COPY_GB=0.05")
 set_tests_properties(memory-budget-host PROPERTIES LABELS host ENVIRONMENT "${XDNA_BUDGET_ENV};GGML_XDNA_HOST_ONLY=1")
 set_tests_properties(memory-budget-npu PROPERTIES LABELS npu ENVIRONMENT "${XDNA_BUDGET_ENV};GGML_XDNA_HOST_ONLY=")
+# the host's small steps between NPU matmuls, against ggml's CPU backend
+add_test(NAME host-ops-host COMMAND "${GGML_DIST}/test-host-ops.exe")
+set_tests_properties(host-ops-host PROPERTIES LABELS host ENVIRONMENT "${XDNA_ENV};GGML_XDNA_HOST_ONLY=1")
 set_tests_properties(insts-gen bfp16-pack PROPERTIES LABELS host)
 set_tests_properties(safe-start PROPERTIES LABELS host ENVIRONMENT "${XDNA_ENV}")
 set_tests_properties(safe-start-no-driver PROPERTIES LABELS nodriver ENVIRONMENT "${XDNA_ENV}")
