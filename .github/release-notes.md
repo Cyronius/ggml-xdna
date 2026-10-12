@@ -1,10 +1,13 @@
 An add-on for llama.cpp that reads prompts on the NPU of an AMD Ryzen AI
-laptop, next to the integrated GPU. This zip is llama.cpp's own Windows
+laptop, next to the integrated GPU. The zip is llama.cpp's own Windows
 Vulkan release (b10944), unmodified, with the add-on and its launcher next
-to it.
+to it; the `.tar.gz` is the same for Linux.
 
 **Before you try it:**
-- **Windows 11 only.**
+- **Windows 11, or Linux.** Linux is new: it builds and passes every test
+  that needs no NPU, but we haven't run it on an NPU ourselves yet. The
+  README's Linux section lists what it needs (the `amdxdna` driver, XRT, and
+  enough locked memory).
 - **Ryzen AI chips only, and tested only on Strix Point** (Ryzen AI 9 HX
   370). Other Ryzen AI chips whose NPU passes the add-on's test at start are
   let in, untested.
@@ -49,10 +52,6 @@ as close as the GPU is to itself across llama.cpp builds):
 
 Speeds on models under about 3B move 8–14% from run to run. `bench.ps1` in
 the zip reruns these measurements on your own models.
-
-**Known issues:**
-- Some steps Gemma, Granite, Phi-4 and Qwen2.5 use still run on the GPU,
-  which is why Gemma only breaks even (#14).
 
 The README has the full measurements, the settings, and what to do when it
 turns itself off.

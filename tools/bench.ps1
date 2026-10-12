@@ -24,6 +24,9 @@ tools\bench.ps1 -Model C:\models\Qwen3-4B-Q4_K_M.gguf
 
 .EXAMPLE
 tools\bench.ps1 -Model a.gguf, b.gguf -Rounds 9 -Kl -Text docs.txt
+
+.EXAMPLE
+pwsh tools/bench.ps1 -Model ~/models/Qwen3-4B-Q4_K_M.gguf
 #>
 param(
     [Parameter(Mandatory = $true)] [string[]] $Model,
@@ -37,21 +40,23 @@ param(
     [string] $Text,
     # 512-token pieces of -Text to compare; 8 is about 4,000 tokens
     [int] $Chunks = 8,
-    # the folder with npu.exe and llama.cpp's programs
+    # the folder with npu and llama.cpp's programs
     [string] $LlamaDir
 )
 
 $ErrorActionPreference = 'Stop'
 
+# Windows PowerShell 5 has no $IsWindows; PowerShell 7 runs on Linux too
+$npuName = if ($IsWindows -eq $false) { 'npu' } else { 'npu.exe' }
 if (-not $LlamaDir) {
     # next to this script (the release zip), else the repo's build of llama.cpp
     $LlamaDir = $PSScriptRoot
-    if (-not (Test-Path (Join-Path $LlamaDir 'npu.exe'))) {
-        $LlamaDir = Join-Path $PSScriptRoot '..\third_party\llama-b10944'
+    if (-not (Test-Path (Join-Path $LlamaDir $npuName))) {
+        $LlamaDir = [IO.Path]::Combine($PSScriptRoot, '..', 'third_party', 'llama-b10944')
     }
 }
-$npu = Join-Path $LlamaDir 'npu.exe'
-if (-not (Test-Path $npu)) { throw "no npu.exe in $LlamaDir; pass -LlamaDir" }
+$npu = Join-Path $LlamaDir $npuName
+if (-not (Test-Path $npu)) { throw "no $npuName in $LlamaDir; pass -LlamaDir" }
 if ($Kl -and -not $Text) { throw "-Kl needs -Text, a plain-text file of at least $($Chunks * 512) tokens" }
 # Started with powershell -File, "-Model a.gguf,b.gguf" arrives as one string.
 $Model = $Model | ForEach-Object { if (Test-Path -LiteralPath $_) { $_ } else { $_ -split ',' } } |
@@ -129,7 +134,7 @@ foreach ($m in $Model) {
         # The GPU's answers first, saved to a file, then the add-on's compared
         # against them. -b 2048 packs four 512-token pieces into each batch, so
         # the add-on gets pieces big enough to take.
-        $base = Join-Path $env:TEMP ("xdna-kl-" + [guid]::NewGuid().ToString('N') + '.bin')
+        $base = Join-Path ([IO.Path]::GetTempPath()) ("xdna-kl-" + [guid]::NewGuid().ToString('N') + '.bin')
         try {
             $common = @('llama-perplexity', '-m', $m, '-f', $Text, '-c', '512', '-b', '2048', '-ub', '2048',
                         '--chunks', "$Chunks", '--kl-divergence-base', $base)

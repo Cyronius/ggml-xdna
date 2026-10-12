@@ -53,8 +53,12 @@ extern int64_t xdna_passes;
 // this before claiming anything but a matmul.
 bool xdna_exec_supports(const ggml_tensor * op);
 
+// The input an op keeps as a parameter, not per row (a scale or bias row, rope's frequency factors); null for none.
+const ggml_tensor * xdna_exec_param(const ggml_tensor * op);
+
 // The NPU weight copies the piece will use, as running it would make them:
-// (weight, null) for a plain one, (gate, up) for a fused pair. Only
+// (weight, null) for a plain one, (gate, up) for a fused pair, (w, w) for
+// one weight holding both. Only
 // io.needed_outside is used.
 void xdna_exec_weights(const ggml_cgraph * g, const xdna_io & io,
                        std::vector<std::pair<const ggml_tensor *, const ggml_tensor *>> & out);

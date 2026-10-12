@@ -19,8 +19,13 @@
 #include <cstring>
 
 int main(int argc, char ** argv) {
+#ifdef _WIN32
     if (argc < 2 || strcmp(argv[1], "--no-driver") != 0) _putenv("GGML_XDNA_KERNELS=Z:\\no\\such\\kernel.xclbin");
     _putenv("GGML_XDNA_HOST_ONLY=");
+#else
+    if (argc < 2 || strcmp(argv[1], "--no-driver") != 0) setenv("GGML_XDNA_KERNELS", "/no/such/kernel.xclbin", 1);
+    unsetenv("GGML_XDNA_HOST_ONLY");
+#endif
     ggml_backend_load_all();
 
     int failures = 0;

@@ -17,10 +17,14 @@ accelerator device with its own host buffer, next to the CPU) could not
 coexist with the GPU: llama.cpp ranks accelerators below every GPU.
 XDNA-HOST-BUFT is retired for that reason.
 
+**Systems, revised 2026-10-12.** Windows and Linux (XDNA-LINUX). Each
+requirement holds on both unless it says otherwise; where a name differs, the
+Linux one follows in brackets (`ggml-xdna.dll` [`libggml-xdna.so`]).
+
 Tests: `specs/xdna-backend/tests/` is empty by design — the test binaries are
 built by the top-level `CMakeLists.txt` from `tests/`, because they must link
-the same import libs as the backend. `build.cmd` builds and runs them
-(XDNA-BUILD). CTest labels them:
+the same libraries as the backend. `build.cmd` [`build.sh`] builds and runs
+them (XDNA-BUILD). CTest labels them:
 - `host`: no NPU needed. `test-dispatch-gate`, `test-memory-budget` and
   `test-mul-mat` run here with `GGML_XDNA_HOST_ONLY=1` (matmuls on the CPU
   reference), and need a Vulkan device.
@@ -30,7 +34,9 @@ the same import libs as the backend. `build.cmd` builds and runs them
   driver (CI).
 
 `build.cmd` runs `host` and `npu` where the NPU driver is installed, and
-`host` and `nodriver` elsewhere.
+`host` and `nodriver` elsewhere. `build.sh` does the same, counting the
+driver as installed where `/dev/accel/accel0` and XRT's
+`libxrt_coreutil.so.2` both exist.
 
 ---
 
@@ -38,9 +44,16 @@ the same import libs as the backend. `build.cmd` builds and runs them
 **Applies to:** ggml-xdna
 **Test category:** e2e
 
-The backend shall build as a standalone DLL that a stock llama.cpp release
-loads via the `GGML_BACKEND_PATH` environment variable, without any patch to
-llama.cpp or ggml.
+The backend shall build as a standalone library, `ggml-xdna.dll`
+[`libggml-xdna.so`], that a stock llama.cpp release loads via the
+`GGML_BACKEND_PATH` environment variable, without any patch to llama.cpp or
+ggml.
+
+Why no patch, restated 2026-10-12: Nulifyer's Linux fork carries a
+llama.cpp patch (prompt/reply phases, re-planning after an NPU failure). It
+was left out: with it, the add-on would need a patched llama.cpp build, and
+the release ships llama.cpp's own. The re-planning need is issue #13, to be
+met inside the add-on.
 
 **Acceptance criteria:**
 - `llama-bench --list-devices` with `GGML_BACKEND_PATH` set lists an `XDNA`
@@ -48,7 +61,7 @@ llama.cpp or ggml.
 - Nothing in `third_party/llama-b10944` is modified except by dropping our own
   built files into it.
 
-**Verification:** run `llama-bench.exe --list-devices` with the variable set and
+**Verification:** run `llama-bench --list-devices` with the variable set and
 confirm the `XDNA` row and the `load_backend: loaded XDNA backend` line.
 
 ---
@@ -182,14 +195,23 @@ real columns).
 
 On the NPU and with block claiming on (`GGML_XDNA_BLOCKS`, default on), it
 shall also accept a small op when all of these hold: the backend's
-executor implements it in that variant (RMS_NORM; MUL by a scale row; ADD of
-two same-shape tensors; ROPE, normal or NeoX, with no YaRN ramp and no
-frequency factors; SwiGLU, split and not swapped; RESHAPE); it covers at
-least `GGML_XDNA_MIN_BATCH` tokens; one of its inputs comes from an op
+executor implements it in that variant (XDNA-HOST-OPS: RMS_NORM; MUL by a
+scale row; ADD of two same-shape tensors, or of a bias row; SCALE; ROPE,
+normal or NeoX, over all or part of each head, with or without YaRN and
+frequency factors; GLU as SwiGLU, GeGLU (tanh, erf or quick) or ReGLU, on
+two tensors or on one holding both halves; RESHAPE); a scale or bias row,
+or frequency factors, is a plain leaf (kept once, like a weight); it covers
+at least `GGML_XDNA_MIN_BATCH` tokens; one of its inputs comes from an op
 the policy accepts; and none of its inputs has its shape and may sit in
 host memory (a graph input, a `GET_ROWS` result such as the token
 embeddings, or a tensor already in a host buffer). It shall decline every
 other op.
+
+The list grew on 2026-10-12 (issue #14) by the steps Gemma (GeGLU),
+Granite (SCALE), Phi (SwiGLU on one fused gate/up weight, partial rotary,
+frequency factors), Qwen2.5 and gpt-oss (bias rows) and long-context models
+(YaRN) use. Before, each of them split the model's blocks there: the step
+ran on the GPU, at the cost of a hand-over each way.
 
 The last condition is there because ggml's allocator may put an op's result
 in the memory of a same-shape input (in place) without checking that the
@@ -219,6 +241,10 @@ on the NPU):**
 - `ADD` of a claimable matmul and the token embeddings (`GET_ROWS`), in
   either order → not claimed
 - `ADD` of a claimable matmul and a graph input → not claimed
+- `ADD` of a claimable matmul and a bias row (a leaf), `SCALE` of one, a
+  GeGLU of two, and a SwiGLU on one matmul whose weight holds gate and up
+  → claimed on the NPU; not claimed host-only
+- `ADD` of a claimable matmul and a computed row → not claimed
 
 **Verification (manual, block claiming):** run with `GGML_XDNA_DUMP=1` and
 check that each `xdna piece:` line on Qwen3-1.7B spans o-projection through
@@ -259,6 +285,13 @@ less what's kept back for llama.cpp's work buffers and the rest of the
 machine: the larger of 4 GB and a tenth of the machine's memory, and at most
 20 GiB. `GGML_XDNA_MAX_COPY_GB` (in GiB, fractions allowed) sets it instead,
 with no cap.
+
+On Linux, "available" is `/proc/meminfo`'s `MemAvailable` (free memory plus
+what the page cache gives up), and inside a container no more than its own
+memory limit allows (cgroup v2), after Nulifyer's port. Also on Linux, when
+XDNA-SAFE-START found that XRT's buffers count against the process's
+locked-memory limit, the limit (set or default) is at most that limit less
+2 GiB kept for the NPU's other buffers, and the log line says so.
 
 Without a limit, a big model's copies pass the machine's memory and Windows
 starts paging, which looks like the add-on being slow, not like a memory
@@ -387,6 +420,52 @@ after the repository cleanup: identical, 269 pieces on the NPU. Again
 2026-10-03, with small ops next to host memory declined (XDNA-SIZE-POLICY):
 identical.
 
+**Measured 2026-10-12**, after the small-op list grew (issue #14): a
+1,700-token prompt (the start of the README), `-ub 2048`, 24 greedy tokens,
+before and after, against the GPU alone, and the NPU pieces per prompt
+chunk (`GGML_XDNA_DUMP=1`):
+
+| model | the step it gained | pieces, before → after | reply |
+|---|---|---|---|
+| Granite 4.1 3B Q4_K_S | SCALE | 84 → 29 | the GPU's, both |
+| Qwen2.5-1.5B Q4_0 | bias rows | 85 → 29 | the GPU's, both |
+| Phi-4-mini Q4_K_M | SwiGLU on one fused weight | 65 → 34 | the GPU's, both |
+| Gemma 4 E4B UD-Q4_K_XL | GeGLU | 177 → 127 | the same before and after; both split from the GPU at a near-tie (token 19, as in the README's Accuracy table) |
+| Phi-4 14B Q4_K_M | (none: separate gate and up) | 30 → 30 | the GPU's, both |
+| Qwen3-1.7B Q4_0 | (none) | unchanged | the same before and after |
+
+Phi-4-mini's rotary steps still run on the GPU: they read views into one
+fused q/k/v result, which aren't contiguous rows.
+
+---
+
+### XDNA-HOST-OPS: The small steps between the NPU's matmuls compute what ggml does
+**Applies to:** ggml-xdna
+**Test category:** unit
+
+Each small op the backend runs on the host in a claimed piece shall give
+ggml's CPU backend's result for the same inputs: within a normalised RMS
+error of 1e-5, or 3e-3 for GeGLU (tanh) and GeGLU-quick, which ggml-cpu
+reads from a 16-bit table while the GPU and the backend compute them in
+float. The variants are XDNA-SIZE-POLICY's list.
+
+Why a unit test: a mistake in one of these gives plausible but wrong text,
+never a crash, and until 2026-10-12 only reading model output
+(XDNA-BLOCK-AGREES) could catch one. When a test hands XDNA0 a graph of
+small ops directly in host-only mode, the backend runs it as it runs a
+claimed piece after an NPU failure, so this needs no NPU and runs in CI.
+
+**Acceptance criteria** (`tests/test-host-ops.cpp`, ctest `host-ops-host`):
+RMS_NORM; MUL by a scale row; ADD, same shape and of a bias row; SCALE with
+a bias; SwiGLU, GeGLU, GeGLU-erf, GeGLU-quick and ReGLU on two tensors;
+SwiGLU (plain and swapped), GeGLU and GeGLU-erf on one tensor; ROPE normal
+and NeoX over the whole head, normal over half and NeoX over three
+quarters, NeoX with YaRN, NeoX with frequency factors, and normal with
+both; each within its bound against the CPU backend.
+
+**Passing 2026-10-12:** 21 of 21; the exact cases at 0 to 3.3e-6, the
+GeGLU and GeGLU-quick cases at 2.7e-4 and 3.0e-4.
+
 ---
 
 ### XDNA-OPT-IN: Without being named, the backend changes nothing
@@ -418,16 +497,35 @@ generation ran at 64–66 tok/s either way.
 When llama.cpp loads the backend, it shall load whether or not the NPU
 driver is installed, and offer the XDNA0 device only if all of these hold:
 - the kernel's xclbin is found: `GGML_XDNA_KERNELS` if set, else
-  `bfp16_gemm.xclbin` next to `ggml-xdna.dll`;
+  `bfp16_gemm.xclbin` next to `ggml-xdna.dll` [`libggml-xdna.so`];
 - the NPU driver's `xrt_coreutil.dll` is found and exports, by name, every
   function the backend uses (`vendor/xrt-implib/xrt_coreutil.def`). The DLL
   is delay-loaded, and all of its functions are bound here, so a missing one
-  turns the backend off instead of failing at a call;
+  turns the backend off instead of failing at a call.
+  [On Linux the XRT wrapper (`vendor/xrt-shim`) is a library of its own,
+  `libggml-xdna-xrt.so`, next to the backend and linked to no XRT. The
+  backend loads XRT's `libxrt_coreutil.so.2` (where the system's loader
+  finds it, else `/opt/xilinx/xrt/lib`), then the wrapper, which binds every
+  XRT function it uses at once, then each wrapper function. The backend never
+  links XRT, so it loads without it, and the build needs no XRT.];
 - the NPU opens;
 - it loads the xclbin;
 - it gets a test multiply right: 512 x 128 times 128 x 512, of small whole
   numbers the kernel holds and adds exactly, every answer equal to the same
-  multiply done on the CPU, within 5 seconds.
+  multiply done on the CPU, within 5 seconds;
+- [on Linux: the NPU's buffers may be locked in memory. If the process's
+  locked-memory limit is finite after raising it to its hard limit, the
+  backend lowers it to 16 MB for a moment and makes a 64 MB NPU buffer. If
+  that fails, XRT's buffers count against the limit: below 4 GiB the device
+  is not offered, with a reason naming the fix; at or above, the weight
+  copies are held under it (XDNA-MEMORY-BUDGET). If it succeeds, the limit
+  doesn't apply.]
+
+Why the locked-memory check tests rather than assumes: Nulifyer's Linux runs
+needed the limit lifted to unlimited (Docker's default is 8 MB), but whether
+the NPU driver counts its buffers against it may vary by driver version. A
+failed buffer mid-run would fail the NPU (XDNA-NPU-FAILURE); refusing at
+start, with the fix named, is better.
 
 There is no list of chips: any NPU that passes the test is taken. Only Strix
 Point (XRT's name "NPU Strix") has been tested. Strix Halo and Krackan Point
@@ -462,6 +560,13 @@ Strix", ..., test multiply right (20 ms)` (19-22 ms over 13 starts). With
 Strix" couldn't run a test multiply (no answer within 5000 ms)`, llama-bench
 exits normally 9.3 s after starting, and the next start passes again.
 Measured 2026-10-02. The wrong-answer path has not been seen on hardware.
+
+**Verification (manual, Linux):** `tools/linux-npu-check.sh` records the
+`xdna:` line at the session's own locked-memory limit and at 8 MB, then runs
+the tests with the limit lifted (XDNA-LINUX). In WSL (no `/dev/accel`):
+without XRT installed, `llama-server --list-devices` logs `not offering
+XDNA0: no NPU driver (XRT's libxrt_coreutil.so.2 not found)` and runs on the
+GPU.
 
 ---
 
@@ -870,12 +975,17 @@ reference, copied into the test unchanged (its source,
 On Windows with Visual Studio 2022 (or its Build Tools) and the C++ tools,
 `build.cmd` in a clean checkout shall download the pinned llama.cpp release,
 build the backend and its tests, and run the tests the machine can run, with
-no NPU driver needed to build.
+no NPU driver needed to build. On Linux with a C++ compiler, CMake, curl and
+`uuid-dev`, `build.sh` shall do the same with the release's Linux Vulkan
+build (its checksum checked), also needing no XRT to build.
 
 **Verification (manual):** the CI workflow (`.github/workflows/ci.yml`) runs
 `build.cmd` on every pull request, on a GitHub Windows machine with no NPU
 or GPU (a software Vulkan device stands in), so it runs the `host` and
-`nodriver` tests. On this machine, `build.cmd` runs `host` and `npu`.
+`nodriver` tests, and `build.sh` the same way on Ubuntu 22.04, the system
+llama.cpp builds its Linux release on. On this machine, `build.cmd` runs
+`host` and `npu`; `build.sh` in WSL (which has no NPU) runs `host` and
+`nodriver`.
 
 **Passing 2026-09-30:** on this machine, 7 of 7 tests; in CI, 6 of 6
 (`host` and `nodriver`). CI sets `GGML_XDNA_PINNED=0`: on Windows,
@@ -889,8 +999,8 @@ lavapipe's pinned memory fails ggml's alignment check.
 
 `npu <llama.cpp program> [arguments]` (`tools/npu.cpp`, built next to the
 llama.cpp programs) shall run that program so that:
-- llama.cpp loads the add-on next to `npu.exe`, unless `GGML_BACKEND_PATH`
-  is already set;
+- llama.cpp loads the add-on next to `npu.exe` [`npu`], unless
+  `GGML_BACKEND_PATH` is already set;
 - when llama.cpp offers XDNA0, `-dev XDNA0,Vulkan0` is added
   (`XDNA0/Vulkan0` for llama-bench), then `-ts 0,1` (not for llama-bench)
   unless the user set a split (`-ts`, `--tensor-split` or
@@ -909,6 +1019,14 @@ llama.cpp programs) shall run that program so that:
   reaches the program exactly as typed;
 - Ctrl+C reaches the program, and `npu` returns the program's exit code. If
   `npu` is closed or killed, the program goes with it.
+
+[On Linux, the folders are `~/.lmstudio/models`, `~/.cache/lm-studio/models`,
+`$LLAMA_CACHE` or `$XDG_CACHE_HOME/llama.cpp` (`~/.cache/llama.cpp`), and
+`$HF_HOME/hub` or `~/.cache/huggingface/hub`; the last pick is kept in
+`$XDG_STATE_HOME/ggml-xdna` (`~/.local/state/ggml-xdna`); "a console" is a
+terminal on standard input. `npu` replaces itself with the program
+(`execv`), so the arguments arrive as the shell split them, and Ctrl+C, the
+exit code and being killed are the program's own.]
 
 `npu`'s own options come before the program's name, as
 `--name value` or `--name=value`:
@@ -987,6 +1105,14 @@ while loading (2026-10-02). llama-bench doesn't fit unless asked.
   option, no copies are built. `--min-chunk lots`, `0`, `1.5`, `-1`,
   `--min-chunk` alone and `--min-chunks 512`: one line each, exit 1, nothing
   started.
+- [Linux, from bash, with a stand-in `llama-echo` that prints its
+  arguments and the two variables, and exits 7: `npu --memory-gb=0.5
+  --min-chunk 512 llama-echo -p 'a & b | c * d! e' -x 'say "hi"' --path
+  '/dir with space/' 'plain*.gguf' '' last`: every argument arrives
+  unchanged, the variables are 0.5 and 512, and `echo $?` gives 7. With no
+  NPU driver, `npu llama-completion -m <model> -p hi -n 4` prints `npu:
+  running on the GPU only: no NPU driver (...)` and runs. With no model, in
+  a terminal: the menu lists the models in the Linux folders.]
 
 **Passing 2026-09-30:** all of the above but `--memory-gb` (added
 2026-10-01). The menu listed 38 models from LM Studio and the Hugging Face
@@ -1030,6 +1156,14 @@ Nothing else: none of the test programs the build copies next to llama.cpp.
 Started by hand, or by a pull request that changes the packaging, the
 workflow publishes nothing and keeps the zip as the run's artifact.
 
+The same workflow shall also build and test on Ubuntu 22.04 as XDNA-BUILD
+does and make `ggml-xdna-<tag>-llama-<llama.cpp release>-ubuntu-x64.tar.gz`
+(`tools/package.sh`), with its `.sha256` file, published in the same
+release. It holds one folder of that name, with the same contents as the
+zip but from llama.cpp's Linux Vulkan release (checksum checked), and with
+`libggml-xdna.so`, `libggml-xdna-xrt.so` and `npu` for the add-on and the
+launcher.
+
 The zip is unsigned, like llama.cpp's own Windows builds.
 
 **Verification (manual):** a dry run. Start the workflow by hand (or open a
@@ -1055,6 +1189,38 @@ answered a 3,258-token chat request with about 200 matmuls in 30 NPU pieces
 per chunk; the reply was odd (the prompt was a fragment of docs about chat
 formats), and the GPU alone gave the same reply but for two words. `bench.ps1`
 found `npu.exe` next to itself and printed a row.
+
+---
+
+### XDNA-LINUX: The add-on runs on Linux as on Windows
+**Applies to:** ggml-xdna
+**Test category:** manual
+
+On Linux on a Ryzen AI machine with the `amdxdna` driver, XRT and Mesa's
+Vulkan driver, the add-on shall meet this spec's requirements as on
+Windows, with the Linux names and behaviour given in brackets in each.
+
+Why it's its own requirement: in WSL, where this was built, there is no NPU
+(no `/dev/accel`; Windows passes only the GPU through), so everything that
+needs the NPU on Linux is checked by one script on Linux booted on the
+hardware, and its result belongs in one place. Before this repository's own
+port, Nulifyer's fork of v0.1.0 ran the add-on on a Ryzen AI 9 HX 370 under
+Ubuntu 24.04 (XRT 2.25) and 26.04 (XRT 2.21.75), built against our vendored
+XRT 2.20 headers: the `npu` tests passed (2026-10-06).
+
+**Verification (manual):** on Linux booted on the machine,
+`tools/linux-npu-check.sh` from the repository (`--install` adds what's
+missing on Ubuntu). It records the machine, driver and XRT versions; builds;
+records XDNA-SAFE-START's line at the session's locked-memory limit and at
+8 MB; lifts the limit; runs the `host` and `npu` tests; then on Qwen3-1.7B
+Q4_0 checks XDNA-BLOCK-AGREES, an `npu llama-completion` run with the trace
+on, the KL divergence over this README and spec (under 0.01), paired speed
+(5 rounds, and 3 on Qwen3-4B Q4_K_M), an injected NPU failure
+(`GGML_XDNA_FAIL_AFTER=30`), and the NPU's memory ceiling
+(`npu-ceiling-repro`, 16 to 40 GiB). Everything goes to one log file.
+
+**Not yet run** (2026-10-12): the owner will boot Linux on the test
+machine and run the script.
 
 ---
 

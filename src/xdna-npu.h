@@ -32,6 +32,10 @@ const std::string & xdna_xclbin();
 bool xdna_npu_usable(std::string & why);
 // Whether the kernel takes a weight of K x N at both row counts.
 bool xdna_npu_has_shape(int64_t K, int64_t N);
+// Bytes the NPU's buffers may lock in all (Linux's memlock limit, when XRT's buffers count against it); negative: no limit.
+double xdna_npu_lock_limit();
+// Kept back from that limit for the NPU's buffers other than weight copies.
+constexpr double XDNA_LOCK_KEPT = 2.0 * 1024 * 1024 * 1024;
 
 class xdna_npu {
 public:
@@ -59,6 +63,10 @@ public:
     // a gate block with its up block. Its output has F = N values a row, the
     // SwiGLU result. Keyed by fused_key(gate). Needs the 2F-wide mode-2 builds.
     static wkey fused_key(const wkey & gate) { return { gate.buffer, gate.data, 1000 + gate.type, gate.K, 2 * gate.N }; }
+    // The gate's key; up == gate is one weight holding the gate's rows and then the up's, so its first half.
+    static wkey gate_key(const ggml_tensor * gate, const ggml_tensor * up) {
+        return { gate->buffer, gate->data, (int) gate->type, gate->ne[0], gate == up ? gate->ne[1] / 2 : gate->ne[1] };
+    }
     static bool has_fused_shape(int64_t K, int64_t F);
     bool add_fused(const wkey & gate, const void * gate_raw, const void * up_raw, std::string & err);
 
