@@ -1,6 +1,7 @@
 #include "xdna-npu.h"
 
 #include "xdna-env.h"
+#include "xdna-platform.h"
 
 #include "bfp16_insts.h"
 #include "bfp16_pack.h"
@@ -15,10 +16,14 @@
 #include <filesystem>
 #include <tuple>
 
+#ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
 #include <delayimp.h>
+#else
+#include "xrt_load.h"
+#endif
 
 namespace {
 
@@ -108,25 +113,13 @@ bool injected_nan() {
 
 } // namespace
 
-// The directory this DLL was loaded from.
-static std::filesystem::path module_dir() {
-    HMODULE h = nullptr;
-    if (!GetModuleHandleExW(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
-                            (LPCWSTR) &module_dir, &h))
-        return {};
-    wchar_t buf[MAX_PATH];
-    const DWORD n = GetModuleFileNameW(h, buf, MAX_PATH);
-    if (n == 0 || n == MAX_PATH) return {};
-    return std::filesystem::path(std::wstring(buf, n)).parent_path();
-}
-
 const std::string & xdna_xclbin() {
     static const std::string path = []() -> std::string {
         namespace fs = std::filesystem;
         std::error_code ec;
         const char * s = xdna_env("GGML_XDNA_KERNELS");
         if (!s || !*s) {
-            const fs::path p = module_dir() / "bfp16_gemm.xclbin";
+            const fs::path p = xdna_module_dir() / "bfp16_gemm.xclbin";
             return fs::is_regular_file(p, ec) ? p.u8string() : std::string();
         }
         const fs::path p = fs::u8path(s);
@@ -190,6 +183,7 @@ static std::string npu_self_test(const std::string & name) {
     return {};
 }
 
+#ifdef _WIN32
 // The NPU driver's xrt_coreutil.dll is delay-loaded, so this DLL loads on a
 // machine without the driver. Before the first call into it, bind every
 // function the backend uses: a missing DLL or function then fails here, with
@@ -206,24 +200,69 @@ static DWORD xrt_bind_failure() {
     }
 }
 
+// Empty when every driver function the backend uses is there, else why not.
+static std::string xrt_ready() {
+    switch (xrt_bind_failure()) {
+        case 0: return {};
+        case ERROR_PROC_NOT_FOUND:
+            return "the NPU driver's xrt_coreutil.dll lacks a function this backend uses (a driver it wasn't built for)";
+        default: return "no NPU driver (xrt_coreutil.dll not found)";
+    }
+}
+static const char * const LIBRARY = "ggml-xdna.dll";
+#else
+static std::string xrt_ready() { return xrt_load(); }
+static const char * const LIBRARY = "libggml-xdna.so";
+#endif
+
+static constexpr double MiB = 1024.0 * 1024, GiB = 1024 * MiB;
+
+// What the NPU's buffers may take in all, bytes; negative: no limit.
+static double g_lock_limit = -1;
+
+// Whether XRT locks the NPU's buffers under Linux's per-process cap is tested: a 64 MB buffer under a 16 MB cap.
+static std::string check_lock_limit() {
+    const double limit = xdna_raise_lock_limit();
+    if (limit < 0) return {};
+    xdna_lower_lock_limit(16 * MiB);
+    bool counts = true;
+    if (xrtsh_dev dev = xrtsh_device_open(0)) {
+        const size_t n = (size_t) (64 * MiB);
+        if (xrtsh_bo bo = xrtsh_bo_create(dev, n)) {
+            uint8_t * p = (uint8_t *) xrtsh_bo_map(bo);
+            if (p) memset(p, 1, n);
+            counts = !p || xrtsh_bo_sync(bo, 1) < 0;
+            xrtsh_bo_free(bo);
+        }
+        xrtsh_device_free(dev);
+    }
+    xdna_raise_lock_limit();
+    if (!counts) return {};
+    if (limit < XDNA_LOCK_KEPT + 2 * GiB) {
+        char s[256];
+        snprintf(s, sizeof(s),
+                 "this process may lock only %.0f MB of memory, and the NPU's buffers count against that (raise it: "
+                 "ulimit -l unlimited, or memlock in /etc/security/limits.conf)",
+                 limit / MiB);
+        return s;
+    }
+    g_lock_limit = limit;
+    return {};
+}
+
+double xdna_npu_lock_limit() { return g_lock_limit; }
+
 bool xdna_npu_usable(std::string & why) {
     static std::string reason;
     static const bool ok = [] {
         if (xdna_xclbin().empty()) {
             const char * s = xdna_env("GGML_XDNA_KERNELS");
             reason = s && *s ? std::string("GGML_XDNA_KERNELS=") + s + " names no xclbin"
-                             : "no bfp16_gemm.xclbin next to ggml-xdna.dll";
+                             : std::string("no bfp16_gemm.xclbin next to ") + LIBRARY;
             return false;
         }
-        switch (xrt_bind_failure()) {
-            case 0: break;
-            case ERROR_PROC_NOT_FOUND:
-                reason = "the NPU driver's xrt_coreutil.dll lacks a function this backend uses (a driver it wasn't built for)";
-                return false;
-            default:
-                reason = "no NPU driver (xrt_coreutil.dll not found)";
-                return false;
-        }
+        reason = xrt_ready();
+        if (!reason.empty()) return false;
         xrtsh_dev dev = xrtsh_device_open(0);
         if (!dev) {
             reason = std::string("no NPU found (") + xrtsh_last_error() + ")";
@@ -237,7 +276,14 @@ bool xdna_npu_usable(std::string & why) {
         if (!reason.empty()) return false;
         char took[64];
         snprintf(took, sizeof(took), ", test multiply right (%.0f ms)", ms_since(t0));
+        reason = check_lock_limit();
+        if (!reason.empty()) return false;
         reason = std::string("NPU \"") + name + "\", " + xdna_xclbin() + took;
+        if (g_lock_limit >= 0) {
+            char lock[96];
+            snprintf(lock, sizeof(lock), ", locked memory limited to %.1f GB", g_lock_limit / GiB);
+            reason += lock;
+        }
         return true;
     }();
     why = reason;

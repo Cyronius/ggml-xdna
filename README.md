@@ -2,12 +2,15 @@
 
 ggml-xdna is an add-on for llama.cpp that reads prompts on the NPU of an
 AMD Ryzen AI 300 laptop, next to the integrated GPU. It loads into an
-unmodified llama.cpp Windows build. The GPU keeps doing everything else,
-including writing the reply.
+unmodified llama.cpp build for Windows or Linux. The GPU keeps doing
+everything else, including writing the reply.
+
+Linux is new and hasn't been run on an NPU by us yet; see
+[Linux](#linux).
 
 ## Requirements
 
-- Windows 11
+- Windows 11, or Linux (see [Linux](#linux) for what it needs there)
 - A Ryzen AI processor with an NPU. Only tested on Strix Point: the Ryzen AI
   9 HX 370 with Radeon 890M graphics. At start the add-on runs a small test
   multiply on the NPU and turns on only if it gets it right, so it decides
@@ -19,9 +22,10 @@ including writing the reply.
   its own.
 - The AMD NPU driver. Tested with 32.0.20102.3930.
 - A GPU driver with Vulkan. Tested with Radeon driver 32.0.31041.1004.
-- llama.cpp release **b10944**, Windows Vulkan build
-  (`llama-b10944-bin-win-vulkan-x64.zip`). The add-on is built against that
-  release and must run with it.
+- llama.cpp release **b10944**, Vulkan build
+  (`llama-b10944-bin-win-vulkan-x64.zip`, or
+  `llama-b10944-bin-ubuntu-vulkan-x64.tar.gz` on Linux). The add-on is
+  built against that release and must run with it.
 
 ## Quick start
 
@@ -56,7 +60,7 @@ Models found:
 Pick a number (Enter: granite-4.1-3b-Q4_K_S; q: quit):
 ```
 
-It looks in a `models` folder next to `npu.exe`, LM Studio's models folder,
+It looks in a `models` folder next to `npu`, LM Studio's models folder,
 llama.cpp's download folder and the Hugging Face download folder. Enter
 picks the model you chose last time. "All of them" (llama-server only)
 serves every model in the list and loads each when a request names it.
@@ -114,6 +118,73 @@ With it, llama.cpp prints one harmless line at load:
 `failed to fit params to free device memory: model_params::tensor_split
 already set by user, abort`. It still fits the context size.
 
+## Linux
+
+Linux support is new. It builds and passes every test that needs no NPU,
+on our machines and in CI, but we haven't run it on an NPU ourselves yet.
+Nulifyer ran an earlier Linux port of this add-on on a Ryzen AI 9 HX 370
+under Ubuntu 24.04 and 26.04: the NPU tests passed, and prompts read faster
+than on the GPU alone
+([their notes](https://github.com/Nulifyer/llama-xdna-hybrid/blob/main/docs/Linux.md)).
+Treat it as experimental until this section says otherwise.
+
+**What it needs:**
+
+- A kernel with AMD's NPU driver, `amdxdna`: recent kernels have it, older
+  ones can get it from the `amdxdna-dkms` package. `ls /dev/accel` should
+  show `accel0`.
+- AMD's NPU runtime, XRT, with its NPU plugin:
+  - Ubuntu 26.04: `sudo apt install libxrt-npu2`
+  - Ubuntu 24.04 and 25.10: the same package from the lemonade PPA:
+    `sudo add-apt-repository ppa:lemonade-team/stable`, then
+    `sudo apt install libxrt-npu2 amdxdna-dkms`
+  - Arch: `xrt` and `xrt-plugin-amdxdna`, and `amdxdna-dkms` from the AUR
+
+  `xrt-smi examine` should then list the NPU.
+- Mesa's Vulkan driver for the GPU (`mesa-vulkan-drivers` on Ubuntu,
+  usually there already).
+- Enough locked memory. XRT may lock the NPU's buffers in memory, and Linux
+  caps how much a program may lock, often at 8 MB. The add-on raises its own
+  cap as far as the system lets it, checks at start whether the NPU's buffers
+  count against it, and if they do and the cap is too small, turns itself off
+  and says so. To lift the cap, add these lines to
+  `/etc/security/limits.conf` and log in again (`ulimit -l` then says
+  `unlimited`):
+
+  ```
+  *    soft    memlock    unlimited
+  *    hard    memlock    unlimited
+  ```
+
+**Quick start:** download `ggml-xdna-<version>-llama-b10944-ubuntu-x64.tar.gz`
+from the [releases page](https://github.com/Cyronius/ggml-xdna/releases),
+unpack it, and use `npu` as above:
+
+```
+tar -xzf ggml-xdna-<version>-llama-b10944-ubuntu-x64.tar.gz
+cd ggml-xdna-<version>-llama-b10944-ubuntu-x64
+./npu llama-server -m model.gguf
+```
+
+It's llama.cpp's own Linux Vulkan release, unmodified, with the add-on
+(`libggml-xdna.so`, which reaches the NPU driver through
+`libggml-xdna-xrt.so` next to it), the NPU kernel and `npu`. Without the
+launcher:
+
+```
+GGML_BACKEND_PATH=$PWD/libggml-xdna.so ./llama-server -m model.gguf -dev XDNA0,Vulkan0 -ts 0,1
+```
+
+On Linux, `npu` finds llama.cpp's downloads in `~/.cache/llama.cpp` (or
+`$LLAMA_CACHE`) and Hugging Face's in `~/.cache/huggingface/hub` (or
+`$HF_HOME/hub`), and remembers your last pick in `~/.local/state/ggml-xdna`.
+It becomes the program it starts, so Ctrl+C, the exit code and stopping it
+work as they would for the program alone.
+
+**Not known yet on Linux:** whether the NPU's memory ceiling (about 26 GB
+on Windows, see Limitations) is the same there. The default 20 GB limit
+applies on both. The speed and accuracy tables below are from Windows.
+
 ## The NPU's power mode
 
 The NPU has a power setting of its own, separate from Windows'. AMD
@@ -148,6 +219,8 @@ C:\Windows\System32\AMD\xrt-smi.exe configure --pmode default
   the `examine` command after restarting.
 - `--pmode turbo` also exists. It needs the charger plugged in (otherwise it
   acts as `performance`). We haven't measured it.
+- On Linux, XRT's `xrt-smi` is on the `PATH`: `sudo xrt-smi configure
+  --pmode performance`, and `xrt-smi examine -r platform` to check.
 
 ## Results
 
@@ -224,7 +297,8 @@ runs like these: on this machine a single run proves little.
 
 **To measure your own models:** `bench.ps1` runs the same paired
 measurement and prints a row of this table for each model you give it. It's
-in `tools\` in the repo and next to `npu.exe` in the release zip.
+in `tools\` in the repo and next to `npu` in the release zip. On Linux it
+runs under PowerShell 7 (`pwsh bench.ps1 -Model ...`).
 
 ```
 powershell -ExecutionPolicy Bypass -File bench.ps1 -Model C:\models\Qwen3-4B-Q4_K_M.gguf
@@ -330,7 +404,8 @@ contexts of 32,768 tokens, and two models served at once by its router.
 
 ## Limitations
 
-- **Windows only.** Linux is planned for later.
+- **Linux is untested on an NPU by us.** It builds and passes the tests
+  that need no NPU; see [Linux](#linux).
 - **Only tested on Strix Point.** Other Ryzen AI chips whose NPU passes the
   test at start are let in, untested.
 - **Prompt reading only.** Replies are written one token at a time, and that
@@ -432,18 +507,22 @@ Without the launcher, the add-on offers no XDNA0 device and logs
 
 | reason | what to do |
 |---|---|
-| no bfp16_gemm.xclbin next to ggml-xdna.dll | copy it there, or set `GGML_XDNA_KERNELS` to it |
+| no bfp16_gemm.xclbin next to ggml-xdna.dll (or libggml-xdna.so) | copy it there, or set `GGML_XDNA_KERNELS` to it |
 | GGML_XDNA_KERNELS=... names no xclbin | fix the path |
 | no NPU driver (xrt_coreutil.dll not found) | install the AMD NPU driver |
-| the NPU driver's xrt_coreutil.dll lacks a function this backend uses | the driver is older or newer than the add-on was built for; report it |
-| no NPU found (...) | the driver doesn't see an NPU |
+| no NPU driver (XRT's libxrt_coreutil.so.2 not found) | Linux: install XRT (see [Linux](#linux)) |
+| the NPU driver's xrt_coreutil.dll (or libxrt_coreutil.so.2) lacks a function this backend uses | the driver is older or newer than the add-on was built for; report it |
+| cannot load .../libggml-xdna-xrt.so (...) | Linux: that file must sit next to `libggml-xdna.so` |
+| no NPU found (...) | the driver doesn't see an NPU; on Linux, check `ls /dev/accel` and `xrt-smi examine` |
 | the NPU won't load ... | another program may be holding the whole NPU, or this NPU can't take the add-on's program |
 | the NPU "..." couldn't run a test multiply (...) | this NPU can't run the add-on's program; report it with your chip |
 | the NPU "..." got a test multiply wrong (...) | this NPU runs the add-on's program wrong; report it with your chip |
-| the add-on didn't load | `ggml-xdna.dll` isn't next to `npu.exe`, or `GGML_BACKEND_PATH` points elsewhere |
+| this process may lock only ... MB of memory ... | Linux: lift the locked-memory cap (see [Linux](#linux)) |
+| the add-on didn't load | the add-on isn't next to `npu`, or `GGML_BACKEND_PATH` points elsewhere |
 
 **Is it doing anything?** `npu` prints `npu: prompts on the NPU` when it
-turns it on. `set GGML_XDNA_TRACE=1` prints where the time goes every few
+turns it on. `set GGML_XDNA_TRACE=1` (`export GGML_XDNA_TRACE=1` on Linux)
+prints where the time goes every few
 hundred multiplies. A prompt under 1,024 tokens never reaches the NPU
 (`npu --min-chunk` changes that).
 
@@ -458,12 +537,13 @@ versions, the model, the command, and the output with `GGML_XDNA_TRACE=1`.
 
 All optional, and none needed with `npu`. They're environment variables
 (`set GGML_XDNA_TRACE=1` in cmd, `$env:GGML_XDNA_TRACE = "1"` in
-PowerShell), read once when llama.cpp starts: set them before starting it.
+PowerShell, `export GGML_XDNA_TRACE=1` on Linux), read once when llama.cpp
+starts: set them before starting it.
 An empty value counts as unset.
 
 | variable | default | |
 |---|---|---|
-| `GGML_XDNA_KERNELS` | `bfp16_gemm.xclbin` next to the DLL | another xclbin |
+| `GGML_XDNA_KERNELS` | `bfp16_gemm.xclbin` next to the add-on | another xclbin |
 | `GGML_XDNA_MIN_BATCH` | 1024 | the smallest piece of a prompt, in tokens, the NPU takes (`npu --min-chunk` sets it) |
 | `GGML_XDNA_MIN_MFLOP` | 256 | the smallest multiply the NPU takes, in millions of operations |
 | `GGML_XDNA_COPY_AT_LOAD` | 1 | 0 builds the NPU's weight copies during the first prompt instead of while the model loads |
@@ -494,6 +574,22 @@ the tests.
 The build needs no NPU driver: the list of driver functions the add-on uses
 is in [vendor/xrt-implib](vendor/xrt-implib/xrt_coreutil.def).
 `tools\check-xrt-driver.ps1` checks an installed driver against it.
+
+**On Linux,** with a compiler, CMake, curl and `uuid-dev`
+(`sudo apt install build-essential cmake curl uuid-dev`, and `ninja-build`
+if you like):
+
+```
+./build.sh
+```
+
+It does the same with llama.cpp's Linux Vulkan release. The build needs no
+XRT either: the add-on loads XRT when it starts. The NPU tests run where
+`/dev/accel/accel0` and XRT are present.
+
+**On Linux on the NPU, the full check:** `tools/linux-npu-check.sh` builds,
+runs every test, checks a model's answers and speed against the GPU, and
+writes everything to one log file. It's what we ask Linux testers to run.
 
 The NPU kernel ships prebuilt
 ([kernels/bfp16_gemm/prebuilt](kernels/bfp16_gemm/prebuilt)). Rebuilding it

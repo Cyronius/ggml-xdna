@@ -47,3 +47,27 @@ jobs:
           # lavapipe's pinned memory fails ggml's alignment check on Windows
           GGML_XDNA_PINNED: "0"
         run: build.cmd
+
+  # the same on Linux, on the Ubuntu llama.cpp builds its own Linux release on
+  linux:
+    name: build and test (Linux)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the llama.cpp release
+        uses: actions/cache@v4
+        with:
+          path: third_party
+          key: llama-b10944-linux-${{ hashFiles('tools/fetch-llama.sh') }}
+
+      - name: Build tools and a software Vulkan device
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build uuid-dev libvulkan1 mesa-vulkan-drivers
+
+      - name: Build and test
+        env:
+          GGML_VK_VISIBLE_DEVICES: "0"
+          GGML_VK_DISABLE_F16: "1"
+          GGML_VK_DISABLE_COOPMAT: "1"
+          GGML_XDNA_PINNED: "0"
+        run: ./build.sh
