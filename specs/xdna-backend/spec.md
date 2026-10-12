@@ -572,18 +572,32 @@ GPU.
 
 ### XDNA-NPU-FAILURE: An NPU failure during a run doesn't stop it
 **Applies to:** ggml-xdna
-**Test category:** manual
+**Test category:** unit (the results), manual (the timing)
 
 If an NPU call fails during a run (starting it, building a weight's copy, a
 submission, a wait), the backend shall:
 - log one error line;
-- finish the failed piece on the CPU, giving the same results within
-  rounding (a failed piece has written nothing back, so it is run again);
-- decline all work from then on, so later schedules go to the GPU.
+- finish the failed piece on the GPU, through its own Vulkan backend,
+  giving the GPU's results (a failed piece has written nothing back, so it
+  is run again);
+- decline all work from then on, so later schedules go to the GPU;
+- run every piece still handed to it on the GPU too.
 
-Known limit: llama.cpp reuses a schedule for chunks of the same size, so
-the rest of the current prompt keeps coming to the backend and runs on the
-CPU, slowly. New prompts are scheduled afresh.
+The last point is there because llama.cpp reuses a schedule for chunks of
+the same size, so the rest of the current prompt keeps coming to the
+backend. Until 2026-10-12 those pieces ran on the backend's CPU reference:
+22 minutes instead of about 1 for Qwen3.8-27B (issue #13). Every tensor in a
+piece already lives in Vulkan's memory (XDNA-SHARED-BUFT), except inputs in
+host memory, such as the rotary positions: those are copied into a Vulkan
+buffer for the call and pointed back afterwards. If the GPU can't run a
+piece, the CPU reference still does, as before. New prompts are scheduled
+afresh and never reach the backend.
+
+**Acceptance criteria** (`tests/test-mul-mat.cpp`, on the NPU): run as
+`mul-mat-npu-fail` with `GGML_XDNA_FAIL_AFTER=0` (every NPU submission
+fails), every case passes against the fp64 reference, as in `mul-mat-npu`.
+`mul-mat-npu-nan` (XDNA-NPU-RESULT-CHECK) exercises the same path from a
+NaN.
 
 **Verification (manual):** `GGML_XDNA_FAIL_AFTER=n` makes every NPU
 submission after the n-th fail.
@@ -593,14 +607,25 @@ submission after the n-th fail.
     line;
   - with n = 0 the 24 tokens match the GPU's.
 - `llama-perplexity --kl-divergence` against the GPU (6 chunks of 512):
-  with n = 60, mean KL must be no worse than the NPU's without failures.
+  with n = 60, mean KL must be no worse than the NPU's without failures,
+  and the run must take about as long as on the GPU alone.
 
 **Measured 2026-09-30:**
 - The runs completed, n = 0 identical to the GPU.
 - KL 0.0042 and 96.2% same top token, against 0.0081 and 95.3% without
   failures.
 - The rest of that 6-chunk run took 65 s on the CPU, against 8 s on the
-  GPU: the known limit.
+  GPU: the limit fixed on 2026-10-12.
+
+**Measured 2026-10-12**, with the GPU path (machine busy with other CPU
+work, so times are rough; text: this README and spec, 6 chunks of 512):
+- n = 0 and n = 30: each run completes with one "the NPU failed" line; with
+  n = 0 the 24 tokens are the GPU's, word for word.
+- The KL run, whole process including load: GPU alone 28.8 s; with the NPU
+  22.8 s (KL 0.0047, 96.8% same top token); with the NPU failing after 60
+  submissions 23.7 s (KL 0.0026, 97.2%). The rest of the prompt no longer
+  slows down after a failure.
+- `mul-mat-npu-fail` and `mul-mat-npu-nan` pass.
 
 ---
 
@@ -611,7 +636,7 @@ submission after the n-th fail.
 Every value the backend reads back from the NPU shall be checked for NaN and
 infinity as it's decoded. If one is found, that piece (or matmul) shall
 count as an NPU failure under XDNA-NPU-FAILURE: one error line saying the
-NPU's results held NaN or infinity, the piece run again on the CPU before
+NPU's results held NaN or infinity, the piece run again on the GPU before
 anything is written back, and the GPU for everything after.
 
 Why: past the NPU's memory ceiling (XDNA-MEMORY-BUDGET), Windows moves the
@@ -652,8 +677,8 @@ NaN; with it, all pass.
   | with it, `--memory-gb 30` | all 64 layers | the line at 47 s, then the GPU's reply | 1,304 s |
   | with it, default | 49 layers (20.0 GB) | the GPU's reply, no line | 70 s |
 
-  The 1,304 s is XDNA-NPU-FAILURE's known limit: the rest of that prompt
-  ran on the CPU.
+  The 1,304 s was XDNA-NPU-FAILURE's old limit: the rest of that prompt
+  ran on the CPU. It runs on the GPU since 2026-10-12.
 - Cost of the check: Qwen3-1.7B, `llama-bench -p 2048 -ub 2048 -b 2048
   -r 3`, 6 rounds alternating the two builds. Time in the host passes,
   where the check runs: 295.5 ms per trace line with it, 295.1 without.
