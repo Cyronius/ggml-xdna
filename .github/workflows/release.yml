@@ -1,8 +1,8 @@
 # Builds the release zip on GitHub's machines, never on a dev box: the same
-# build and tests as ci.yml, then tools\package.ps1. Pushing a tag v* publishes
-# a GitHub release with the zip. Starting it by hand (Actions, "Run
-# workflow"), or a pull request that changes the packaging, is a dry run that
-# keeps the zip as the run's artifact.
+# build and tests as ci.yml, then tools\package.ps1 (and tools/package.sh for
+# Linux). Pushing a tag v* publishes a GitHub release with both. Starting it
+# by hand (Actions, "Run workflow"), or a pull request that changes the
+# packaging, is a dry run that keeps them as the run's artifacts.
 name: Release
 
 on:
@@ -10,13 +10,13 @@ on:
     tags: ['v*']
   workflow_dispatch:
   pull_request:
-    paths: ['.github/workflows/release.yml', 'tools/package.ps1']
+    paths: ['.github/workflows/release.yml', 'tools/package.ps1', 'tools/package.sh']
 
 permissions:
   contents: write
 
 jobs:
-  release:
+  windows:
     name: build, test and package (Windows)
     runs-on: windows-2022
     steps:
@@ -65,12 +65,61 @@ jobs:
             dist/${{ steps.package.outputs.name }}.zip
             dist/${{ steps.package.outputs.name }}.zip.sha256
 
-      - name: Publish the release
-        if: github.ref_type == 'tag'
-        shell: pwsh
+  linux:
+    name: build, test and package (Linux)
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache the llama.cpp release
+        uses: actions/cache@v4
+        with:
+          path: third_party
+          key: llama-b10944-linux-${{ hashFiles('tools/fetch-llama.sh') }}
+
+      - name: Build tools and a software Vulkan device
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build uuid-dev libvulkan1 mesa-vulkan-drivers
+
+      - name: Build and test
+        env:
+          GGML_VK_VISIBLE_DEVICES: "0"
+          GGML_VK_DISABLE_F16: "1"
+          GGML_VK_DISABLE_COOPMAT: "1"
+          GGML_XDNA_PINNED: "0"
+        run: ./build.sh
+
+      - name: Package
+        id: package
+        run: |
+          if [[ "$GITHUB_REF_TYPE" == tag ]]; then v=$GITHUB_REF_NAME; else v=dev-${GITHUB_SHA::7}; fi
+          tools/package.sh "$v"
+          echo "name=ggml-xdna-$v-llama-b10944-ubuntu-x64" >> "$GITHUB_OUTPUT"
+
+      - name: Keep the archive with this run
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.package.outputs.name }}
+          path: |
+            dist/${{ steps.package.outputs.name }}.tar.gz
+            dist/${{ steps.package.outputs.name }}.tar.gz.sha256
+
+  publish:
+    name: publish the release
+    if: github.ref_type == 'tag'
+    needs: [windows, linux]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch both packages
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $n = "${{ steps.package.outputs.name }}"
-          gh release create $env:GITHUB_REF_NAME "dist\$n.zip" "dist\$n.zip.sha256" `
-            --title "ggml-xdna $env:GITHUB_REF_NAME" --notes-file .github\release-notes.md
+          gh release create "$GITHUB_REF_NAME" dist/* \
+            --title "ggml-xdna $GITHUB_REF_NAME" --notes-file .github/release-notes.md
