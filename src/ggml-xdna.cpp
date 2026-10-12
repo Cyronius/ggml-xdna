@@ -260,8 +260,8 @@ struct xdna_context {
         std::lock_guard<std::mutex> lk(build_mu);
         bool added = false;
         for (const build_job & j : jobs) {
-            xdna_npu::wkey key = { j.w->buffer, j.w->data, (int) j.w->type, j.w->ne[0], j.w->ne[1] };
-            if (j.up) key = xdna_npu::fused_key(key);
+            const xdna_npu::wkey key = j.up ? xdna_npu::fused_key(xdna_npu::gate_key(j.w, j.up))
+                                            : xdna_npu::wkey{ j.w->buffer, j.w->data, (int) j.w->type, j.w->ne[0], j.w->ne[1] };
             if (!build_queued.insert(key).second) continue;
             build_todo.push_back(j);
             added = true;
@@ -286,22 +286,34 @@ struct xdna_context {
                 build_todo.pop_front();
             }
             const xdna_npu::wkey key = { j.w->buffer, j.w->data, (int) j.w->type, j.w->ne[0], j.w->ne[1] };
-            if (npu->has_weight(j.up ? xdna_npu::fused_key(key) : key)) continue;
+            if (npu->has_weight(j.up ? xdna_npu::fused_key(xdna_npu::gate_key(j.w, j.up)) : key)) continue;
             std::string err;
-            raw.resize(ggml_nbytes(j.w));
-            read(j.w, raw.data());
             bool ok;
             if (j.up) {
-                raw_up.resize(ggml_nbytes(j.up));
-                read(j.up, raw_up.data());
-                ok = npu->add_fused(key, raw.data(), raw_up.data(), err);
+                ok = add_fused(j.w, j.up, raw, raw_up, err);
             } else {
+                raw.resize(ggml_nbytes(j.w));
+                read(j.w, raw.data());
                 ok = npu->add_weight(key, raw.data(), err);
             }
             std::lock_guard<std::mutex> lk(build_mu);
             if (ok) built_at_load++;
             else build_err = std::string(j.w->name) + ": " + err;
         }
+    }
+
+    // A gate and an up weight's fused NPU copy; up == gate is one weight holding the gate's rows, then the up's.
+    bool add_fused(const ggml_tensor * gw, const ggml_tensor * uw, std::vector<uint8_t> & g, std::vector<uint8_t> & u,
+                   std::string & err) {
+        g.resize(ggml_nbytes(gw));
+        read(gw, g.data());
+        const void * up = g.data() + ggml_row_size(gw->type, gw->ne[0]) * (gw->ne[1] / 2);
+        if (uw != gw) {
+            u.resize(ggml_nbytes(uw));
+            read(uw, u.data());
+            up = u.data();
+        }
+        return npu->add_fused(xdna_npu::gate_key(gw, uw), g.data(), up, err);
     }
 
     // Waits for the copies queued so far. A copy that failed to build fails
@@ -744,7 +756,9 @@ static ggml_status ggml_backend_xdna_graph_compute(ggml_backend_t backend, ggml_
     // matmuls it can run, but a caller computing a graph directly (a test)
     // can pass others; a graph of only such matmuls goes op by op below,
     // which falls back to the CPU. A graph with small ops in it is a claimed
-    // block: it runs here, on the host if the NPU has failed.
+    // block: it runs here, on the host if the NPU has failed. So does one a
+    // test hands over in host-only mode, which is how the host's small ops
+    // are tested without an NPU.
     bool npu_takes_all = true, small_ops = false;
     for (int i = 0; i < cgraph->n_nodes; i++) {
         const ggml_tensor * n = cgraph->nodes[i];
@@ -756,7 +770,7 @@ static ggml_status ggml_backend_xdna_graph_compute(ggml_backend_t backend, ggml_
         npu_takes_all &= w->buffer && ggml_backend_buffer_get_usage(w->buffer) == GGML_BACKEND_BUFFER_USAGE_WEIGHTS &&
                          xdna_npu_has_shape(w->ne[0], w->ne[1]);
     }
-    if (xdna_blocks() && (npu_takes_all || small_ops)) {
+    if ((xdna_blocks() && npu_takes_all) || small_ops) {
         xdna_npu * npu = npu_takes_all ? ctx.get_npu() : nullptr;
         std::unordered_set<const ggml_tensor *> in_piece;
         for (int i = 0; i < cgraph->n_nodes; i++) {
@@ -798,13 +812,10 @@ static ggml_status ggml_backend_xdna_graph_compute(ggml_backend_t backend, ggml_
                     err = std::string(w->name) + " is not in a weight buffer";
                     return false;
                 }
-            const xdna_npu::wkey gate = { gw->buffer, gw->data, (int) gw->type, gw->ne[0], gw->ne[1] };
-            if (npu->has_weight(xdna_npu::fused_key(gate))) return true;
+            if (npu->has_weight(xdna_npu::fused_key(xdna_npu::gate_key(gw, uw)))) return true;
             ctx.late_copies++;
-            std::vector<uint8_t> g(ggml_nbytes(gw)), u(ggml_nbytes(uw));
-            ctx.read(gw, g.data());
-            ctx.read(uw, u.data());
-            return npu->add_fused(gate, g.data(), u.data(), err);
+            std::vector<uint8_t> g, u;
+            return ctx.add_fused(gw, uw, g, u, err);
         };
         io.weight_bytes = [&](const ggml_tensor * w) -> const void * { return ctx.weight(w).data(); };
         std::string err;
@@ -1127,10 +1138,9 @@ static bool xdna_supports_op_policy(const ggml_tensor * op, int depth) {
         }();
         if (!allow.empty() && allow.find("," + std::string(ggml_op_name(op->op)) + ",") == std::string::npos) return false;
     }
-    if (op->op == GGML_OP_MUL) {
-        const ggml_tensor * w = op->src[1];  // a scale row: a plain leaf, kept once
+    // a scale or bias row, or rotary factors: a plain leaf, kept once
+    if (const ggml_tensor * w = xdna_exec_param(op))
         if (w->op != GGML_OP_NONE || w->view_src) return false;
-    }
     // ggml's allocator may put an op's result in the memory of an input the
     // same shape (in place), without checking that the input is in the same
     // kind of memory. An input in host memory (the token embeddings, or a

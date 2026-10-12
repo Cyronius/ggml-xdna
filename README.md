@@ -183,8 +183,11 @@ What the spread of results says:
   yours with `bench.ps1`.
 - **Models narrower than 2,048 lose.** Those two are the slowest results
   here. The add-on warns about them too.
-- **Gemma 4 only breaks even** because its GeGLU isn't implemented on the NPU
-  side yet, so those blocks split to the GPU.
+- **Gemma 4 only broke even** when measured, because its GeGLU step then
+  ran on the GPU and split its blocks. The add-on now runs that step itself
+  (and Granite's scale, Qwen2.5's bias rows and Phi's fused gate/up), so
+  these models hand over between the NPU and GPU far less often; their rows
+  here haven't been remeasured yet.
 - **4-bit models gain least.** The NPU converts every weight to its own 8-bit
   copy whatever the file holds, so its speed doesn't depend on the quant,
   while the GPU reads the original weights every prompt and so gets most of
@@ -388,9 +391,9 @@ contexts of 32,768 tokens, and two models served at once by its router.
   asked; -dev Vulkan0 would use the GPU alone
   ```
 
-- **A few other layers stay on the GPU:** variants the NPU side doesn't
-  implement yet (bias adds, some rotary settings). Output is still correct;
-  less of the work moves.
+- **A few other steps stay on the GPU:** ones the NPU side doesn't
+  implement (some of Gemma's, and rotary over a fused q/k/v weight as in
+  Phi-4-mini). Output is still correct; less of the work moves.
 - If the NPU fails during a run, the add-on finishes that step on the CPU
   and hands everything to the GPU from then on. The rest of that prompt is
   slow.

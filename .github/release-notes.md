@@ -54,8 +54,6 @@ the zip reruns these measurements on your own models.
 - If the NPU fails or its results come back damaged mid-prompt, the rest of
   that prompt runs on the CPU and can take many minutes (#13). The default
   memory limit keeps this from happening in normal use.
-- Some steps Gemma, Granite, Phi-4 and Qwen2.5 use still run on the GPU,
-  which is why Gemma only breaks even (#14).
 
 The README has the full measurements, the settings, and what to do when it
 turns itself off.

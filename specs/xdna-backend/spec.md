@@ -182,14 +182,23 @@ real columns).
 
 On the NPU and with block claiming on (`GGML_XDNA_BLOCKS`, default on), it
 shall also accept a small op when all of these hold: the backend's
-executor implements it in that variant (RMS_NORM; MUL by a scale row; ADD of
-two same-shape tensors; ROPE, normal or NeoX, with no YaRN ramp and no
-frequency factors; SwiGLU, split and not swapped; RESHAPE); it covers at
-least `GGML_XDNA_MIN_BATCH` tokens; one of its inputs comes from an op
+executor implements it in that variant (XDNA-HOST-OPS: RMS_NORM; MUL by a
+scale row; ADD of two same-shape tensors, or of a bias row; SCALE; ROPE,
+normal or NeoX, over all or part of each head, with or without YaRN and
+frequency factors; GLU as SwiGLU, GeGLU (tanh, erf or quick) or ReGLU, on
+two tensors or on one holding both halves; RESHAPE); a scale or bias row,
+or frequency factors, is a plain leaf (kept once, like a weight); it covers
+at least `GGML_XDNA_MIN_BATCH` tokens; one of its inputs comes from an op
 the policy accepts; and none of its inputs has its shape and may sit in
 host memory (a graph input, a `GET_ROWS` result such as the token
 embeddings, or a tensor already in a host buffer). It shall decline every
 other op.
+
+The list grew on 2026-10-12 (issue #14) by the steps Gemma (GeGLU),
+Granite (SCALE), Phi (SwiGLU on one fused gate/up weight, partial rotary,
+frequency factors), Qwen2.5 and gpt-oss (bias rows) and long-context models
+(YaRN) use. Before, each of them split the model's blocks there: the step
+ran on the GPU, at the cost of a hand-over each way.
 
 The last condition is there because ggml's allocator may put an op's result
 in the memory of a same-shape input (in place) without checking that the
@@ -219,6 +228,10 @@ on the NPU):**
 - `ADD` of a claimable matmul and the token embeddings (`GET_ROWS`), in
   either order → not claimed
 - `ADD` of a claimable matmul and a graph input → not claimed
+- `ADD` of a claimable matmul and a bias row (a leaf), `SCALE` of one, a
+  GeGLU of two, and a SwiGLU on one matmul whose weight holds gate and up
+  → claimed on the NPU; not claimed host-only
+- `ADD` of a claimable matmul and a computed row → not claimed
 
 **Verification (manual, block claiming):** run with `GGML_XDNA_DUMP=1` and
 check that each `xdna piece:` line on Qwen3-1.7B spans o-projection through
@@ -386,6 +399,52 @@ people had to leave, and the quay was to be left as"). Again 2026-09-30,
 after the repository cleanup: identical, 269 pieces on the NPU. Again
 2026-10-03, with small ops next to host memory declined (XDNA-SIZE-POLICY):
 identical.
+
+**Measured 2026-10-12**, after the small-op list grew (issue #14): a
+1,700-token prompt (the start of the README), `-ub 2048`, 24 greedy tokens,
+before and after, against the GPU alone, and the NPU pieces per prompt
+chunk (`GGML_XDNA_DUMP=1`):
+
+| model | the step it gained | pieces, before → after | reply |
+|---|---|---|---|
+| Granite 4.1 3B Q4_K_S | SCALE | 84 → 29 | the GPU's, both |
+| Qwen2.5-1.5B Q4_0 | bias rows | 85 → 29 | the GPU's, both |
+| Phi-4-mini Q4_K_M | SwiGLU on one fused weight | 65 → 34 | the GPU's, both |
+| Gemma 4 E4B UD-Q4_K_XL | GeGLU | 177 → 127 | the same before and after; both split from the GPU at a near-tie (token 19, as in the README's Accuracy table) |
+| Phi-4 14B Q4_K_M | (none: separate gate and up) | 30 → 30 | the GPU's, both |
+| Qwen3-1.7B Q4_0 | (none) | unchanged | the same before and after |
+
+Phi-4-mini's rotary steps still run on the GPU: they read views into one
+fused q/k/v result, which aren't contiguous rows.
+
+---
+
+### XDNA-HOST-OPS: The small steps between the NPU's matmuls compute what ggml does
+**Applies to:** ggml-xdna
+**Test category:** unit
+
+Each small op the backend runs on the host in a claimed piece shall give
+ggml's CPU backend's result for the same inputs: within a normalised RMS
+error of 1e-5, or 3e-3 for GeGLU (tanh) and GeGLU-quick, which ggml-cpu
+reads from a 16-bit table while the GPU and the backend compute them in
+float. The variants are XDNA-SIZE-POLICY's list.
+
+Why a unit test: a mistake in one of these gives plausible but wrong text,
+never a crash, and until 2026-10-12 only reading model output
+(XDNA-BLOCK-AGREES) could catch one. When a test hands XDNA0 a graph of
+small ops directly in host-only mode, the backend runs it as it runs a
+claimed piece after an NPU failure, so this needs no NPU and runs in CI.
+
+**Acceptance criteria** (`tests/test-host-ops.cpp`, ctest `host-ops-host`):
+RMS_NORM; MUL by a scale row; ADD, same shape and of a bias row; SCALE with
+a bias; SwiGLU, GeGLU, GeGLU-erf, GeGLU-quick and ReGLU on two tensors;
+SwiGLU (plain and swapped), GeGLU and GeGLU-erf on one tensor; ROPE normal
+and NeoX over the whole head, normal over half and NeoX over three
+quarters, NeoX with YaRN, NeoX with frequency factors, and normal with
+both; each within its bound against the CPU backend.
+
+**Passing 2026-10-12:** 21 of 21; the exact cases at 0 to 3.3e-6, the
+GeGLU and GeGLU-quick cases at 2.7e-4 and 3.0e-4.
 
 ---
 
