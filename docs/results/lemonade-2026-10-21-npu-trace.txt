@@ -1,0 +1,12 @@
+2026-10-21 18:53:44.387 [Info] (Process) xdna times, 199 matmuls in 30 pieces: all 1481.1 ms | read inputs 86.5, encode 26.3, NPU 758.1 (342 calls), decode 0.0, write results 94.6, weight copies 5141.8 ms
+2026-10-21 18:53:44.387 [Info] (Process) xdna weight copies: 214 built at load, 0 inside pieces; 6387.2 ms waiting for those built at load
+2026-10-21 18:53:50.994 [Info] (Process) xdna times, 200 matmuls in 31 pieces: all 1401.4 ms | read inputs 84.9, encode 26.8, NPU 710.7 (344 calls), decode 0.0, write results 96.8, weight copies 0.0 ms
+2026-10-21 18:53:50.994 [Info] (Process) xdna weight copies: 0 built at load, 0 inside pieces; 0.0 ms waiting for those built at load
+2026-10-21 18:54:08.180 [Info] (Process) xdna times, 199 matmuls in 30 pieces: all 1454.4 ms | read inputs 85.3, encode 29.8, NPU 682.3 (342 calls), decode 0.0, write results 99.8, weight copies 5236.1 ms
+2026-10-21 18:54:08.180 [Info] (Process) xdna weight copies: 214 built at load, 0 inside pieces; 6400.4 ms waiting for those built at load
+2026-10-21 18:54:15.309 [Info] (Process) xdna times, 200 matmuls in 31 pieces: all 1454.7 ms | read inputs 92.0, encode 27.7, NPU 744.0 (344 calls), decode 0.0, write results 93.2, weight copies 0.0 ms
+2026-10-21 18:54:15.309 [Info] (Process) xdna weight copies: 0 built at load, 0 inside pieces; 0.0 ms waiting for those built at load
+2026-10-21 18:55:18.554 [Info] (Process) xdna times, 199 matmuls in 30 pieces: all 1534.0 ms | read inputs 102.7, encode 41.0, NPU 675.3 (342 calls), decode 0.0, write results 116.1, weight copies 5401.2 ms
+2026-10-21 18:55:18.554 [Info] (Process) xdna weight copies: 214 built at load, 0 inside pieces; 6719.6 ms waiting for those built at load
+2026-10-21 18:55:25.183 [Info] (Process) xdna times, 200 matmuls in 31 pieces: all 1396.2 ms | read inputs 83.2, encode 25.5, NPU 742.1 (344 calls), decode 0.0, write results 93.9, weight copies 0.0 ms
+2026-10-21 18:55:25.183 [Info] (Process) xdna weight copies: 0 built at load, 0 inside pieces; 0.0 ms waiting for those built at load

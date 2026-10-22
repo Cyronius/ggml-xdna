@@ -1,0 +1,77 @@
+2026-10-21 19:40:57.309 [Debug] (Server) GET /api/v1/system-info
+2026-10-21 19:40:57.320 [Debug] (Server) OPTIONS /api/v1/load
+2026-10-21 19:40:57.320 [Debug] (Server) OPTIONS /api/v1/load - 204
+2026-10-21 19:40:57.324 [Debug] (Server) POST /api/v1/load
+2026-10-21 19:40:57.325 [Debug] (Server) ===== LOAD ENDPOINT ENTERED (Thread: 45024) =====
+2026-10-21 19:40:57.325 [Info] (Server) Ensuring model loaded: Qwen3-4B-Q4_K_M
+2026-10-21 19:40:57.326 [Debug] (Router) Loading model: extra.Qwen3-4B-Q4_K_M (checkpoint: C:\code\npu-prefill-engine\third_party\models\Qwen3-4B-Q4_K_M.gguf, recipe: llamacpp, type: llm, device: gpu, residency: standard)
+2026-10-21 19:40:57.326 [Debug] (Router) Effective settings: ctx_size=8192, llamacpp_backend=vulkan, llamacpp_device=XDNA0,Vulkan0, llamacpp_args=--flash-attn on --min-p 0.0 --parallel 1 --repeat-penalty 1.0 --temp 0.6 --top-k 20 --top-p 0.85 -b 2048 -ts 0,1 -ub 2048, merge_args=true, auto_evict=(none), evict_idle_timeout=300, downsize_idle_timeout=60, evict_weight_factor=1.000000, pinned=false, auto_update=(none)
+2026-10-21 19:40:57.326 [Debug] (Router) Created backend for recipe 'llamacpp' via registry
+2026-10-21 19:40:57.326 [Debug] (Router) Starting backend (this may take a moment)...
+2026-10-21 19:40:57.326 [Info] (LlamaCpp) Loading model: extra.Qwen3-4B-Q4_K_M
+2026-10-21 19:40:57.326 [Debug] (LlamaCpp) Per-model settings: ctx_size=8192, llamacpp_backend=vulkan, llamacpp_device=XDNA0,Vulkan0, llamacpp_args=--flash-attn on --min-p 0.0 --parallel 1 --repeat-penalty 1.0 --temp 0.6 --top-k 20 --top-p 0.85 -b 2048 -ts 0,1 -ub 2048, merge_args=true, auto_evict=(none), evict_idle_timeout=300, downsize_idle_timeout=60, evict_weight_factor=1.000000, pinned=false, auto_update=(none)
+2026-10-21 19:40:57.327 [Info] (LlamaCpp) Using LlamaCpp Backend: vulkan
+2026-10-21 19:40:57.327 [Debug] (BackendManager) Installing llamacpp:vulkan
+2026-10-21 19:40:57.327 [Warn] (BackendManager) offline mode; using installed llamacpp:vulkan backend at C:\code\npu-prefill-engine\third_party\shipcheck-20261021\unpacked-rc1/llama-server.exe
+2026-10-21 19:40:57.327 [Debug] (LlamaCpp) Using GGUF: C:\code\npu-prefill-engine\third_party\models\Qwen3-4B-Q4_K_M.gguf
+2026-10-21 19:40:57.327 [Debug] (WrappedServer) llama-server will use port: 8001
+2026-10-21 19:40:57.328 [Debug] (LlamaCpp) Using backend: vulkan
+2026-10-21 19:40:57.328 [Debug] (LlamaCpp) [LlamaCpp] Use GPU: true
+2026-10-21 19:40:57.328 [Debug] (LlamaCpp) Adding custom arguments: --flash-attn on --min-p 0.0 --parallel 1 --repeat-penalty 1.0 --temp 0.6 --top-k 20 --top-p 0.85 -b 2048 -ts 0,1 -ub 2048
+2026-10-21 19:40:57.328 [Info] (LlamaCpp) Starting llama-server...
+2026-10-21 19:40:57.328 [Debug] (ProcessManager) Starting process with filtered output: "C:\code\npu-prefill-engine\third_party\shipcheck-20261021\unpacked-rc1\llama-server.exe" "-m" "C:\code\npu-prefill-engine\third_party\models\Qwen3-4B-Q4_K_M.gguf" "--ctx-size" "8192" "--device" "XDNA0,Vulkan0" "--port" "8001" "--jinja" "--metrics" "--flash-attn" "on" "--min-p" "0.0" "--parallel" "1" "--repeat-penalty" "1.0" "--temp" "0.6" "--top-k" "20" "--top-p" "0.85" "-b" "2048" "-ts" "0,1" "-ub" "2048"
+2026-10-21 19:40:57.334 [Info] (ProcessManager) Process started successfully, PID: 66096
+2026-10-21 19:40:57.334 [Info] (ServerProcess) Started C:\code\npu-prefill-engine\third_party\shipcheck-20261021\unpacked-rc1\llama-server.exe (PID 66096)
+2026-10-21 19:40:57.335 [Debug] (WrappedServer) Waiting for llama-server to be ready...
+2026-10-21 19:40:57.558 [Info] (Process) 0.00.188.905 I cmn  common_param: common_params_print_info: verbosity = 3 (adjust with the `-lv N` CLI arg)
+2026-10-21 19:40:57.559 [Info] (Process) 0.00.189.397 W srv  llama_server: -----------------
+2026-10-21 19:40:57.559 [Info] (Process) 0.00.189.403 W srv  llama_server: CORS is set to allow all origins ('*') and no API key is set
+2026-10-21 19:40:57.559 [Info] (Process) 0.00.189.406 W srv  llama_server: this can be a security risk (cross-origin attacks)
+2026-10-21 19:40:57.559 [Info] (Process) 0.00.189.406 W srv  llama_server: more info: https://github.com/ggml-org/llama.cpp/pull/25655
+2026-10-21 19:40:57.559 [Info] (Process) 0.00.189.407 W srv  llama_server: -----------------
+2026-10-21 19:40:57.568 [Info] (Process) 0.00.198.996 I srv    load_model: loading model 'C:\code\npu-prefill-engine\third_party\models\Qwen3-4B-Q4_K_M.gguf'
+2026-10-21 19:41:15.357 [Info] (Process) xdna times, 199 matmuls in 30 pieces: all 1455.1 ms | read inputs 79.9, encode 31.8, NPU 507.3 (342 calls), decode 0.0, write results 124.2, weight copies 8366.1 ms
+2026-10-21 19:41:15.357 [Info] (Process) xdna host passes: 611.0 ms in 286
+2026-10-21 19:41:15.358 [Info] (Process) xdna weight copies: 214 built at load, 0 inside pieces; 4593.0 ms waiting for those built at load
+2026-10-21 19:41:23.080 [Info] (Process) 0.25.710.448 I slot print_timing: id  0 | task 0 | prompt eval time =   12858.25 ms /  2773 tokens (    4.64 ms per token,   215.66 tokens per second)
+2026-10-21 19:41:23.080 [Info] (Process) 0.25.710.458 I slot print_timing: id  0 | task 0 |        eval time =    3071.51 ms /    43 tokens (   73.13 ms per token,    13.67 tokens per second)
+2026-10-21 19:41:23.080 [Info] (Process) 0.25.710.460 I slot print_timing: id  0 | task 0 |       total time =   15929.75 ms /  2816 tokens
+2026-10-21 19:41:23.080 [Info] (Process) 0.25.710.462 I slot print_timing: id  0 | task 0 |    graphs reused =         42
+2026-10-21 19:41:23.080 [Info] (Process) 0.25.710.637 I slot      release: id  0 | task 0 | stop processing: n_tokens = 2815, truncated = 0
+2026-10-21 19:41:23.081 [Info] (Server) Streaming completed - 200 OK
+2026-10-21 19:41:23.082 [Info] (Telemetry) Inference completed: model=Qwen3-4B-Q4_K_M, tokens=2816 (in=2773, out=43), ttft=12.858s, tps=13.67
+2026-10-21 19:41:23.082 [Debug] (Telemetry) === Telemetry ===
+2026-10-21 19:41:23.082 [Debug] (Telemetry) Model:         Qwen3-4B-Q4_K_M
+2026-10-21 19:41:23.082 [Debug] (Telemetry) Input tokens:  2773
+2026-10-21 19:41:23.082 [Debug] (Telemetry) Output tokens: 43
+2026-10-21 19:41:23.082 [Debug] (Telemetry) TTFT (s):      12.858
+2026-10-21 19:41:23.082 [Debug] (Telemetry) TPS:           13.67
+2026-10-21 19:41:23.082 [Debug] (Telemetry) =================
+2026-10-21 19:45:41.601 [Debug] (Server) OPTIONS /api/v1/chat/completions
+2026-10-21 19:45:41.602 [Debug] (Server) OPTIONS /api/v1/chat/completions - 204
+2026-10-21 19:45:41.604 [Debug] (Server) POST /api/v1/chat/completions
+2026-10-21 19:45:41.604 [Debug] (Server) No tools in request
+2026-10-21 19:45:41.604 [Debug] (Server) Model already loaded: Qwen3-4B-Q4_K_M (residency=standard)
+2026-10-21 19:45:41.604 [Info] (Server) POST /api/v1/chat/completions - Streaming
+2026-10-21 19:45:41.604 [Debug] (Server) POST /api/v1/chat/completions - 200
+2026-10-21 19:45:41.624 [Info] (Process) 4.44.254.744 I slot get_availabl: id  0 | task -1 | selected slot by LRU, t_last = 219842491
+2026-10-21 19:45:44.875 [Info] (Process) 4.47.505.692 I slot launch_slot_: id  0 | task 88 | processing task, is_child = 0
+2026-10-21 19:45:46.637 [Info] (Process) xdna times, 200 matmuls in 31 pieces: all 1309.4 ms | read inputs 72.7, encode 30.4, NPU 482.9 (344 calls), decode 0.0, write results 120.3, weight copies 0.0 ms
+2026-10-21 19:45:46.637 [Info] (Process) xdna host passes: 588.1 ms in 290
+2026-10-21 19:45:46.637 [Info] (Process) xdna weight copies: 0 built at load, 0 inside pieces; 0.0 ms waiting for those built at load
+2026-10-21 19:45:48.039 [Info] (Process) 4.50.669.257 E xdna: the NPU failed (the NPU's results held NaN or infinity (a damaged weight copy)); finishing this step on the CPU and handing everything to the GPU from now on
+2026-10-21 19:45:48.465 [Info] (Process) 4.51.095.579 I slot print_timing: id  0 | task 88 | prompt processing, n_tokens =   2048, progress = 0.74, t =   3.59 s / 570.50 tokens per second
+2026-10-21 19:45:53.740 [Info] (Process) 4.56.370.570 I slot print_timing: id  0 | task 88 | prompt eval time =    6327.22 ms /  2780 tokens (    2.28 ms per token,   439.37 tokens per second)
+2026-10-21 19:45:53.740 [Info] (Process) 4.56.370.588 I slot print_timing: id  0 | task 88 |        eval time =    2537.55 ms /    46 tokens (   56.39 ms per token,    17.73 tokens per second)
+2026-10-21 19:45:53.740 [Info] (Process) 4.56.370.593 I slot print_timing: id  0 | task 88 |       total time =    8864.77 ms /  2826 tokens
+2026-10-21 19:45:53.740 [Info] (Process) 4.56.370.596 I slot print_timing: id  0 | task 88 |    graphs reused =        127
+2026-10-21 19:45:53.740 [Info] (Process) 4.56.370.749 I slot      release: id  0 | task 88 | stop processing: n_tokens = 2828, truncated = 0
+2026-10-21 19:45:53.741 [Info] (Server) Streaming completed - 200 OK
+2026-10-21 19:45:53.741 [Info] (Telemetry) Inference completed: model=Qwen3-4B-Q4_K_M, tokens=2826 (in=2780, out=46), ttft=6.327s, tps=17.73
+2026-10-21 19:45:53.741 [Debug] (Telemetry) === Telemetry ===
+2026-10-21 19:45:53.741 [Debug] (Telemetry) Model:         Qwen3-4B-Q4_K_M
+2026-10-21 19:45:53.741 [Debug] (Telemetry) Input tokens:  2780
+2026-10-21 19:45:53.741 [Debug] (Telemetry) Output tokens: 46
+2026-10-21 19:45:53.741 [Debug] (Telemetry) TTFT (s):      6.327
+2026-10-21 19:45:53.741 [Debug] (Telemetry) TPS:           17.73
+2026-10-21 19:45:53.741 [Debug] (Telemetry) =================

@@ -1,0 +1,303 @@
+﻿{
+    "date":  "2026-10-21",
+    "hardware":  "AMD Ryzen AI 9 HX PRO 370 w/ Radeon 890M (processor registry); AMD Radeon 890M and XDNA0 enumerated by llama-server",
+    "platform":  "Windows",
+    "lemonade_version":  "2026.43.3",
+    "llama_fingerprint":  "b10944-b6b003d2c",
+    "repository_head":  "3def7c63ec0cd3cb638d7984a2edf1263bcd5b1f",
+    "binary_provenance":  "Existing local backend binary; not rebuilt during this check. SHA-256 identifies the tested artifact.",
+    "model":  "Qwen3-4B-Q4_K_M.gguf",
+    "sha256":  {
+                   "prose.txt":  "f3847a17c88e87f1c178479f48276f8e8ab978d20185ef8fa825a913e21adba5",
+                   "ggml-xdna.dll":  "956dd25d239c8f088847d5eeeb4a9bf103bdf786a74c2dbb3e938c7e19130540",
+                   "llama-server.exe":  "e12147c768d9a87710fde0ceb8e2fa0c5b0f5096018f93cb5ab034fe437f877b",
+                   "lemonade-embeddable-2026.43.3-windows-x64.zip":  "665c697182f775e0a4a22b40d012e145591b67adec910bc38db59859982fc5a7",
+                   "Qwen3-4B-Q4_K_M.gguf":  "7485fe6f11af29433bc51cab58009521f205840f5b4ae3a32fa7f92e8534fdf5"
+               },
+    "methodology":  {
+                        "prompt_source":  "tests/prompts/prose.txt",
+                        "gpu_device":  "Vulkan0",
+                        "context":  8192,
+                        "batch":  2048,
+                        "prompt_construction":  "Passage N:\\n followed by source for N=1..8, newline separated; suffix: \\nSummarize the passage in one sentence. /no_think",
+                        "generation_max_tokens":  48,
+                        "temperature":  0,
+                        "timing":  "Server-reported timings, excluding load and warmup; not client streaming TTFT.",
+                        "parallel":  1,
+                        "npu_device":  "XDNA0,Vulkan0",
+                        "warmup":  "One full uncached request after each unload/load, then one uncached measured request.",
+                        "order":  [
+                                      "gpu",
+                                      "npu",
+                                      "npu",
+                                      "gpu",
+                                      "gpu",
+                                      "npu"
+                                  ],
+                        "gpu_tensor_split":  "1",
+                        "copies":  8,
+                        "api":  "Lemonade /api/v1/chat/completions",
+                        "prompt_tokens":  2781,
+                        "ubatch":  2048,
+                        "flash_attention":  "on",
+                        "npu_tensor_split":  "0,1",
+                        "cache_prompt":  false
+                    },
+    "prefill_paired_ratios":  [
+                                  1.2605823101599174185715118324,
+                                  1.2670456936691522777966951192,
+                                  1.4353019183820150912793506374
+                              ],
+    "median_paired_prefill_ratio":  1.2670456936691522777966951192,
+    "limitations":  [
+                        "One model, one prompt length, one sitting, three pairs.",
+                        "No machine-idle or thermal control; GPU-only prefill varied from 363 to 431 tokens/s.",
+                        "Decode varied; no decode improvement is established.",
+                        "Quality, streaming TTFT, current default llama.cpp and ROCm were not evaluated.",
+                        "No Linux or Strix Halo integration verification.",
+                        "Custom GPU recipe may not participate in Lemonade NPU exclusivity."
+                    ],
+    "npu_trace":  "lemonade-2026-10-21-npu-trace.txt",
+    "measured_responses":  [
+                               {
+                                   "round":  1,
+                                   "mode":  "gpu",
+                                   "response":  {
+                                                    "choices":  [
+                                                                    {
+                                                                        "finish_reason":  "stop",
+                                                                        "index":  0,
+                                                                        "message":  {
+                                                                                        "content":  "The passage describes how a harbor town\u0027s once-thriving trade and bureaucracy eventually declined due to environmental changes and internal disputes, but its historical significance was preserved through the accidental preservation of its bureaucratic records in prayer books.",
+                                                                                        "role":  "assistant"
+                                                                                    }
+                                                                    }
+                                                                ],
+                                                    "created":  1792626813,
+                                                    "id":  "chatcmpl-QnYBjWhNl3JcDsMVLOimUWCNJhQVy74O",
+                                                    "model":  "extra.Qwen3-4B-Q4_K_M",
+                                                    "object":  "chat.completion",
+                                                    "system_fingerprint":  "b10944-b6b003d2c",
+                                                    "timings":  {
+                                                                    "cache_n":  0,
+                                                                    "predicted_ms":  2306.071,
+                                                                    "predicted_n":  48,
+                                                                    "predicted_per_second":  20.380985667830696,
+                                                                    "predicted_per_token_ms":  49.065340425531915,
+                                                                    "prompt_ms":  6445.375,
+                                                                    "prompt_n":  2781,
+                                                                    "prompt_per_second":  431.4721796637123,
+                                                                    "prompt_per_token_ms":  2.3176465300251707
+                                                                },
+                                                    "usage":  {
+                                                                  "completion_tokens":  48,
+                                                                  "prompt_tokens":  2781,
+                                                                  "prompt_tokens_details":  {
+                                                                                                "cached_tokens":  0
+                                                                                            },
+                                                                  "total_tokens":  2829
+                                                              }
+                                                }
+                               },
+                               {
+                                   "round":  1,
+                                   "mode":  "npu",
+                                   "response":  {
+                                                    "choices":  [
+                                                                    {
+                                                                        "finish_reason":  "stop",
+                                                                        "index":  0,
+                                                                        "message":  {
+                                                                                        "content":  "The passage describes how a harbor town\u0027s once-thriving trade and bureaucracy declined over time, with the town\u0027s eventual historical legacy being its preserved bureaucratic records, rather than its original trade activities.",
+                                                                                        "role":  "assistant"
+                                                                                    }
+                                                                    }
+                                                                ],
+                                                    "created":  1792626836,
+                                                    "id":  "chatcmpl-SkQKDcYdTfG8RmPsy6gEW7f9q0V9UW5s",
+                                                    "model":  "extra.Qwen3-4B-Q4_K_M",
+                                                    "object":  "chat.completion",
+                                                    "system_fingerprint":  "b10944-b6b003d2c",
+                                                    "timings":  {
+                                                                    "cache_n":  0,
+                                                                    "predicted_ms":  2110.086,
+                                                                    "predicted_n":  44,
+                                                                    "predicted_per_second":  20.3783163340262,
+                                                                    "predicted_per_token_ms":  49.07176744186046,
+                                                                    "prompt_ms":  5113.014,
+                                                                    "prompt_n":  2781,
+                                                                    "prompt_per_second":  543.9061970102175,
+                                                                    "prompt_per_token_ms":  1.838552319309601
+                                                                },
+                                                    "usage":  {
+                                                                  "completion_tokens":  44,
+                                                                  "prompt_tokens":  2781,
+                                                                  "prompt_tokens_details":  {
+                                                                                                "cached_tokens":  0
+                                                                                            },
+                                                                  "total_tokens":  2825
+                                                              }
+                                                }
+                               },
+                               {
+                                   "round":  2,
+                                   "mode":  "npu",
+                                   "response":  {
+                                                    "choices":  [
+                                                                    {
+                                                                        "finish_reason":  "stop",
+                                                                        "index":  0,
+                                                                        "message":  {
+                                                                                        "content":  "The passage describes how a harbor town\u0027s once-thriving trade and bureaucracy declined over time, with the town\u0027s eventual historical legacy being its preserved bureaucratic records, rather than its original trade activities.",
+                                                                                        "role":  "assistant"
+                                                                                    }
+                                                                    }
+                                                                ],
+                                                    "created":  1792626860,
+                                                    "id":  "chatcmpl-tehzolmQlOos0eyVgZDBVVzjV5pOb34I",
+                                                    "model":  "extra.Qwen3-4B-Q4_K_M",
+                                                    "object":  "chat.completion",
+                                                    "system_fingerprint":  "b10944-b6b003d2c",
+                                                    "timings":  {
+                                                                    "cache_n":  0,
+                                                                    "predicted_ms":  2071.748,
+                                                                    "predicted_n":  44,
+                                                                    "predicted_per_second":  20.755420060740978,
+                                                                    "predicted_per_token_ms":  48.18018604651163,
+                                                                    "prompt_ms":  5227.42,
+                                                                    "prompt_n":  2781,
+                                                                    "prompt_per_second":  532.0024027149149,
+                                                                    "prompt_per_token_ms":  1.879690758719885
+                                                                },
+                                                    "usage":  {
+                                                                  "completion_tokens":  44,
+                                                                  "prompt_tokens":  2781,
+                                                                  "prompt_tokens_details":  {
+                                                                                                "cached_tokens":  0
+                                                                                            },
+                                                                  "total_tokens":  2825
+                                                              }
+                                                }
+                               },
+                               {
+                                   "round":  2,
+                                   "mode":  "gpu",
+                                   "response":  {
+                                                    "choices":  [
+                                                                    {
+                                                                        "finish_reason":  "stop",
+                                                                        "index":  0,
+                                                                        "message":  {
+                                                                                        "content":  "The passage describes how a harbor town\u0027s once-thriving trade and bureaucracy eventually declined due to environmental changes and internal disputes, but its historical significance was preserved through the accidental preservation of its bureaucratic records in prayer books.",
+                                                                                        "role":  "assistant"
+                                                                                    }
+                                                                    }
+                                                                ],
+                                                    "created":  1792626883,
+                                                    "id":  "chatcmpl-yxvhzedPTSX9oq7DxefWSKWeAMgBiwdM",
+                                                    "model":  "extra.Qwen3-4B-Q4_K_M",
+                                                    "object":  "chat.completion",
+                                                    "system_fingerprint":  "b10944-b6b003d2c",
+                                                    "timings":  {
+                                                                    "cache_n":  0,
+                                                                    "predicted_ms":  3013.881,
+                                                                    "predicted_n":  48,
+                                                                    "predicted_per_second":  15.5945108648948,
+                                                                    "predicted_per_token_ms":  64.12512765957446,
+                                                                    "prompt_ms":  6623.38,
+                                                                    "prompt_n":  2781,
+                                                                    "prompt_per_second":  419.87625653367314,
+                                                                    "prompt_per_token_ms":  2.3816540812657316
+                                                                },
+                                                    "usage":  {
+                                                                  "completion_tokens":  48,
+                                                                  "prompt_tokens":  2781,
+                                                                  "prompt_tokens_details":  {
+                                                                                                "cached_tokens":  0
+                                                                                            },
+                                                                  "total_tokens":  2829
+                                                              }
+                                                }
+                               },
+                               {
+                                   "round":  3,
+                                   "mode":  "gpu",
+                                   "response":  {
+                                                    "choices":  [
+                                                                    {
+                                                                        "finish_reason":  "stop",
+                                                                        "index":  0,
+                                                                        "message":  {
+                                                                                        "content":  "The passage describes how a harbor town\u0027s once-thriving trade and bureaucracy eventually declined due to environmental changes and internal disputes, but its historical significance was preserved through the accidental preservation of its bureaucratic records in prayer books.",
+                                                                                        "role":  "assistant"
+                                                                                    }
+                                                                    }
+                                                                ],
+                                                    "created":  1792626906,
+                                                    "id":  "chatcmpl-MayDBaW78Jx0RiSWtRTLxZyackD0CA3P",
+                                                    "model":  "extra.Qwen3-4B-Q4_K_M",
+                                                    "object":  "chat.completion",
+                                                    "system_fingerprint":  "b10944-b6b003d2c",
+                                                    "timings":  {
+                                                                    "cache_n":  0,
+                                                                    "predicted_ms":  2524.224,
+                                                                    "predicted_n":  48,
+                                                                    "predicted_per_second":  18.619583681955323,
+                                                                    "predicted_per_token_ms":  53.70689361702128,
+                                                                    "prompt_ms":  7656.387,
+                                                                    "prompt_n":  2781,
+                                                                    "prompt_per_second":  363.22615353690975,
+                                                                    "prompt_per_token_ms":  2.7531057173678533
+                                                                },
+                                                    "usage":  {
+                                                                  "completion_tokens":  48,
+                                                                  "prompt_tokens":  2781,
+                                                                  "prompt_tokens_details":  {
+                                                                                                "cached_tokens":  0
+                                                                                            },
+                                                                  "total_tokens":  2829
+                                                              }
+                                                }
+                               },
+                               {
+                                   "round":  3,
+                                   "mode":  "npu",
+                                   "response":  {
+                                                    "choices":  [
+                                                                    {
+                                                                        "finish_reason":  "stop",
+                                                                        "index":  0,
+                                                                        "message":  {
+                                                                                        "content":  "The passage describes how a harbor town\u0027s once-thriving trade and bureaucracy declined over time, with the town\u0027s eventual historical legacy being its preserved bureaucratic records, rather than its original trade activities.",
+                                                                                        "role":  "assistant"
+                                                                                    }
+                                                                    }
+                                                                ],
+                                                    "created":  1792626930,
+                                                    "id":  "chatcmpl-cEXE5fJS2OxvSzPOd16M3jIaWB48X7g7",
+                                                    "model":  "extra.Qwen3-4B-Q4_K_M",
+                                                    "object":  "chat.completion",
+                                                    "system_fingerprint":  "b10944-b6b003d2c",
+                                                    "timings":  {
+                                                                    "cache_n":  0,
+                                                                    "predicted_ms":  2109.217,
+                                                                    "predicted_n":  44,
+                                                                    "predicted_per_second":  20.38671222543721,
+                                                                    "predicted_per_token_ms":  49.05155813953488,
+                                                                    "prompt_ms":  5334.339,
+                                                                    "prompt_n":  2781,
+                                                                    "prompt_per_second":  521.339194978047,
+                                                                    "prompt_per_token_ms":  1.9181370010787486
+                                                                },
+                                                    "usage":  {
+                                                                  "completion_tokens":  44,
+                                                                  "prompt_tokens":  2781,
+                                                                  "prompt_tokens_details":  {
+                                                                                                "cached_tokens":  0
+                                                                                            },
+                                                                  "total_tokens":  2825
+                                                              }
+                                                }
+                               }
+                           ]
+}

@@ -111,6 +111,10 @@ llama-server -m model.gguf -dev XDNA0,Vulkan0 -ts 0,1
 
 Without `-dev XDNA0,...`, llama.cpp runs as if the add-on weren't there.
 
+**With Lemonade:** a verified Windows setup uses Lemonade's custom backend
+setting to run this same b10944 build. See [the Lemonade guide](docs/lemonade.md)
+for setup, NPU execution checks and a paired API benchmark.
+
 `-ts 0,1` keeps every layer on the GPU, which is where llama.cpp puts them
 anyway. Without it, llama.cpp's automatic memory fitting crashes while
 loading a mixture-of-experts model (a divide by zero in its layer search).

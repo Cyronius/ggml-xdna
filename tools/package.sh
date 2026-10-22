@@ -28,6 +28,14 @@ for f in libggml-xdna.so libggml-xdna-xrt.so npu; do
 done
 cp "$root/kernels/bfp16_gemm/prebuilt/bfp16_gemm.xclbin" "$stage/"
 cp "$root/tools/bench.ps1" "$stage/"
+mkdir -p "$stage/tools" "$stage/docs" "$stage/tests/prompts"
+cp "$root/tools/bench-lemonade.ps1" "$stage/tools/"
+cp "$root/tools/check-lemonade.py" "$stage/tools/"
+cp "$root/docs/lemonade.md" "$stage/docs/"
+cp "$root/docs/lemonade-validation.md" "$stage/docs/"
+cp "$root/docs/lemonade-desktop-walkthrough.mp4" "$stage/docs/"
+cp -R "$root/docs/results" "$stage/docs/results"
+cp "$root/tests/prompts/prose.txt" "$stage/tests/prompts/"
 cp "$root/README.md" "$root/LICENSE" "$root/NOTICE" "$stage/"
 
 # each part's license
