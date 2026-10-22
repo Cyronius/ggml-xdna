@@ -9,8 +9,8 @@ on:
         "docs/assets/**",
         "docs/results/lemonade-desktop-answer.png",
         "docs/results/lemonade-2026-10-21.json",
+        "docs/results/lemonade-speed-comparison-2026-10-22.json",
         "docs/results/headline-models-2026-10-21/**",
-        "docs/lemonade-desktop-walkthrough.mp4",
         "tools/build-site.py",
         ".github/workflows/pages.yml",
       ]

@@ -163,7 +163,7 @@ if(WIN32)
 endif()
 add_custom_command(TARGET zest POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:zest> "${GGML_DIST}"
-    # Compatibility command for existing scripts; both names run Zest.
+    # Both public command names run the same launcher.
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:zest> "$<TARGET_FILE_DIR:zest>/npu${EXE}"
     COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:zest> "${GGML_DIST}/npu${EXE}"
 )
@@ -231,10 +231,10 @@ set_tests_properties(safe-start PROPERTIES LABELS host ENVIRONMENT "${XDNA_ENV}"
 set_tests_properties(safe-start-no-driver PROPERTIES LABELS nodriver ENVIRONMENT "${XDNA_ENV}")
 
 # Exercise the public commands with their own backend discovery, including the
-# compatibility filename. Direct backend tests above set GGML_BACKEND_PATH.
+# npu command. Direct backend tests above set GGML_BACKEND_PATH.
 add_test(NAME launcher-devices COMMAND "${GGML_DIST}/zest${EXE}" llama-server --list-devices)
-add_test(NAME launcher-compat-devices COMMAND "${GGML_DIST}/npu${EXE}" llama-server --list-devices)
-set_tests_properties(launcher-devices launcher-compat-devices PROPERTIES
+add_test(NAME launcher-npu-devices COMMAND "${GGML_DIST}/npu${EXE}" llama-server --list-devices)
+set_tests_properties(launcher-devices launcher-npu-devices PROPERTIES
     LABELS host
     ENVIRONMENT "GGML_BACKEND_PATH=;GGML_XDNA_KERNELS="
     PASS_REGULAR_EXPRESSION "Vulkan0:"

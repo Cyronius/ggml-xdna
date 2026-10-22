@@ -18,29 +18,30 @@ no NPU kernel to compile for each model. Qwen, LFM, and Granite are examples,
 rather than a fixed list of supported models. Coverage depends on the bundled
 llama.cpp build and the operations the add-on implements; speedups vary by model.
 
-**[Download the Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc2)**
+**[Download the Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0)**
 · [Setup guide](docs/lemonade.md)
 · [Website](https://cyronius.github.io/zest/)
 · [Direct llama.cpp / Linux](docs/technical-guide.md)
 
 This is an independent community add-on. The tested preview uses
 Lemonade **2026.43.3** and the bundled **llama.cpp b10944** backend.
-Current packages use `ggml-zest.dll` on Windows and `libggml-zest.so` on Linux.
-[Moving from ggml-xdna?](docs/zest-migration.md) The `npu` command remains available
-as a compatibility alias for `zest`.
+Packages include the `zest` and `npu` commands on Windows and Linux, with
+`ggml-zest.dll` on Windows and `libggml-zest.so` on Linux.
 Keep that backend together: the DLL won't work with an arbitrary newer build.
 
 ## See it running
 
-[![Actual Lemonade desktop chat using Qwen3-4B with NPU-assisted prompt processing](docs/results/lemonade-desktop-answer.png)](https://github.com/Cyronius/zest/releases/download/lemonade-preview-20261021/lemonade-desktop-walkthrough.mp4)
+[![Actual Lemonade desktop chat using Qwen3-4B with NPU-assisted prompt processing](docs/results/lemonade-desktop-answer.png)](https://cyronius.github.io/zest/#comparison)
 
-[Watch the 19-second walkthrough](https://github.com/Cyronius/zest/releases/download/lemonade-preview-20261021/lemonade-desktop-walkthrough.mp4)
-· [NPU trace](docs/results/lemonade-desktop-trace.txt)
+[Watch the same prompt, GPU-only and NPU + GPU](https://cyronius.github.io/zest/#comparison)
+· [Recorded stream timings](docs/results/lemonade-speed-comparison-2026-10-22.json)
 · [Verification report](docs/lemonade-validation.md)
 
-That's the actual Lemonade app. It loaded Qwen3-4B, answered a 2,780-token
-prompt, and logged 344 NPU calls. The video is a walkthrough made from
-desktop screenshots, so don't use it to judge latency.
+The side-by-side video replays two recorded Lemonade API streams at real
+speed. With the same 8,296-token prompt and Qwen3-4B Q4_K_M, the first reply
+arrived at 28.81 seconds on GPU alone and 21.85 seconds with NPU + GPU.
+Each mode was warmed and prompt caching was off. These are separate runs
+on one laptop, aligned at request start.
 
 ## Try it on Windows
 
@@ -50,7 +51,7 @@ and a GGUF file already on disk. We tested a Ryzen AI 9 HX PRO 370 with
 Radeon 890M graphics. Qwen3-4B Q4_K_M is a useful starting point if you want
 to repeat that test. Lemonade, drivers, and model weights are separate downloads.
 
-1. [Download the Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc2)
+1. [Download the Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0)
    and extract the ZIP. Keep the files together. There's a SHA-256 checksum
    beside the download and a file manifest inside it.
 2. Quit the existing Lemonade tray server, then double-click

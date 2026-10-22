@@ -3,14 +3,27 @@
 Measured on 2026-10-21, using the official Lemonade 2026.43.3 server and the
 Windows preview's unmodified llama.cpp b10944 Vulkan backend plus `ggml-xdna.dll`.
 These are actual Lemonade API requests, not standalone `llama-bench` results.
-The measured backend predates the binary rename; current Zest packages call it
-`ggml-zest.dll`. Historical hashes and traces below retain the tested filename.
 
 **This is Strix Point: Ryzen AI 9 HX PRO 370 / Radeon 890M.** The laptop has
 96 GB of DDR5-5600 installed. Its 890M has 16 compute units; high-end Strix Halo's
 Radeon 8060S has 40. Halo has a substantially larger GPU, but we haven't measured
 Zest on it. A faster GPU baseline could reduce the NPU's relative benefit.
 [AMD's GPU specifications](https://rocm.docs.amd.com/en/latest/reference/gpu-specs.html).
+
+## Recorded side-by-side comparison
+
+The [video on the website](https://cyronius.github.io/zest/#comparison) replays
+two Lemonade API streams recorded on 2026-10-22 with Zest v0.2.0, Qwen3-4B
+Q4_K_M, and the same 8,296-token prompt. GPU-only first content arrived at
+28.81 seconds; NPU + GPU first content arrived at 21.85 seconds. Both returned
+the same complete answer. These are client-observed first-content times,
+including prompt processing, rather than the server-reported prefill times below.
+
+The modes ran separately on the same laptop, with a full uncached warmup in
+each mode, then one recorded request. Playback aligns both request starts
+without rescaling time. Loading and warmup are excluded; this is one pair.
+The [recording](results/lemonade-speed-comparison-2026-10-22.json) retains the
+identical request, mode settings, token event timestamps, and server timings.
 
 ## Same prose, several models
 

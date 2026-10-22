@@ -52,6 +52,13 @@ zest llama-server
 zest llama-cli -m model.gguf
 ```
 
+Both `zest` and `npu` are supported commands with the same options:
+
+```
+npu llama-server -m model.gguf
+npu --memory-gb 20 llama-cli -m model.gguf
+```
+
 With no model given, `zest` lists the models it finds and asks which one:
 
 ```
@@ -171,11 +178,12 @@ unpack it, and use `zest` as above:
 tar -xzf zest-<version>-llama-b10944-ubuntu-x64.tar.gz
 cd zest-<version>-llama-b10944-ubuntu-x64
 ./zest llama-server -m model.gguf
+./npu llama-server -m model.gguf
 ```
 
 It's llama.cpp's own Linux Vulkan release, unmodified, with the add-on
 (`libggml-zest.so`, which reaches the NPU driver through
-`libggml-zest-xrt.so` next to it), the NPU kernel and `zest`. Without the
+`libggml-zest-xrt.so` next to it), the NPU kernel, and both `zest` and `npu`. Without the
 launcher:
 
 ```
@@ -184,7 +192,8 @@ GGML_BACKEND_PATH=$PWD/libggml-zest.so ./llama-server -m model.gguf -dev XDNA0,V
 
 On Linux, `zest` finds llama.cpp's downloads in `~/.cache/llama.cpp` (or
 `$LLAMA_CACHE`) and Hugging Face's in `~/.cache/huggingface/hub` (or
-`$HF_HOME/hub`), and remembers your last pick in `~/.local/state/ggml-zest`.
+`$HF_HOME/hub`), and remembers your last pick in `$XDG_STATE_HOME/zest`
+(normally `~/.local/state/zest`).
 It becomes the program it starts, so Ctrl+C, the exit code and stopping it
 work as they would for the program alone.
 

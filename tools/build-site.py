@@ -19,11 +19,12 @@ def build(destination: Path) -> None:
     assets = destination / "assets"
     assets.mkdir(exist_ok=True)
     for name in ("lemonade-logo-light.png", "lemonade-logo-dark.png", "lemonade-LICENSE.txt",
-                 "lemonade-results.svg", "jakarta-latin.woff2", "jakarta-OFL.txt"):
+                 "lemonade-results.svg", "jakarta-latin.woff2", "jakarta-OFL.txt",
+                 "lemonade-speed-comparison.mp4", "lemonade-speed-comparison.png"):
         shutil.copy2(ROOT / "docs" / "assets" / name, assets / name)
     shutil.copy2(ROOT / "docs/results/lemonade-desktop-answer.png", assets / "lemonade-desktop.png")
-    shutil.copy2(ROOT / "docs/lemonade-desktop-walkthrough.mp4", assets / "lemonade-walkthrough.mp4")
     shutil.copy2(ROOT / "docs/results/lemonade-2026-10-21.json", assets / "lemonade-measurements.json")
+    shutil.copy2(ROOT / "docs/results/lemonade-speed-comparison-2026-10-22.json", assets / "lemonade-speed-comparison.json")
     shutil.copytree(ROOT / "docs/results/headline-models-2026-10-21", assets / "model-results")
     (destination / ".nojekyll").touch()
     print(f"Built {destination}")

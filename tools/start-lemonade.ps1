@@ -90,9 +90,8 @@ foreach ($file in @('llama-server.exe', 'ggml-zest.dll')) {
 New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
 $StateDir = (Resolve-Path -LiteralPath $StateDir).Path
 $marker = "$StateDir/.zest-launcher"
-$legacyMarker = "$StateDir/.ggml-xdna-launcher"
 if ((Test-Path "$StateDir/config/config.json") -and
-    -not (Test-Path $marker) -and -not (Test-Path $legacyMarker)) {
+    -not (Test-Path $marker)) {
     throw 'This directory contains an existing configuration. Choose a separate -StateDir.'
 }
 New-Item -ItemType Directory -Force "$StateDir/cache", "$StateDir/config" | Out-Null
