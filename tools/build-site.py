@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parents[1]
 def build(destination: Path) -> None:
     destination = destination.resolve()
     # Only replace the dedicated, ignored output directory in this checkout.
-    if destination != (ROOT / "dist" / "site").resolve():
+    if destination != ROOT / "dist" / "site":
         raise SystemExit("Site output must be this checkout's dist/site directory")
     if destination.is_symlink() or (ROOT / "dist").is_symlink():
         raise SystemExit("Site output cannot be a symlink")

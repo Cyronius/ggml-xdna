@@ -3,7 +3,16 @@ name: GitHub Pages
 on:
   push:
     branches: [main]
-    paths: ['website/**', 'docs/assets/**', 'docs/results/lemonade-desktop-answer.png', 'docs/results/lemonade-2026-10-21.json', 'docs/lemonade-desktop-walkthrough.mp4', 'tools/build-site.py', '.github/workflows/pages.yml']
+    paths:
+      [
+        "website/**",
+        "docs/assets/**",
+        "docs/results/lemonade-desktop-answer.png",
+        "docs/results/lemonade-2026-10-21.json",
+        "docs/lemonade-desktop-walkthrough.mp4",
+        "tools/build-site.py",
+        ".github/workflows/pages.yml",
+      ]
   workflow_dispatch:
 
 permissions:
@@ -25,7 +34,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: "3.11"
       - run: python tools/build-site.py
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
