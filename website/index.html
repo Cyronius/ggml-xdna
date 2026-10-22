@@ -357,10 +357,11 @@
             <p>
               The launcher checks it before starting and chooses the GPU if the
               check fails. It records the reason in
-              <code>device-probe.log</code>. A failure during a request is
-              slower: the rest of that prompt can finish on CPU, then later
-              requests use the GPU. The affected request took about 63 seconds
-              in our failure test.
+              <code>device-probe.log</code>. If the NPU fails during a request,
+              this preview retries the failed work on the GPU and uses the GPU
+              from then on. The CPU reference is still available if the GPU
+              can't run that piece. The test report keeps the original preview's
+              slow CPU recovery result for comparison.
             </p>
           </details>
           <details>

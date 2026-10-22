@@ -2,28 +2,51 @@
 
 Checked 2026-10-21 on a Ryzen AI 9 HX PRO 370 with Radeon 890M.
 
-## Lemonade launcher update
+## r2 preview: build, launcher, and recovery
 
-The r2 preview adds `Start-Lemonade.cmd`, a Windows entry point that looks
-for the installed Lemonade server and opens file pickers for missing paths.
-Its terminal options still work, including `-PrepareOnly` and `-GpuOnly`.
+The r2 preview adds `Start-Lemonade.cmd`, which looks for an installed
+Lemonade server and opens file pickers for missing paths. Its terminal
+options still work, including `-PrepareOnly` and `-GpuOnly`. File-picker
+selection itself wasn't automated in these checks.
 
-The ZIP was extracted to a new directory containing spaces. All 91 manifest
-files passed their checksums before the final evidence files were added.
-The packaged CMD entry point was run with explicit server and model paths,
-first to prepare configuration and then to start the official server. The
-saved NPU/batch settings were used by the API: all three answer checks
-passed, with the same arithmetic formatting failure as the earlier preview.
-The server logged 342 NPU calls on the first request and 344 on each of the
-next two. Ctrl+C stopped the server. The interactive file-picker selection
-itself wasn't automated in this check.
+Main already contained the GPU recovery fix from PR #21. It is preserved
+in this update. A fresh source archive of merge commit
+`dd628e9` was built in an empty build directory using the verified official
+b10944 archive and matching cached headers. No old objects or backend DLL
+were reused. All **12 applicable CTest tests passed**, including real NPU
+matmul, invalid-result injection, and submission-failure injection. The
+no-driver test was excluded because this machine has the driver.
+[CTest output](results/lemonade-r2-clean-build-ctest.txt).
 
-[r2 responses](results/lemonade-preview-r2-api.json) and
-[trace excerpts](results/lemonade-preview-r2-trace.txt). The engine DLL is
-unchanged from the clean build below. The final package's checksum and file
-verification receipt are attached to the r2 GitHub release.
+The rebuilt DLL's SHA-256 is
+`9ab00b2a12592b981410218e26e7211d0095073ce2c8de263f270fca0e62de0c`.
+The final package's checksum and file verification receipt are attached to
+the r2 GitHub release.
 
-## Build and package
+The CMD entry point prepared configuration and started the official server
+from an extracted path containing spaces. Its saved settings were used by
+Lemonade. With Qwen3-4B Q4_K_M and the rebuilt DLL, all three answer checks
+passed; the arithmetic answer again returned an equation instead of just an
+integer. Positive NPU call counts were recorded. Ctrl+C stopped the server.
+[Responses](results/lemonade-preview-r2-api.json) and
+[trace excerpts](results/lemonade-preview-r2-trace.txt).
+
+For the recovery check, `GGML_XDNA_FAIL_AFTER=0` failed the first eligible
+operation with Qwen3-1.7B Q4_0. Exactly one failure notice said the failed
+work would finish on the GPU. All three answers were correct. First content
+arrived in **4.28 seconds** on the affected request, then **4.52 and 2.40
+seconds** on the following requests. The original preview's affected request
+took 63.26 seconds while it finished on CPU. These are single checks, not a
+controlled performance comparison. The CPU reference remains available if
+the GPU cannot run a failed piece.
+[Recovery responses](results/lemonade-r2-runtime-fallback-api.json) and
+[trace](results/lemonade-r2-runtime-fallback-trace.txt).
+
+The records below describe the original preview. Its slow CPU recovery
+result is retained to show what changed; it does not describe r2's tested
+recovery path.
+
+## Original preview: build and package
 
 The engine was built from a new `git archive` of
 `3def7c63ec0cd3cb638d7984a2edf1263bcd5b1f`, in an empty source/build directory,
@@ -45,7 +68,7 @@ the Lemonade tools, prompt fixture and documentation. They also verify the
 official Windows llama.cpp archive's SHA-256 before extraction. A CMake test
 path now uses the platform executable suffix for Linux CI.
 
-## Actual Lemonade desktop app
+## Original preview: actual Lemonade desktop app
 
 The official **Lemonade 2026.43.3 MSI** was downloaded and checked against
 GitHub's published asset digest. Its files were extracted without installing
@@ -78,7 +101,7 @@ caused Lemonade to discard inherited batch/tensor-split arguments. The
 launcher now saves `merge_args=true`. The effective options and actual
 subprocess command were checked before accepting the desktop result.
 
-## Quality and streaming
+## Original preview: quality and streaming
 
 GPU-only and NPU-assisted requests went through the full Lemonade server's
 streaming OpenAI API. Both retrieved an access code near the beginning and
@@ -101,7 +124,7 @@ eight 512-token chunks and 2,048-token batches, measured **mean KL divergence
 prose fixture; the result is specific to that corpus.
 [KL record and hashes](results/lemonade-clean-package-kl.json).
 
-## Fallback
+## Original preview: fallback
 
 For startup rejection, `GGML_XDNA_KERNELS` deliberately named a nonexistent
 file. The launcher detected that no XDNA device was offered and configured

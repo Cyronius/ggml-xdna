@@ -27,9 +27,10 @@ integration remain unverified.
 
 The NPU keeps extra converted weight copies in RAM and changes numerical
 results through block rounding. Small prompt chunks stay on the GPU.
-Speed depends on the model. A runtime NPU failure can leave the affected
-prompt finishing slowly on CPU; later requests use the GPU. The failure
-check took about 63 seconds for that request.
+Speed depends on the model. If the NPU fails during a request, failed work
+is retried on the GPU and later requests use the GPU. The CPU reference
+remains available if the GPU cannot run a failed piece. This build includes
+the GPU recovery fix already merged into main.
 
 The desktop walkthrough uses screenshots from the actual app. It shows
 prompt entry and the answer, but isn't a real-time latency recording.
