@@ -416,11 +416,6 @@ nav a:hover {
   font-size: 13px;
   white-space: nowrap;
 }
-.measurement-link {
-  display: inline-block;
-  font-size: 12px;
-  margin-top: 12px;
-}
 .model-results {
   margin-top: 48px;
   border-top: 1px solid #dcdcc8;
