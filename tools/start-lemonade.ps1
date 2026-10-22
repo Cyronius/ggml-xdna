@@ -6,17 +6,64 @@ tools\start-lemonade.ps1 -LemonadeExe C:\Lemonade\bin\LemonadeServer.exe -Model 
 #>
 [CmdletBinding()]
 param(
-    [Parameter(Mandatory = $true)][string]$LemonadeExe,
-    [Parameter(Mandatory = $true)][string]$Model,
+    [string]$LemonadeExe,
+    [string]$Model,
     [string]$LlamaDir,
     [string]$StateDir = "$PSScriptRoot/../third_party/lemonade-instance",
     [ValidateRange(1024, 65535)][int]$Port = 13315,
     [switch]$GpuOnly,
-    [switch]$PrepareOnly
+    [switch]$PrepareOnly,
+    [switch]$Interactive
 )
 $ErrorActionPreference = 'Stop'
+
+function Select-LocalFile([string]$Title, [string]$Filter) {
+    Add-Type -AssemblyName System.Windows.Forms
+    $dialog = New-Object System.Windows.Forms.OpenFileDialog
+    try {
+        $dialog.Title = $Title
+        $dialog.Filter = $Filter
+        $dialog.CheckFileExists = $true
+        if ($dialog.ShowDialog() -ne [System.Windows.Forms.DialogResult]::OK) {
+            throw 'Selection cancelled. No server was started.'
+        }
+        return $dialog.FileName
+    } finally { $dialog.Dispose() }
+}
+
+if ($Interactive) {
+    Write-Host 'ggml-xdna for Lemonade'
+    Write-Host 'Quit your existing Lemonade tray server before starting this one.'
+    Write-Host 'Tested with Lemonade 2026.43.3. Choose an existing local GGUF model.'
+    if (-not $LemonadeExe) {
+        $candidates = @()
+        $command = Get-Command LemonadeServer.exe -ErrorAction SilentlyContinue
+        if ($command) { $candidates += $command.Source }
+        foreach ($base in @($env:ProgramFiles, ${env:ProgramFiles(x86)}, "$env:LOCALAPPDATA/Programs")) {
+            if ($base) {
+                foreach ($folder in @('Lemonade', 'Lemonade Server', 'lemonade_server')) {
+                    $candidates += "$base/$folder/bin/LemonadeServer.exe"
+                    $candidates += "$base/$folder/LemonadeServer.exe"
+                }
+            }
+        }
+        $LemonadeExe = $candidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } |
+            Select-Object -First 1
+        if (-not $LemonadeExe) {
+            $LemonadeExe = Select-LocalFile 'Choose LemonadeServer.exe (or portable lemond.exe)' `
+                'Lemonade server|LemonadeServer.exe;lemond.exe'
+        }
+    }
+    if (-not $Model) { $Model = Select-LocalFile 'Choose the GGUF model to use in Lemonade' 'GGUF model|*.gguf' }
+}
+if (-not $LemonadeExe -or -not $Model) {
+    throw 'Supply -LemonadeExe and -Model, or use Start-Lemonade.cmd to choose them.'
+}
 $LemonadeExe = (Resolve-Path -LiteralPath $LemonadeExe).Path
 $Model = (Resolve-Path -LiteralPath $Model).Path
+if ([IO.Path]::GetFileName($LemonadeExe) -notin @('LemonadeServer.exe', 'lemond.exe')) {
+    throw 'Choose LemonadeServer.exe (the server) or portable lemond.exe, rather than the desktop app.'
+}
 if (-not $PrepareOnly) {
     if ([IO.Path]::GetFileName($LemonadeExe) -eq 'LemonadeServer.exe' -and
         (Get-Process -Name LemonadeServer -ErrorAction SilentlyContinue)) {
@@ -105,14 +152,20 @@ try {
         Write-Host "NPU unavailable; using the GPU. Reason: $StateDir/device-probe.log"
     }
     Write-Host "Lemonade desktop Base URL: http://127.0.0.1:$Port"
+    Write-Host "In Lemonade App: Settings > Base URL > Save, then choose $modelId."
     Write-Host "Server log: $StateDir/server.log"
+    Write-Host 'Leave this window open while chatting. Press Ctrl+C to stop the server.'
     if (-not $PrepareOnly) {
-        $server = Start-Process -FilePath $LemonadeExe -ArgumentList @(
-            ('"' + "$StateDir/cache" + '"'), ('"' + "$StateDir/config" + '"'),
-            '--port', "$Port", '--host', '127.0.0.1', '--no-broadcast'
-        ) -WindowStyle Hidden -PassThru
-        $server.WaitForExit()
-        if ($server.ExitCode -ne 0) { throw "Lemonade exited with code $($server.ExitCode)" }
+        try {
+            $server = Start-Process -FilePath $LemonadeExe -ArgumentList @(
+                ('"' + "$StateDir/cache" + '"'), ('"' + "$StateDir/config" + '"'),
+                '--port', "$Port", '--host', '127.0.0.1', '--no-broadcast'
+            ) -WindowStyle Hidden -PassThru
+            $server.WaitForExit()
+            if ($server.ExitCode -ne 0) { throw "Lemonade exited with code $($server.ExitCode)" }
+        } finally {
+            if ($server -and -not $server.HasExited) { $server.Kill(); $server.WaitForExit() }
+        }
     }
 } finally {
     $env:GGML_BACKEND_PATH = $oldBackend

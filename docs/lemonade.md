@@ -1,4 +1,4 @@
-# GGUF prompt processing on the NPU through Lemonade
+# Use ggml-xdna with Lemonade
 
 Verified on Windows on 2026-10-21 with Lemonade **2026.43.3**, the unmodified
 llama.cpp **b10944 Vulkan** release, and this repository's `ggml-xdna.dll`.
@@ -17,7 +17,45 @@ for the build, model-quality, UI and fallback evidence.
 [Desktop walkthrough](lemonade-desktop-walkthrough.mp4) (captured desktop
 screenshots; not a real-time latency recording).
 
-## Run an isolated instance
+## Start from the Windows ZIP
+
+1. Download the [Windows preview](https://github.com/Cyronius/ggml-xdna/releases/tag/lemonade-preview-20261021-r2)
+   and extract it. Keep all the files together.
+2. Quit the existing Lemonade tray server. The desktop chat window can stay open.
+3. Double-click `Start-Lemonade.cmd`. It looks for an installed Lemonade server;
+   if it can't find one, choose `LemonadeServer.exe` in your Lemonade `bin`
+   folder. The portable `lemond.exe` works too. Choose your local `.gguf` file
+   in the next dialog. Cancel either dialog to stop without starting a server.
+4. Leave the launcher window open. In Lemonade App, set **Settings > Base URL**
+   to `http://127.0.0.1:13315` and click **Save**. Pick the imported model and
+   send a long prompt. The first request can take longer while weights are
+   converted for the NPU.
+
+This preview was tested with [Lemonade 2026.43.3](https://github.com/lemonade-sdk/lemonade/releases/tag/v2026.43.3).
+It includes the matching backend, but no Lemonade installer, AMD driver, or
+model weights. Other Lemonade versions haven't been verified here.
+
+To go back to your regular Lemonade setup, stop this server with Ctrl+C,
+restart the normal tray server, and restore your previous Base URL
+(normally `http://localhost:13305`). The launcher's configuration is separate.
+
+### If something goes wrong
+
+| What you see | What to do |
+|---|---|
+| LemonadeServer is already running | Quit the tray server first. Closing the chat window alone doesn't stop it. |
+| A file picker asks for the server | Choose `LemonadeServer.exe` or portable `lemond.exe`, rather than `lemonade-app.exe`. |
+| Port 13315 is in use | Stop the previous isolated server, or use `-Port` from a terminal. |
+| The app says disconnected | Check the launcher's printed Base URL, save it in the app, and keep the server running. |
+| Your model isn't listed | Pick its GGUF file again and make sure the app points at this server. |
+| NPU unavailable; using the GPU | Read `third_party/lemonade-instance/device-probe.log` in the extracted folder for the reason. |
+| No NPU calls on a short message | Try a longer passage. Chunks under 1,024 tokens normally stay on the GPU. |
+
+The launcher prints the path to `server.log`. NPU call counts in that log
+are the check that matters; Lemonade may still label this custom recipe
+as GPU-only. Avoid another NPU backend running at the same time.
+
+## Start from a terminal
 
 For the Windows desktop app, use the included launcher from an unpacked
 ggml-xdna release (or the repository):
@@ -47,7 +85,7 @@ chat model picker and send a long prompt. The launcher saves that model's
 device and batch settings, so a load initiated by the app uses them too.
 It also accepts the portable `lemond.exe` in `-LemonadeExe` when the desktop
 app is not needed. A missing NPU can fall back at startup; runtime failure
-recovery has the limitations described in the README.
+recovery has the limitations described in the [technical guide](technical-guide.md#limitations).
 
 The launcher saves `merge_args=true` so Lemonade inherits the saved batch
 and tensor-split arguments when its desktop app loads the model. Use
@@ -125,7 +163,7 @@ Clients can now send ordinary OpenAI-compatible chat requests to
 `http://127.0.0.1:13315/api/v1`, naming that model. Prompts under 1,024 tokens
 stay on the GPU by default. Use a long prompt to demonstrate the NPU.
 
-## Verify and compare
+## Measure your model
 
 On this private test instance, run:
 
@@ -204,30 +242,6 @@ reported the same 2,781 prompt tokens, b10944 fingerprint and zero cache use.
 Warmup matters: each NPU run's first full request took about 12 seconds of
 prefill while weight copies finished, compared with 5.1-5.3 seconds in the
 measured requests. The warm result is not cold-start latency.
-
-## Challenge positioning
-
-The project to demonstrate is **open-source NPU prefill for GGUF models
-served through Lemonade's llama.cpp path**. Hybrid NPU/GPU inference already
-exists in AMD's ecosystem; splitting prefill and generation is not the
-novelty claim. Model coverage is constrained by llama.cpp b10944, supported
-operations, hardware, available memory and the limitations in the README.
-Do not describe this as supporting every GGUF or universally beating the GPU.
-
-The existing README's benchmarks used standalone llama.cpp. Keep them
-separate from measurements made through Lemonade. A submission should show
-the actual API request, NPU trace and paired results, plus the known rounding
-differences and memory costs described in the README. A broader performance
-evaluation still needs multiple prompt lengths, measured streaming TTFT,
-quality checks and comparison with current Lemonade GPU defaults, including
-ROCm on supported hardware.
-
-AMD's [challenge page](https://www.amd.com/en/developer/resources/technical-articles/2026/join-the-lemonade-developer-challenge.html)
-still describes entries on 2026-10-21. It says the challenge continues until
-supplies are exhausted; remaining prizes were not confirmed. It asks entrants
-to join the AMD AI Developer Program and Lemonade Discord, then use the
-submission form on the member site. This repository uses MIT for the backend
-and retains its dependencies' licenses in LICENSE/NOTICE.
 
 ## References
 

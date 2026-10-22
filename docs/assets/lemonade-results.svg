@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="440" viewBox="0 0 1200 440" role="img" aria-labelledby="title desc">
+  <title id="title">Prompt processing measured through Lemonade</title>
+  <desc id="desc">Three warm pairs using Qwen3-4B Q4_K_M and a 2781-token prompt. GPU-only times: 6445, 6623, 7656 milliseconds. NPU-assisted times: 5113, 5227, 5334 milliseconds. Median paired speed ratio 1.267. One Windows laptop; not a general speed claim.</desc>
+  <rect width="1200" height="440" rx="12" fill="#fbf9df"/>
+  <g font-family="Arial,sans-serif" fill="#18231d">
+    <text x="44" y="62" font-size="28" font-weight="700">Measured in Lemonade</text>
+    <text x="44" y="183" font-size="88" font-weight="700" fill="#24563c" letter-spacing="-5">1.267×</text>
+    <text x="48" y="221" font-size="21">median prefill speed ratio</text>
+    <text x="48" y="260" font-size="16" fill="#606960">About 21% less prompt processing time</text>
+    <g font-size="14">
+      <text x="510" y="65" font-weight="700">Round 1</text><text x="510" y="148" font-weight="700">Round 2</text><text x="510" y="231" font-weight="700">Round 3</text>
+      <text x="510" y="91">GPU</text><text x="510" y="115">NPU + GPU</text><text x="510" y="174">GPU</text><text x="510" y="198">NPU + GPU</text><text x="510" y="257">GPU</text><text x="510" y="281">NPU + GPU</text>
+      <text x="1148" y="91" text-anchor="end">6,445 ms</text><text x="1148" y="115" text-anchor="end">5,113 ms</text><text x="1148" y="174" text-anchor="end">6,623 ms</text><text x="1148" y="198" text-anchor="end">5,227 ms</text><text x="1148" y="257" text-anchor="end">7,656 ms</text><text x="1148" y="281" text-anchor="end">5,334 ms</text>
+    </g>
+    <g fill="#9d9f96"><rect x="606" y="77" width="353.6" height="17" rx="2"/><rect x="606" y="160" width="363.3" height="17" rx="2"/><rect x="606" y="243" width="420" height="17" rx="2"/></g>
+    <g fill="#24563c"><rect x="606" y="101" width="280.5" height="17" rx="2"/><rect x="606" y="184" width="286.7" height="17" rx="2"/><rect x="606" y="267" width="292.6" height="17" rx="2"/></g>
+    <text x="1148" y="312" font-size="12" fill="#606960" text-anchor="end">Lower is faster. Same scale for every bar.</text>
+    <path d="M44 335H1156" stroke="#dcdcc8"/>
+    <text x="44" y="368" font-size="15" fill="#555e52">Qwen3-4B Q4_K_M · 2,781 prompt tokens · Ryzen AI 9 HX PRO 370 / Radeon 890M · Windows</text>
+    <text x="44" y="398" font-size="14" fill="#555e52">Three warm pairs, one sitting. Background load and thermals weren't controlled. No decode benefit established.</text>
+  </g>
+</svg>

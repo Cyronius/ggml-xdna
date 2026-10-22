@@ -1,0 +1,136 @@
+{
+  "model": "extra.Qwen3-4B-Q4_K_M",
+  "lemonade": {
+    "all_models_loaded": [],
+    "max_models": {
+      "classification": 1,
+      "embedding": 1,
+      "image": 1,
+      "llm": 1,
+      "reranking": 1,
+      "transcription": 1,
+      "tts": 1
+    },
+    "model_loaded": null,
+    "pinned_helper_models": {
+      "classification": 0,
+      "embedding": 0,
+      "image": 0,
+      "llm": 0,
+      "reranking": 0,
+      "transcription": 0,
+      "tts": 0
+    },
+    "pinned_models": {
+      "classification": 0,
+      "embedding": 0,
+      "image": 0,
+      "llm": 0,
+      "reranking": 0,
+      "transcription": 0,
+      "tts": 0
+    },
+    "status": "ok",
+    "telemetry": {
+      "enabled": false
+    },
+    "update_check_done": true,
+    "version": "2026.43.3",
+    "websocket_port": 9000
+  },
+  "checks": [
+    {
+      "mode": "saved",
+      "case": "early-fact",
+      "expected": "ZEST-4827",
+      "prompt_sha256": "1fcc25d4b8f0d3e73ba86884ea463225558012b024870ce86d6a314fbaa84e66",
+      "passed": true,
+      "answer_correct": true,
+      "format_correct": true,
+      "content": "ZEST-4827",
+      "client_first_content_s": 7.698249600005511,
+      "client_total_s": 8.043505900001037,
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 2805,
+        "prompt_ms": 7671.344,
+        "prompt_per_token_ms": 2.734881996434938,
+        "prompt_per_second": 365.6464890637156,
+        "predicted_n": 8,
+        "predicted_ms": 344.939,
+        "predicted_per_token_ms": 49.277,
+        "predicted_per_second": 20.293443188505794
+      },
+      "usage": {
+        "completion_tokens": 8,
+        "prompt_tokens": 2805,
+        "total_tokens": 2813,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      }
+    },
+    {
+      "mode": "saved",
+      "case": "late-fact",
+      "expected": "LIME-1935",
+      "prompt_sha256": "830805ab2a9b8b1146c54c3e07e1f3956094b5391d0bab0664c0dd5d00a24fd8",
+      "passed": true,
+      "answer_correct": true,
+      "format_correct": true,
+      "content": "LIME-1935",
+      "client_first_content_s": 7.47522089999984,
+      "client_total_s": 7.821426300004532,
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 2803,
+        "prompt_ms": 4585.542,
+        "prompt_per_token_ms": 1.6359407777381378,
+        "prompt_per_second": 611.2690713551418,
+        "predicted_n": 8,
+        "predicted_ms": 346.298,
+        "predicted_per_token_ms": 49.47114285714286,
+        "predicted_per_second": 20.213804295722184
+      },
+      "usage": {
+        "completion_tokens": 8,
+        "prompt_tokens": 2803,
+        "total_tokens": 2811,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      }
+    },
+    {
+      "mode": "saved",
+      "case": "ledger",
+      "expected": "34",
+      "prompt_sha256": "12179de21fd531c20baa6a5adfff6cbc51d86c20fd031a62da49c07760dca116",
+      "passed": true,
+      "answer_correct": true,
+      "format_correct": false,
+      "content": "27 + 15 - 8 = 34",
+      "client_first_content_s": 4.6079116000037175,
+      "client_total_s": 5.266458400001284,
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 2806,
+        "prompt_ms": 4580.251,
+        "prompt_per_token_ms": 1.6323061297220243,
+        "prompt_per_second": 612.6301811843936,
+        "predicted_n": 14,
+        "predicted_ms": 658.566,
+        "predicted_per_token_ms": 50.65892307692308,
+        "predicted_per_second": 19.739859027037532
+      },
+      "usage": {
+        "completion_tokens": 14,
+        "prompt_tokens": 2806,
+        "total_tokens": 2820,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths: ['website/**', 'docs/assets/**', 'docs/results/lemonade-desktop-answer.png', 'docs/results/lemonade-2026-10-21.json', 'docs/lemonade-desktop-walkthrough.mp4', 'tools/build-site.py', '.github/workflows/pages.yml']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: github-pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python tools/build-site.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist/site
+      - uses: actions/deploy-pages@v4
+        id: deployment

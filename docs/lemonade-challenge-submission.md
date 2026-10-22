@@ -50,13 +50,13 @@ GPU; speedups depend on the model, quantization, prompt length and hardware.
 Linux integration and Strix Halo performance have not been verified by this
 project. A larger Strix Halo GPU may change the balance substantially.
 
-## Supporting material to link after publishing
+## Supporting material
 
-- [Windows preview package and desktop walkthrough](https://github.com/Cyronius/ggml-xdna/releases/tag/lemonade-preview-20261021)
-- [Lemonade setup](https://github.com/Cyronius/ggml-xdna/blob/feat/lemonade-integration/docs/lemonade.md)
-- [Clean build, actual desktop app, quality and fallback verification](https://github.com/Cyronius/ggml-xdna/blob/feat/lemonade-integration/docs/lemonade-validation.md)
-- [Repeated API comparison script](https://github.com/Cyronius/ggml-xdna/blob/feat/lemonade-integration/tools/bench-lemonade.ps1)
-- [Measurement record](https://github.com/Cyronius/ggml-xdna/blob/feat/lemonade-integration/docs/results/lemonade-2026-10-21.json)
+- [Windows preview package and desktop walkthrough](https://github.com/Cyronius/ggml-xdna/releases/tag/lemonade-preview-20261021-r2)
+- [Lemonade setup](https://github.com/Cyronius/ggml-xdna/blob/main/docs/lemonade.md)
+- [Clean build, actual desktop app, quality and fallback verification](https://github.com/Cyronius/ggml-xdna/blob/main/docs/lemonade-validation.md)
+- [Repeated API comparison script](https://github.com/Cyronius/ggml-xdna/blob/main/tools/bench-lemonade.ps1)
+- [Measurement record](https://github.com/Cyronius/ggml-xdna/blob/main/docs/results/lemonade-2026-10-21.json)
 - [README](https://github.com/Cyronius/ggml-xdna): architecture, standalone performance, accuracy and limitations
 
 This remains submission copy for the owner's review. The challenge page

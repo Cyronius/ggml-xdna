@@ -33,6 +33,8 @@ cp "$root/tools/bench-lemonade.ps1" "$stage/tools/"
 cp "$root/tools/check-lemonade.py" "$stage/tools/"
 cp "$root/docs/lemonade.md" "$stage/docs/"
 cp "$root/docs/lemonade-validation.md" "$stage/docs/"
+cp "$root/docs/technical-guide.md" "$stage/docs/"
+cp -R "$root/docs/assets" "$stage/docs/assets"
 cp "$root/docs/lemonade-desktop-walkthrough.mp4" "$stage/docs/"
 cp -R "$root/docs/results" "$stage/docs/results"
 cp "$root/tests/prompts/prose.txt" "$stage/tests/prompts/"
@@ -45,6 +47,7 @@ curl --fail --location --retry 3 --silent --show-error \
 cp "$root/vendor/xrt/LICENSE" "$stage/LICENSES/xrt-LICENSE.txt"
 cp "$root/vendor/xrt/NOTICE" "$stage/LICENSES/xrt-NOTICE.txt"
 cp "$root/kernels/bfp16_gemm/LICENSE" "$stage/LICENSES/mlir-aie-LICENSE.txt"
+cp "$root/docs/assets/lemonade-LICENSE.txt" "$stage/LICENSES/lemonade-assets-LICENSE.txt"
 
 # every file's SHA-256, for sha256sum -c
 (cd "$stage" && find . -type f ! -name SHA256SUMS.txt | sed 's|^\./||' | LC_ALL=C sort | xargs -d '\n' sha256sum > SHA256SUMS.txt)

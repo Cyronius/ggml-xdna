@@ -2,6 +2,27 @@
 
 Checked 2026-10-21 on a Ryzen AI 9 HX PRO 370 with Radeon 890M.
 
+## Lemonade launcher update
+
+The r2 preview adds `Start-Lemonade.cmd`, a Windows entry point that looks
+for the installed Lemonade server and opens file pickers for missing paths.
+Its terminal options still work, including `-PrepareOnly` and `-GpuOnly`.
+
+The ZIP was extracted to a new directory containing spaces. All 91 manifest
+files passed their checksums before the final evidence files were added.
+The packaged CMD entry point was run with explicit server and model paths,
+first to prepare configuration and then to start the official server. The
+saved NPU/batch settings were used by the API: all three answer checks
+passed, with the same arithmetic formatting failure as the earlier preview.
+The server logged 342 NPU calls on the first request and 344 on each of the
+next two. Ctrl+C stopped the server. The interactive file-picker selection
+itself wasn't automated in this check.
+
+[r2 responses](results/lemonade-preview-r2-api.json) and
+[trace excerpts](results/lemonade-preview-r2-trace.txt). The engine DLL is
+unchanged from the clean build below. The final package's checksum and file
+verification receipt are attached to the r2 GitHub release.
+
 ## Build and package
 
 The engine was built from a new `git archive` of
@@ -76,7 +97,7 @@ tasks are functional checks, not a general model-quality evaluation.
 A separate model-level comparison using the packaged `llama-perplexity`,
 eight 512-token chunks and 2,048-token batches, measured **mean KL divergence
 0.004834** and **97.745% same top token** against Vulkan. This is within the
-README's 0.01 dense-model tolerance. The corpus repeats the repository's
+[technical guide's](technical-guide.md#accuracy) 0.01 dense-model tolerance. The corpus repeats the repository's
 prose fixture; the result is specific to that corpus.
 [KL record and hashes](results/lemonade-clean-package-kl.json).
 
