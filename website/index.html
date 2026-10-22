@@ -7,12 +7,12 @@
     <title>ggml-xdna · Use your NPU in Lemonade</title>
     <meta
       name="description"
-      content="An open-source add-on that puts your AMD Ryzen AI NPU to work on long prompts in Lemonade. Download the Windows preview, see the real app, and read the test results."
+      content="Accelerate long prompts for many GGUF models through Lemonade's llama.cpp backend using your AMD Ryzen AI NPU. No ONNX or Q4NX export required."
     />
     <meta property="og:title" content="ggml-xdna · Use your NPU in Lemonade" />
     <meta
       property="og:description"
-      content="Keep chatting in Lemonade. Let your Ryzen AI NPU help read the prompt."
+      content="NPU-assisted prompt processing for many GGUF models in Lemonade's llama.cpp backend. No ONNX or Q4NX export required."
     />
     <meta property="og:type" content="website" />
     <meta property="og:url" content="https://cyronius.github.io/ggml-xdna/" />
@@ -56,8 +56,9 @@
           <div class="hero-copy">
             <h1 id="hero-title">Use your <em>NPU</em><br />in Lemonade.</h1>
             <p>
-              ggml-xdna puts your Ryzen AI NPU to work on long prompts. You chat
-              in Lemonade; your GPU still writes the reply.
+              Run many GGUF models through Lemonade's llama.cpp backend. Your
+              NPU helps read long prompts; your GPU writes the reply. No ONNX
+              or Q4NX export needed.
             </p>
             <div class="actions">
               <a
@@ -352,6 +353,20 @@
           </div>
         </div>
         <div class="faq">
+          <details>
+            <summary>Which GGUF models can I use?</summary>
+            <p>
+              This works across many GGUF models through the llama.cpp backend.
+              The Qwen, LFM, and Granite models in our tests are examples,
+              rather than a fixed model list. You don't need an ONNX or Q4NX
+              export, or a separately compiled NPU kernel for each model.
+              Your GGUF must work with the bundled b10944 build; the add-on's
+              operation coverage, available memory, and hardware also matter.
+              Some models get little benefit or run faster on the GPU alone.
+              See the
+              <a href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/technical-guide.md#results">model results and limitations</a>.
+            </p>
+          </details>
           <details>
             <summary>What if my NPU is unavailable?</summary>
             <p>

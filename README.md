@@ -9,9 +9,14 @@
 
 # ggml-xdna: use your NPU in Lemonade
 
-ggml-xdna puts your AMD Ryzen AI NPU to work on long prompts. You chat in
-Lemonade; your GPU still handles attention and writes the reply. It works
-with local GGUF models, without compiling an NPU kernel for each model.
+ggml-xdna accelerates long prompts for **many GGUF models through Lemonade's
+llama.cpp backend**, using your AMD Ryzen AI NPU. The GPU handles attention
+and writes the reply.
+
+Use your existing GGUF files. No ONNX or Q4NX export is required, and there's
+no NPU kernel to compile for each model. Qwen, LFM, and Granite are examples,
+rather than a fixed list of supported models. Coverage depends on the bundled
+llama.cpp build and the operations the add-on implements; speedups vary by model.
 
 **[Download the Windows preview](https://github.com/Cyronius/ggml-xdna/releases/tag/lemonade-preview-20261021-r2)**
 · [Setup guide](docs/lemonade.md)

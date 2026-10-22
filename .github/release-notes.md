@@ -1,6 +1,11 @@
-ggml-xdna puts an AMD Ryzen AI NPU to work on long prompts in Lemonade.
-The GPU handles attention and writes the reply. This is an independent
-community add-on, tested with Lemonade 2026.43.3 and the bundled b10944 backend.
+ggml-xdna accelerates long prompts for many GGUF models through Lemonade's
+llama.cpp backend, using an AMD Ryzen AI NPU. The GPU handles attention and
+writes the reply. No ONNX or Q4NX export or per-model NPU kernel compilation
+is required. Coverage follows the bundled build and supported operations;
+speedups vary by model.
+
+This is an independent community add-on, tested with Lemonade 2026.43.3
+and the bundled b10944 backend.
 
 ## Use it with Lemonade on Windows
 
