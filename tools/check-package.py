@@ -29,8 +29,17 @@ def check(package: Path) -> None:
         if hashlib.sha256(path.read_bytes()).hexdigest() != digest:
             raise RuntimeError(f"Checksum mismatch: {name}")
         manifest[name] = digest
-    files = {p.relative_to(package).as_posix() for p in package.rglob("*")
-             if p.is_file() and p.name != "SHA256SUMS.txt"}
+    files = set()
+    for path in package.rglob("*"):
+        if path.is_symlink():
+            # Upstream Linux libraries use SONAME links; package.sh hashes
+            # regular files, so validate each link against its hashed target.
+            target = path.resolve()
+            if (not target.is_relative_to(package) or not target.is_file()
+                    or target.relative_to(package).as_posix() not in manifest):
+                raise RuntimeError(f"Invalid or unhashed symlink target: {path.name}")
+        elif path.is_file() and path.name != "SHA256SUMS.txt":
+            files.add(path.relative_to(package).as_posix())
     if files != set(manifest):
         raise RuntimeError(f"Manifest coverage differs: {files ^ set(manifest)}")
     if (package / ("zest" + suffix)).read_bytes() != (package / ("npu" + suffix)).read_bytes():

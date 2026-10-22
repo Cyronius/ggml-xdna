@@ -12,6 +12,12 @@ independent community add-on; use of the logo identifies the integration.
 The desktop screenshot and walkthrough in the parent documentation folder
 come from the actual Windows Lemonade test described in the validation report.
 
+`lemonade-speed-comparison.mp4` replays the GPU-only and NPU + GPU token
+events in `../results/lemonade-speed-comparison-2026-10-22.json` at real speed,
+with both request starts aligned. Its PNG poster is a frame from that video.
+The API runs were recorded separately on the same laptop after warming each
+mode, with identical requests and prompt caching disabled.
+
 `jakarta-latin.woff2` is the variable Latin subset of Plus Jakarta Sans,
 served locally by the website. Source: Google Fonts CSS for
 `Plus+Jakarta+Sans:wght@200..800`, downloaded 2026-10-21. Its SIL Open Font
