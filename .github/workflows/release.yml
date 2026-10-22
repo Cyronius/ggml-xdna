@@ -122,6 +122,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           release_flags=()
-          if [[ "$GITHUB_REF_NAME" == *-* ]]; then release_flags+=(--prerelease); fi
+          # RC packages can be checked on NPU hardware before publication.
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then release_flags+=(--prerelease --draft); fi
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "Zest $GITHUB_REF_NAME" --notes-file .github/release-notes.md "${release_flags[@]}"
