@@ -2,7 +2,7 @@
 
 The project is now [Cyronius/zest](https://github.com/Cyronius/zest), with its
 website at [cyronius.github.io/zest](https://cyronius.github.io/zest/).
-[Download Zest v0.2.0-rc1](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc1)
+[Download Zest v0.2.0-rc2](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc2)
 and extract it into a new folder, keeping its files together.
 
 | Component | Earlier name | Zest name |
@@ -50,6 +50,6 @@ the backend themselves and start llama-server successfully.
 
 The release verification receipt records the Windows package hash, file-manifest
 check, actual Lemonade answer checks, and positive NPU-call trace. It is attached
-to the [Zest preview release](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc1).
+to the [Zest preview release](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc2).
 Linux builds and packaging are checked in CI; Linux NPU hardware remains untested
 by this project.
