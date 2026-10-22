@@ -1,7 +1,11 @@
 # XDNA backend — requirements
 
 Canonical spec for the ggml backend that offloads prefill matmuls to the AMD
-XDNA2 NPU. Home repo: `ggml-xdna`.
+XDNA2 NPU. Home repo: `zest`.
+
+Names in this spec were updated for Zest on 2026-10-22, including commands in
+dated verification descriptions. Those earlier runs used the original `npu`
+command and `ggml-xdna` artifact names; raw historical logs retain them.
 
 The NPU kernel is `kernels/bfp16_gemm` in this repo: one core program
 (`kernels/bfp16_gemm/prebuilt/bfp16_gemm.xclbin`) that serves every matrix
@@ -19,7 +23,7 @@ XDNA-HOST-BUFT is retired for that reason.
 
 **Systems, revised 2026-10-12.** Windows and Linux (XDNA-LINUX). Each
 requirement holds on both unless it says otherwise; where a name differs, the
-Linux one follows in brackets (`ggml-xdna.dll` [`libggml-xdna.so`]).
+Linux one follows in brackets (`ggml-zest.dll` [`libggml-zest.so`]).
 
 Tests: `specs/xdna-backend/tests/` is empty by design — the test binaries are
 built by the top-level `CMakeLists.txt` from `tests/`, because they must link
@@ -41,11 +45,11 @@ driver as installed where `/dev/accel/accel0` and XRT's
 ---
 
 ### XDNA-BACKEND-LOAD: Loads as an out-of-tree backend
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** e2e
 
-The backend shall build as a standalone library, `ggml-xdna.dll`
-[`libggml-xdna.so`], that a stock llama.cpp release loads via the
+The backend shall build as a standalone library, `ggml-zest.dll`
+[`libggml-zest.so`], that a stock llama.cpp release loads via the
 `GGML_BACKEND_PATH` environment variable, without any patch to llama.cpp or
 ggml.
 
@@ -75,7 +79,7 @@ so it would never be handed an op. Replaced by XDNA-SHARED-BUFT.
 ---
 
 ### XDNA-SHARED-BUFT: Ops change hands with Vulkan without copies
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit
 
 The device shall register as `GGML_BACKEND_DEVICE_TYPE_IGPU`, report its
@@ -111,7 +115,7 @@ our pieces never have copied inputs.
 ---
 
 ### XDNA-BATCH-GATE: Only large batches are claimed
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit
 
 `supports_op` shall return false for `GGML_OP_MUL_MAT` whose batch dimension
@@ -143,7 +147,7 @@ add-on's faster level every time (see XDNA-CHUNK-WARNING); back to 1,024 on
 ---
 
 ### XDNA-CHUNK-WARNING: A warning when llama.cpp's chunks are too small — RETIRED 2026-09-30
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 
 Added and retired the same day. The backend warned once when llama.cpp's
 prompt chunk (`-ub`, 512 by default) was below `GGML_XDNA_MIN_BATCH`. The
@@ -162,7 +166,7 @@ loses at 512 (0.80x); see XDNA-BATCH-GATE.
 ---
 
 ### XDNA-WORK-FLOOR: Small matmuls stay on the GPU
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit
 
 `supports_op` shall also return false when the matmul is below
@@ -181,7 +185,7 @@ prefill graph for a few MFLOP of work.
 ---
 
 ### XDNA-SIZE-POLICY: Weight matmuls, and the small ops next to them
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit (matmuls), manual (block claiming)
 
 Beyond the batch gate and the work floor, `supports_op` shall accept a
@@ -259,7 +263,7 @@ piece as described.
 ---
 
 ### XDNA-MEMORY-BUDGET: The NPU's weight copies are held to a memory limit
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit (the decisions), manual (the log line)
 
 The NPU keeps its own copy of every weight it uses, on top of llama.cpp's:
@@ -334,7 +338,7 @@ in host-only mode and on the NPU):
 **Verification (manual, the log line):** when the limit is reached, the
 add-on shall log one warning saying the limit, where it came from, and how
 many layers went to the NPU; when everything fits, one info line (shown
-with `-v`) with the total. Run `npu llama-completion` on Qwen3-1.7B Q4_0
+with `-v`) with the total. Run `zest llama-completion` on Qwen3-1.7B Q4_0
 with a prompt over 512 tokens and `-n 24 --temp 0`, with
 `GGML_XDNA_MAX_COPY_GB` set to 1, 0.01 and 100, and once unset with `-v`.
 Compare each reply with `llama-completion -dev Vulkan0` on the same
@@ -350,7 +354,7 @@ All four replies identical to the GPU's. `llama-bench -ub 512,1024 -v` at
 ---
 
 ### XDNA-COPY-AT-LOAD: The NPU's weight copies are built while the model loads
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** manual
 
 When llama.cpp plans a context's pieces (it does so at load, before the
@@ -373,14 +377,14 @@ ready by the first one. A tool that sends its prompt straight after loading
 **Verification (manual):** with `GGML_XDNA_TRACE=1` on Qwen3-1.7B Q4_0,
 where the trace line `xdna weight copies:` counts copies built at load and
 inside pieces, and the time a piece waited:
-1. `npu llama-server`; 30 s after it's listening, one `/completion` with a
+1. `zest llama-server`; 30 s after it's listening, one `/completion` with a
    ~3,000-token prompt, `n_predict` 24, temperature 0. Copies: all built at
    load, 0 inside pieces, about 0 ms waited.
 2. The same with `GGML_XDNA_COPY_AT_LOAD=0`: 0 at load, all inside pieces;
    the reply identical to step 1's.
-3. `npu llama-completion` on the same prompt, `-n 24 --temp 0`: 0 inside
+3. `zest llama-completion` on the same prompt, `-n 24 --temp 0`: 0 inside
    pieces; the reply identical to `llama-completion -dev Vulkan0`.
-4. `npu llama-bench -ub 512,1024 -r 1`, and `npu llama-completion` on a
+4. `zest llama-bench -ub 512,1024 -r 1`, and `zest llama-completion` on a
    prompt under 512 tokens (copies still building at exit): both finish and
    exit normally.
 
@@ -394,7 +398,7 @@ both exited normally.
 ---
 
 ### XDNA-BLOCK-AGREES: Block claiming leaves the model's answer unchanged
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** manual
 
 With block claiming on, greedy generation after a prompt the backend reads
@@ -408,7 +412,7 @@ them showed up as plausible but different text, never as a crash.
 
 **Verification (manual):**
 ```
-set GGML_BACKEND_PATH=...\ggml-xdna.dll
+set GGML_BACKEND_PATH=...\ggml-zest.dll
 set GGML_XDNA_MIN_BATCH=32
 llama-completion -m Qwen3-1.7B-Q4_0.gguf -f <first 500 bytes of tests/prompts/prose.txt> -n 24 --temp 0 -no-cnv -fa on -b 2048 -ub 2048 -dev XDNA0,Vulkan0
 ```
@@ -440,7 +444,7 @@ fused q/k/v result, which aren't contiguous rows.
 ---
 
 ### XDNA-HOST-OPS: The small steps between the NPU's matmuls compute what ggml does
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit
 
 Each small op the backend runs on the host in a claimed piece shall give
@@ -469,7 +473,7 @@ GeGLU and GeGLU-quick cases at 2.7e-4 and 3.0e-4.
 ---
 
 ### XDNA-OPT-IN: Without being named, the backend changes nothing
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** manual
 
 With `GGML_BACKEND_PATH` set but without `-dev` naming `XDNA0`, llama.cpp
@@ -491,19 +495,19 @@ generation ran at 64–66 tok/s either way.
 ---
 
 ### XDNA-SAFE-START: No device unless the NPU can run the backend
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit
 
 When llama.cpp loads the backend, it shall load whether or not the NPU
 driver is installed, and offer the XDNA0 device only if all of these hold:
 - the kernel's xclbin is found: `GGML_XDNA_KERNELS` if set, else
-  `bfp16_gemm.xclbin` next to `ggml-xdna.dll` [`libggml-xdna.so`];
+  `bfp16_gemm.xclbin` next to `ggml-zest.dll` [`libggml-zest.so`];
 - the NPU driver's `xrt_coreutil.dll` is found and exports, by name, every
   function the backend uses (`vendor/xrt-implib/xrt_coreutil.def`). The DLL
   is delay-loaded, and all of its functions are bound here, so a missing one
   turns the backend off instead of failing at a call.
   [On Linux the XRT wrapper (`vendor/xrt-shim`) is a library of its own,
-  `libggml-xdna-xrt.so`, next to the backend and linked to no XRT. The
+  `libggml-zest-xrt.so`, next to the backend and linked to no XRT. The
   backend loads XRT's `libxrt_coreutil.so.2` (where the system's loader
   finds it, else `/opt/xilinx/xrt/lib`), then the wrapper, which binds every
   XRT function it uses at once, then each wrapper function. The backend never
@@ -571,7 +575,7 @@ GPU.
 ---
 
 ### XDNA-NPU-FAILURE: An NPU failure during a run doesn't stop it
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit (the results), manual (the timing)
 
 If an NPU call fails during a run (starting it, building a weight's copy, a
@@ -630,7 +634,7 @@ work, so times are rough; text: this README and spec, 6 chunks of 512):
 ---
 
 ### XDNA-NPU-RESULT-CHECK: Damaged NPU results are caught, not passed on
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit
 
 Every value the backend reads back from the NPU shall be checked for NaN and
@@ -688,7 +692,7 @@ NaN; with it, all pass.
 ---
 
 ### XDNA-MODEL-WARNINGS: A model the NPU suits badly is warned about, not refused
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit
 
 If the user asked for the NPU, the NPU runs the model. Where the backend knows
@@ -738,7 +742,7 @@ llama-completion` (which passes `-ub 2048`), `-n 8 --temp 0`:
   right width
 - Qwen3-1.7B (width 2,048): neither line, and `GGML_XDNA_TRACE=1` shows NPU
   pieces, so the silence is the width rule and not an idle backend
-- the same narrow model through `npu llama-server`: no line while it loads,
+- the same narrow model through `zest llama-server`: no line while it loads,
   then the line on the first real prompt
 
 **Measured 2026-10-05**, a 3,175-3,246-token prompt from llama.cpp's docs:
@@ -753,7 +757,7 @@ llama-completion` (which passes `-ub 2048`), `-n 8 --temp 0`:
 ---
 
 ### XDNA-SERVER-USE: Works with llama.cpp as people run it
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** manual
 
 With llama.cpp's default settings plus `-dev XDNA0,Vulkan0`, the backend
@@ -812,13 +816,13 @@ larger share as the prompt grows, so the gain shrinks toward even.
 ---
 
 ### XDNA-MODELS: Every model the README lists has been run, checked and timed
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** manual
 
 Every model in the README's Results and Accuracy tables shall have passed
 three checks with the llama.cpp release the add-on ships with:
 
-1. **It runs.** `npu llama-completion` with a prompt over 1,024 tokens, 32
+1. **It runs.** `zest llama-completion` with a prompt over 1,024 tokens, 32
    greedy tokens, `GGML_XDNA_TRACE=1`: it finishes, prints no `xdna: the NPU
    failed` line, and the trace shows NPU pieces.
 2. **Its answers are close to the GPU's.** Mean KL divergence against the GPU
@@ -854,7 +858,7 @@ and Accuracy sections. Dense models: KL 0.0034-0.0073, speed 0.77x
 ---
 
 ### XDNA-NO-WEIGHT-TRANSFER: No weight is copied between backends
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** manual
 
 During prompt reading, the scheduler shall insert no copies into the
@@ -871,7 +875,7 @@ weights assigned to Vulkan0.
 ---
 
 ### XDNA-NO-OFFLOAD-OP: No per-op weight copies
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit
 
 The device shall not implement `offload_op`.
@@ -888,7 +892,7 @@ already in our buffer.
 ---
 
 ### XDNA-MUL-MAT-AGREES: Matmul matches an fp64 reference
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit
 
 For every claimed weight type, the backend's `MUL_MAT` result shall be no
@@ -923,7 +927,7 @@ day, land at the same errors (8.7e-3 to 9.0e-3).
 ---
 
 ### XDNA-INSTS-GEN: The backend's NPU instruction streams match the toolchain's
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit
 
 For every size the kernel takes, the instruction stream the backend makes
@@ -949,7 +953,7 @@ and copy its `insts.bin` there.
 ---
 
 ### XDNA-BFP16-PACK: Weights are laid out as the kernel was verified with
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** unit
 
 The packer that builds each weight's NPU copy (`src/npu/bfp16_pack.cpp`)
@@ -969,7 +973,7 @@ reference, copied into the test unchanged (its source,
 ---
 
 ### XDNA-BUILD: One command builds and tests it
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** manual
 
 On Windows with Visual Studio 2022 (or its Build Tools) and the C++ tools,
@@ -993,13 +997,13 @@ lavapipe's pinned memory fails ggml's alignment check.
 
 ---
 
-### XDNA-LAUNCHER: `npu` runs llama.cpp with the NPU, with nothing to set
-**Applies to:** ggml-xdna
+### XDNA-LAUNCHER: `zest` runs llama.cpp with the NPU, with nothing to set
+**Applies to:** Zest
 **Test category:** manual
 
-`npu <llama.cpp program> [arguments]` (`tools/npu.cpp`, built next to the
+`zest <llama.cpp program> [arguments]` (`tools/npu.cpp`, built next to the
 llama.cpp programs) shall run that program so that:
-- llama.cpp loads the add-on next to `npu.exe` [`npu`], unless
+- llama.cpp loads the add-on next to `zest.exe` [`zest`], unless
   `GGML_BACKEND_PATH` is already set;
 - when llama.cpp offers XDNA0, `-dev XDNA0,Vulkan0` is added
   (`XDNA0/Vulkan0` for llama-bench), then `-ts 0,1` (not for llama-bench)
@@ -1017,28 +1021,28 @@ llama.cpp programs) shall run that program so that:
 - whatever the user set (`-dev`, `-ub`, `-b`, the model, or their
   `LLAMA_ARG_*` variables) is kept, and the rest of the command line
   reaches the program exactly as typed;
-- Ctrl+C reaches the program, and `npu` returns the program's exit code. If
-  `npu` is closed or killed, the program goes with it.
+- Ctrl+C reaches the program, and `zest` returns the program's exit code. If
+  `zest` is closed or killed, the program goes with it.
 
 [On Linux, the folders are `~/.lmstudio/models`, `~/.cache/lm-studio/models`,
 `$LLAMA_CACHE` or `$XDG_CACHE_HOME/llama.cpp` (`~/.cache/llama.cpp`), and
 `$HF_HOME/hub` or `~/.cache/huggingface/hub`; the last pick is kept in
-`$XDG_STATE_HOME/ggml-xdna` (`~/.local/state/ggml-xdna`); "a console" is a
-terminal on standard input. `npu` replaces itself with the program
+`$XDG_STATE_HOME/zest` (`~/.local/state/zest`); "a console" is a
+terminal on standard input. `zest` replaces itself with the program
 (`execv`), so the arguments arrive as the shell split them, and Ctrl+C, the
 exit code and being killed are the program's own.]
 
-`npu`'s own options come before the program's name, as
+`zest`'s own options come before the program's name, as
 `--name value` or `--name=value`:
 - `--memory-gb N` (a number, 0 or more; fractions allowed) shall set
   `GGML_XDNA_MAX_COPY_GB` to N for the program, replacing any value already
-  set (XDNA-MEMORY-BUDGET), and the `npu: prompts on the NPU (...)` line
+  set (XDNA-MEMORY-BUDGET), and the `zest: prompts on the NPU (...)` line
   shall end with `; NPU weight copies limited to N GB`;
 - `--min-chunk N` (a whole number, 1 or more) shall set
   `GGML_XDNA_MIN_BATCH` to N for the program, replacing any value already
-  set (XDNA-BATCH-GATE), and the `npu:` line shall end with
+  set (XDNA-BATCH-GATE), and the `zest:` line shall end with
   `; NPU takes chunks of N tokens or more`;
-- a bad or missing value, or an option `npu` doesn't know, shall stop `npu`
+- a bad or missing value, or an option `zest` doesn't know, shall stop `zest`
   with one line saying what's wrong, before any program starts, and exit 1;
 - `-h` or `--help` there shall print the usage, options included.
 
@@ -1059,21 +1063,21 @@ GPU's memory, is always 0: mixture-of-experts models reach it and crashed
 while loading (2026-10-02). llama-bench doesn't fit unless asked.
 
 **Verification (manual):**
-- From cmd, `npu llama-echo -p "a & b | c * d! e" -x "say \"hi\"" --path
+- From cmd, `zest llama-echo -p "a & b | c * d! e" -x "say \"hi\"" --path
   "C:\dir with space\\" plain*.gguf ^& "" last`, with a program that
   prints its arguments standing in for llama-echo: every argument arrives
   unchanged, and the exit code comes back.
-- `npu llama-completion -m Qwen3-1.7B-Q4_0.gguf -f <XDNA-BLOCK-AGREES'
+- `zest llama-completion -m Qwen3-1.7B-Q4_0.gguf -f <XDNA-BLOCK-AGREES'
   prompt> -n 24 --temp 0 -no-cnv -fa on` with `GGML_XDNA_MIN_BATCH=32`:
-  prints `npu: prompts on the NPU (added -dev XDNA0,Vulkan0 -ts 0,1
+  prints `zest: prompts on the NPU (added -dev XDNA0,Vulkan0 -ts 0,1
   -ub 2048 -b 2048)`, and the 24 tokens match the GPU's.
 - The same with `GGML_XDNA_KERNELS` naming nothing: prints
-  `npu: running on the GPU only: ...` and runs.
+  `zest: running on the GPU only: ...` and runs.
 - With `-dev Vulkan0`: nothing added. With `-ub 512`: only `-dev` and
-  `-ts` added. With `-ts 1,1`: no `-ts` added. `npu llama-bench`:
+  `-ts` added. With `-ts 1,1`: no `-ts` added. `zest llama-bench`:
   `-dev XDNA0/Vulkan0` only.
-- `npu llama-completion` on gpt-oss-20b and LFM2.5-8B-A1B (mixture of
-  experts): loads, and the `npu:` line shows `-ts 0,1`.
+- `zest llama-completion` on gpt-oss-20b and LFM2.5-8B-A1B (mixture of
+  experts): loads, and the `zest:` line shows `-ts 0,1`.
 
   Measured 2026-10-03: as listed, for `-ts 1,1`, `--tensor-split 1,1`,
   `LLAMA_ARG_TENSOR_SPLIT=1,1`, `-ub 512` and llama-bench; gpt-oss-20b,
@@ -1083,14 +1087,14 @@ while loading (2026-10-02). llama-bench doesn't fit unless asked.
   model, the list shows; a number runs that model; next time Enter runs it
   again; 0 for llama-server lists every model in the router's `/models`,
   and a request to one loads it.
-- llama-server through `npu`, Ctrl+C in its console: the server cleans up
+- llama-server through `zest`, Ctrl+C in its console: the server cleans up
   and exits 0, and no llama-server process is left.
 
 - The first check again with `--memory-gb 20` and with `--memory-gb=0.5`
   in front of `llama-echo`, the stand-in also printing
   `GGML_XDNA_MAX_COPY_GB`: the same arguments arrive, the variable is 20
-  and 0.5, the exit code comes back. `npu --memory-gb 1 llama-completion`
-  on the second check's prompt: the `npu:` line ends with `; NPU weight
+  and 0.5, the exit code comes back. `zest --memory-gb 1 llama-completion`
+  on the second check's prompt: the `zest:` line ends with `; NPU weight
   copies limited to 1 GB`, the add-on's warning follows, and the tokens
   match the GPU's. `--memory-gb lots`, `--memory-gb -1`, `--memory-gb`
   alone and a misspelled option: one line each, exit 1, nothing started.
@@ -1098,19 +1102,19 @@ while loading (2026-10-02). llama-bench doesn't fit unless asked.
   `--min-chunk=2048 --memory-gb 20`, the stand-in also printing
   `GGML_XDNA_MIN_BATCH`: the same arguments arrive, the variables are as
   given, the exit code comes back. With `GGML_XDNA_MIN_BATCH=4096` already
-  set, `--min-chunk 512` gives 512. `npu --min-chunk 32 llama-completion`
-  on the second check's prompt (105 tokens): the `npu:` line ends with
+  set, `--min-chunk 512` gives 512. `zest --min-chunk 32 llama-completion`
+  on the second check's prompt (105 tokens): the `zest:` line ends with
   `; NPU takes chunks of 32 tokens or more`, the add-on builds its weight
   copies (`-v` shows the line), and the tokens match the GPU's; without the
   option, no copies are built. `--min-chunk lots`, `0`, `1.5`, `-1`,
   `--min-chunk` alone and `--min-chunks 512`: one line each, exit 1, nothing
   started.
 - [Linux, from bash, with a stand-in `llama-echo` that prints its
-  arguments and the two variables, and exits 7: `npu --memory-gb=0.5
+  arguments and the two variables, and exits 7: `zest --memory-gb=0.5
   --min-chunk 512 llama-echo -p 'a & b | c * d! e' -x 'say "hi"' --path
   '/dir with space/' 'plain*.gguf' '' last`: every argument arrives
   unchanged, the variables are 0.5 and 512, and `echo $?` gives 7. With no
-  NPU driver, `npu llama-completion -m <model> -p hi -n 4` prints `npu:
+  NPU driver, `zest llama-completion -m <model> -p hi -n 4` prints `zest:
   running on the GPU only: no NPU driver (...)` and runs. With no model, in
   a terminal: the menu lists the models in the Linux folders.]
 
@@ -1132,36 +1136,41 @@ identical to the GPU's; without it, no copies and the same reply.
 ---
 
 ### XDNA-RELEASE: A tag builds the release zip in CI
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** manual
 
 Pushing a tag `v*` shall run `.github/workflows/release.yml` on a GitHub
 Windows machine, which builds and tests as XDNA-BUILD does, then makes
-`ggml-xdna-<tag>-llama-<llama.cpp release>-win-x64.zip`
+`zest-<tag>-llama-<llama.cpp release>-win-x64.zip`
 (`tools/package.ps1`) and publishes it, with a `.sha256` file holding the
 zip's checksum, as a GitHub release whose notes are
 `.github/release-notes.md`. The zip shall hold, at its top level:
 - the pinned llama.cpp release's Windows Vulkan zip, unpacked and
   unmodified, from a fresh download;
-- `ggml-xdna.dll`, `npu.exe` from that build, and
+- `ggml-zest.dll`, `zest.exe` and its `npu.exe` compatibility copy from that build, and
   `bfp16_gemm.xclbin` from `kernels/bfp16_gemm/prebuilt`;
 - `bench.ps1` from `tools/`, so anyone can rerun the README's measurements
   (XDNA-MODELS);
+- the Windows Lemonade entry point, measurement helpers, prompt fixture, and
+  documentation with their referenced media and verification records;
 - `README.md`, `LICENSE`, `NOTICE`, and `LICENSES\` with llama.cpp's
   license (from the same tag's source; its zip carries only OpenMP's), the
   XRT license and notice, and the mlir-aie license;
 - `SHA256SUMS.txt`, every other file's SHA-256 in `sha256sum -c` format.
 
-Nothing else: none of the test programs the build copies next to llama.cpp.
+Neither package includes the test programs the build copies next to llama.cpp.
+Both include the `npu` compatibility command as a copy of the Zest launcher.
+Prerelease tags stage a draft release for hardware verification before it is
+published; stable tags publish automatically.
 Started by hand, or by a pull request that changes the packaging, the
 workflow publishes nothing and keeps the zip as the run's artifact.
 
 The same workflow shall also build and test on Ubuntu 22.04 as XDNA-BUILD
-does and make `ggml-xdna-<tag>-llama-<llama.cpp release>-ubuntu-x64.tar.gz`
+does and make `zest-<tag>-llama-<llama.cpp release>-ubuntu-x64.tar.gz`
 (`tools/package.sh`), with its `.sha256` file, published in the same
 release. It holds one folder of that name, with the same contents as the
 zip but from llama.cpp's Linux Vulkan release (checksum checked), and with
-`libggml-xdna.so`, `libggml-xdna-xrt.so` and `npu` for the add-on and the
+`libggml-zest.so`, `libggml-zest-xrt.so` and `zest` for the add-on and the
 launcher.
 
 The zip is unsigned, like llama.cpp's own Windows builds.
@@ -1169,10 +1178,10 @@ The zip is unsigned, like llama.cpp's own Windows builds.
 **Verification (manual):** a dry run. Start the workflow by hand (or open a
 pull request touching the packaging), download the artifact, unzip it into
 an empty folder, and from there, with no `GGML_*` or `LLAMA_*` variable set:
-- `npu llama-completion -m <Qwen3-4B Q4_K_M> -f <a 2,000+-token prompt>
-  -n 24 --temp 0 -no-cnv`: prints `npu: prompts on the NPU`, and the reply
+- `zest llama-completion -m <Qwen3-4B Q4_K_M> -f <a 2,000+-token prompt>
+  -n 24 --temp 0 -no-cnv`: prints `zest: prompts on the NPU`, and the reply
   is sensible;
-- `npu llama-server -m <the same>`, one chat request of 2,000+ tokens: a
+- `zest llama-server -m <the same>`, one chat request of 2,000+ tokens: a
   sensible reply, and the server's log shows the NPU took pieces
   (`GGML_XDNA_TRACE=1` for this one);
 - every line of `SHA256SUMS.txt` checks, and the file list matches the
@@ -1183,17 +1192,17 @@ an empty folder, and from there, with no `GGML_*` or `LLAMA_*` variable set:
 **Passing 2026-10-06**, the zip from PR #6's CI run (31.6 MB), unzipped into
 an empty folder, no `GGML_*` or `LLAMA_*` variable set: the zip's checksum
 and all 63 lines of `SHA256SUMS.txt` check; `bench.ps1` is there and no test
-program is. `npu llama-completion` on a 3,236-token prompt printed `npu:
-prompts on the NPU` and continued the text sensibly. `npu llama-server`
+program is. `zest llama-completion` on a 3,236-token prompt printed `npu:
+prompts on the NPU` and continued the text sensibly. `zest llama-server`
 answered a 3,258-token chat request with about 200 matmuls in 30 NPU pieces
 per chunk; the reply was odd (the prompt was a fragment of docs about chat
 formats), and the GPU alone gave the same reply but for two words. `bench.ps1`
-found `npu.exe` next to itself and printed a row.
+found `zest.exe` next to itself and printed a row.
 
 ---
 
 ### XDNA-LINUX: The add-on runs on Linux as on Windows
-**Applies to:** ggml-xdna
+**Applies to:** Zest
 **Test category:** manual
 
 On Linux on a Ryzen AI machine with the `amdxdna` driver, XRT and Mesa's
@@ -1213,7 +1222,7 @@ XRT 2.20 headers: the `npu` tests passed (2026-10-06).
 missing on Ubuntu). It records the machine, driver and XRT versions; builds;
 records XDNA-SAFE-START's line at the session's locked-memory limit and at
 8 MB; lifts the limit; runs the `host` and `npu` tests; then on Qwen3-1.7B
-Q4_0 checks XDNA-BLOCK-AGREES, an `npu llama-completion` run with the trace
+Q4_0 checks XDNA-BLOCK-AGREES, an `zest llama-completion` run with the trace
 on, the KL divergence over this README and spec (under 0.01), paired speed
 (5 rounds, and 3 on Qwen3-4B Q4_K_M), an injected NPU failure
 (`GGML_XDNA_FAIL_AFTER=30`), and the NPU's memory ceiling

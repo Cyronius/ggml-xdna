@@ -25,7 +25,7 @@ screenshots; not a real-time latency recording).
 
 ## Start from the Windows ZIP
 
-1. Download the [Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc1)
+1. Download the [Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc2)
    and extract it. Keep all the files together.
 2. Quit the existing Lemonade tray server. The desktop chat window can stay open.
 3. Double-click `Start-Lemonade.cmd`. It looks for an installed Lemonade server;

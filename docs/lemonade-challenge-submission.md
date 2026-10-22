@@ -52,7 +52,7 @@ project. A larger Strix Halo GPU may change the balance substantially.
 
 ## Supporting material
 
-- [Windows preview package and desktop walkthrough](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc1)
+- [Windows preview package and desktop walkthrough](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc2)
 - [Lemonade setup](https://github.com/Cyronius/zest/blob/main/docs/lemonade.md)
 - [Clean build, actual desktop app, quality and fallback verification](https://github.com/Cyronius/zest/blob/main/docs/lemonade-validation.md)
 - [Repeated API comparison script](https://github.com/Cyronius/zest/blob/main/tools/bench-lemonade.ps1)

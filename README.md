@@ -18,7 +18,7 @@ no NPU kernel to compile for each model. Qwen, LFM, and Granite are examples,
 rather than a fixed list of supported models. Coverage depends on the bundled
 llama.cpp build and the operations the add-on implements; speedups vary by model.
 
-**[Download the Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc1)**
+**[Download the Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc2)**
 · [Setup guide](docs/lemonade.md)
 · [Website](https://cyronius.github.io/zest/)
 · [Direct llama.cpp / Linux](docs/technical-guide.md)
@@ -50,7 +50,7 @@ and a GGUF file already on disk. We tested a Ryzen AI 9 HX PRO 370 with
 Radeon 890M graphics. Qwen3-4B Q4_K_M is a useful starting point if you want
 to repeat that test. Lemonade, drivers, and model weights are separate downloads.
 
-1. [Download the Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc1)
+1. [Download the Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc2)
    and extract the ZIP. Keep the files together. There's a SHA-256 checksum
    beside the download and a file manifest inside it.
 2. Quit the existing Lemonade tray server, then double-click
