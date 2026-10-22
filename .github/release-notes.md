@@ -53,10 +53,5 @@ as close as the GPU is to itself across llama.cpp builds):
 Speeds on models under about 3B move 8–14% from run to run. `bench.ps1` in
 the zip reruns these measurements on your own models.
 
-**Known issues:**
-- If the NPU fails or its results come back damaged mid-prompt, the rest of
-  that prompt runs on the CPU and can take many minutes (#13). The default
-  memory limit keeps this from happening in normal use.
-
 The README has the full measurements, the settings, and what to do when it
 turns itself off.
