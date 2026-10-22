@@ -21,7 +21,8 @@ including prompt processing, rather than the server-reported prefill times below
 
 The modes ran separately on the same laptop, with a full uncached warmup in
 each mode, then one recorded request. Playback aligns both request starts
-without rescaling time. Loading and warmup are excluded; this is one pair.
+at 3× playback speed; on-screen timers show original elapsed time.
+Loading and warmup are excluded; this is one pair.
 The [recording](results/lemonade-speed-comparison-2026-10-22.json) retains the
 identical request, mode settings, token event timestamps, and server timings.
 

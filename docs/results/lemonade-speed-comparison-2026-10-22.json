@@ -41,7 +41,7 @@
     "version": "2026.43.3",
     "websocket_port": 9000
   },
-  "method": "Sequential GPU-only and NPU + GPU API streams recorded on one laptop. One full uncached warmup per mode. Playback aligns request starts at t=0; no timing rescaling. Model load and warmup are excluded. This is one pair, not a median.",
+  "method": "Sequential GPU-only and NPU + GPU API streams recorded on one laptop. One full uncached warmup per mode. Event timestamps retain original wall-clock request time. Model load and warmup are excluded. This is one pair, not a median.",
   "prompt_sha256": "2d98612ac1c5170a0cc7bf82e9a21b89c900a80f46fed6a84a437403a845fb5c",
   "request": {
     "model": "extra.Qwen3-4B-Q4_K_M",
@@ -431,5 +431,10 @@
     "xdna times, 200 matmuls in 31 pieces: all 1052.2 ms | read inputs 62.6, encode 20.8, NPU 382.0 (344 calls), decode 0.0, write results 82.9, weight copies 0.0 ms",
     "xdna times, 200 matmuls in 31 pieces: all 1065.7 ms | read inputs 71.0, encode 19.3, NPU 380.9 (344 calls), decode 0.0, write results 82.5, weight copies 0.0 ms",
     "xdna times, 196 matmuls in 28 pieces: all 1104.0 ms | read inputs 118.4, encode 19.4, NPU 374.5 (336 calls), decode 0.0, write results 79.7, weight copies 0.0 ms"
-  ]
+  ],
+  "video_playback": {
+    "speed_multiplier": 3,
+    "alignment": "Both request starts aligned at video playback start, after the title hold.",
+    "timers": "Original elapsed request time, advancing 3 seconds per second of video."
+  }
 }

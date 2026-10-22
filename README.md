@@ -37,8 +37,9 @@ Keep that backend together: the DLL won't work with an arbitrary newer build.
 · [Recorded stream timings](docs/results/lemonade-speed-comparison-2026-10-22.json)
 · [Verification report](docs/lemonade-validation.md)
 
-The side-by-side video replays two recorded Lemonade API streams at real
-speed. With the same 8,296-token prompt and Qwen3-4B Q4_K_M, the first reply
+The side-by-side video replays two recorded Lemonade API streams at 3×
+speed, with timers showing original elapsed time. With the same 8,296-token
+prompt and Qwen3-4B Q4_K_M, the first reply
 arrived at 28.81 seconds on GPU alone and 21.85 seconds with NPU + GPU.
 Each mode was warmed and prompt caching was off. These are separate runs
 on one laptop, aligned at request start.

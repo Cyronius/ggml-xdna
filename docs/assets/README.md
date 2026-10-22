@@ -13,8 +13,9 @@ The desktop screenshot and walkthrough in the parent documentation folder
 come from the actual Windows Lemonade test described in the validation report.
 
 `lemonade-speed-comparison.mp4` replays the GPU-only and NPU + GPU token
-events in `../results/lemonade-speed-comparison-2026-10-22.json` at real speed,
-with both request starts aligned. Its PNG poster is a frame from that video.
+events in `../results/lemonade-speed-comparison-2026-10-22.json` at 3× speed,
+with both request starts aligned and timers showing original elapsed time.
+Its PNG poster is a frame from that video.
 The API runs were recorded separately on the same laptop after warming each
 mode, with identical requests and prompt caching disabled.
 

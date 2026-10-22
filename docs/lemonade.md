@@ -21,7 +21,7 @@ See the [clean-package and desktop verification report](lemonade-validation.md)
 for the build, model-quality, UI and fallback evidence.
 
 [Side-by-side speed comparison](https://cyronius.github.io/zest/#comparison)
-(recorded API streams, replayed at real speed).
+(recorded API streams, replayed at 3× speed with original elapsed-time counters).
 
 ## Start from the Windows ZIP
 
