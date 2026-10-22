@@ -7,6 +7,12 @@ speedups vary by model.
 This is an independent community add-on, tested with Lemonade 2026.43.3
 and the bundled b10944 backend.
 
+Zest packages now contain `zest.exe` / `zest`, `ggml-zest.dll` /
+`libggml-zest.so`, and the Linux `libggml-zest-xrt.so` shim. `npu` remains a
+compatibility command. Update a manually set `GGML_BACKEND_PATH` to the new
+filename; `XDNA0` and `GGML_XDNA_*` settings retain their hardware names.
+[Migration guide](https://github.com/Cyronius/zest/blob/main/docs/zest-migration.md).
+
 ## Use it with Lemonade on Windows
 
 1. Download the Windows ZIP below and extract it. Keep the files together.
@@ -19,9 +25,9 @@ The launcher keeps its configuration separate and uses the GPU if the NPU
 can't start. It doesn't include Lemonade, model weights, or AMD drivers.
 The ZIP has an internal checksum manifest; its `.sha256` file is attached.
 
-[Website and walkthrough](https://cyronius.github.io/ggml-xdna/)
-? [Lemonade setup and troubleshooting](https://github.com/Cyronius/ggml-xdna/blob/main/docs/lemonade.md)
-? [Test report](https://github.com/Cyronius/ggml-xdna/blob/main/docs/lemonade-validation.md)
+[Website and walkthrough](https://cyronius.github.io/zest/)
+? [Lemonade setup and troubleshooting](https://github.com/Cyronius/zest/blob/main/docs/lemonade.md)
+? [Test report](https://github.com/Cyronius/zest/blob/main/docs/lemonade-validation.md)
 
 ## Before you use it
 
@@ -43,5 +49,5 @@ prompt entry and the answer, but isn't a real-time latency recording.
 ## Direct llama.cpp use
 
 Still supported on Windows and Linux. The `npu` launcher is included in
-both packages. See the [technical guide](https://github.com/Cyronius/ggml-xdna/blob/main/docs/technical-guide.md)
+both packages. See the [technical guide](https://github.com/Cyronius/zest/blob/main/docs/technical-guide.md)
 for commands, build instructions, accuracy checks, and standalone benchmarks.

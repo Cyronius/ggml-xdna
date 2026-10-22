@@ -8,7 +8,7 @@
 // CPU sees them are exactly as written. Neither XRT nor the driver reports an
 // error. Windows' count of the NPU's memory stops at 26.0 GiB. Holding 14.8 GiB
 // on the GPU at the same time doesn't move any of it. Found running llama.cpp
-// with the ggml-xdna add-on; this program shows it with the NPU alone (no
+// with the Zest add-on; this program shows it with the NPU alone (no
 // llama.cpp, no model files, no GPU).
 //
 // What it does: it fills the NPU with weight buffers a step at a time and,

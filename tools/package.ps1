@@ -1,5 +1,5 @@
 # Makes the release zip from a finished build: llama.cpp's own Windows Vulkan
-# release, unmodified, with the add-on, its NPU kernel and the npu launcher
+# release, unmodified, with the add-on, its NPU kernel and the Zest launcher
 # next to it, plus the licenses and a list of checksums. Run after build.cmd;
 # the release workflow does (.github/workflows/release.yml).
 #
@@ -26,7 +26,7 @@ if ($Version -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$' -or $Tag -notmatch '^[A-Za
 }
 $Out = [IO.Path]::GetFullPath($Out)
 
-$name = "ggml-xdna-$Version-llama-$Tag-win-x64"
+$name = "zest-$Version-llama-$Tag-win-x64"
 $stage = Join-Path $Out $name
 $zip = "$stage.zip"
 $outPrefix = $Out.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
@@ -49,13 +49,13 @@ if ($Tag -eq 'b10944' -and (Get-FileHash -Algorithm SHA256 -LiteralPath $dl).Has
 Expand-Archive -Path $dl -DestinationPath $stage
 
 # ours
-foreach ($f in "ggml-xdna.dll", "npu.exe") {
+foreach ($f in "ggml-zest.dll", "zest.exe", "npu.exe") {
     $p = Join-Path $Build $f
     if (-not (Test-Path $p)) { throw "no $f in $($Build); build first" }
     Copy-Item $p $stage
 }
 Copy-Item (Join-Path $Root "kernels\bfp16_gemm\prebuilt\bfp16_gemm.xclbin") $stage
-# the README's measurements, for anyone to rerun; it finds npu.exe next to it
+# the README's measurements, for anyone to rerun; it finds zest.exe next to it
 Copy-Item (Join-Path $Root "tools\bench.ps1") $stage
 Copy-Item (Join-Path $Root "Start-Lemonade.cmd") $stage
 New-Item -ItemType Directory -Force -Path "$stage\tools", "$stage\docs", "$stage\tests\prompts" | Out-Null
@@ -65,6 +65,8 @@ foreach ($f in "start-lemonade.ps1", "bench-lemonade.ps1", "check-lemonade.py") 
 Copy-Item (Join-Path $Root "docs\lemonade.md") "$stage\docs"
 Copy-Item (Join-Path $Root "docs\lemonade-validation.md") "$stage\docs"
 Copy-Item (Join-Path $Root "docs\technical-guide.md") "$stage\docs"
+Copy-Item (Join-Path $Root "docs\model-comparison.md") "$stage\docs"
+Copy-Item (Join-Path $Root "docs\zest-migration.md") "$stage\docs"
 Copy-Item -LiteralPath (Join-Path $Root "docs\assets") -Destination "$stage\docs\assets" -Recurse
 Copy-Item (Join-Path $Root "docs\lemonade-desktop-walkthrough.mp4") "$stage\docs"
 Copy-Item -LiteralPath (Join-Path $Root "docs\results") -Destination "$stage\docs\results" -Recurse

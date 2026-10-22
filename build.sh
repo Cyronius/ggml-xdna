@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds ggml-xdna on Linux and runs its tests, the twin of build.cmd: ./build.sh, or ./build.sh notest.
+# Builds Zest on Linux and runs its tests, the twin of build.cmd: ./build.sh, or ./build.sh notest.
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")"
 

@@ -55,7 +55,7 @@ jobs:
         run: |
           $v = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME } else { "dev-$($env:GITHUB_SHA.Substring(0, 7))" }
           tools\package.ps1 -Version $v
-          "name=ggml-xdna-$v-llama-b10944-win-x64" >> $env:GITHUB_OUTPUT
+          "name=zest-$v-llama-b10944-win-x64" >> $env:GITHUB_OUTPUT
 
       - name: Keep the zip with this run
         uses: actions/upload-artifact@v4
@@ -93,7 +93,7 @@ jobs:
         run: |
           if [[ "$GITHUB_REF_TYPE" == tag ]]; then v=$GITHUB_REF_NAME; else v=dev-${GITHUB_SHA::7}; fi
           tools/package.sh "$v"
-          echo "name=ggml-xdna-$v-llama-b10944-ubuntu-x64" >> "$GITHUB_OUTPUT"
+          echo "name=zest-$v-llama-b10944-ubuntu-x64" >> "$GITHUB_OUTPUT"
 
       - name: Keep the archive with this run
         uses: actions/upload-artifact@v4
@@ -121,5 +121,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          release_flags=()
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then release_flags+=(--prerelease); fi
           gh release create "$GITHUB_REF_NAME" dist/* \
-            --title "Zest $GITHUB_REF_NAME" --notes-file .github/release-notes.md
+            --title "Zest $GITHUB_REF_NAME" --notes-file .github/release-notes.md "${release_flags[@]}"

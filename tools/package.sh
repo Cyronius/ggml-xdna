@@ -9,7 +9,7 @@ root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
 build=${BUILD:-$root/build}
 out=${OUT:-$root/dist}
 
-name="ggml-xdna-$version-llama-$tag-ubuntu-x64"
+name="zest-$version-llama-$tag-ubuntu-x64"
 stage="$out/$name"
 rm -rf "$stage" "$stage.tar.gz" "$stage.tar.gz.sha256"
 mkdir -p "$stage"
@@ -22,7 +22,7 @@ echo "$archive_sha256  $dl" | sha256sum --check --status || { echo "llama.cpp ar
 tar -xzf "$dl" -C "$stage" --strip-components=1
 
 # ours
-for f in libggml-xdna.so libggml-xdna-xrt.so npu; do
+for f in libggml-zest.so libggml-zest-xrt.so zest npu; do
     [[ -f "$build/$f" ]] || { echo "no $f in $build; build first" >&2; exit 1; }
     cp "$build/$f" "$stage/"
 done
@@ -34,6 +34,8 @@ cp "$root/tools/check-lemonade.py" "$stage/tools/"
 cp "$root/docs/lemonade.md" "$stage/docs/"
 cp "$root/docs/lemonade-validation.md" "$stage/docs/"
 cp "$root/docs/technical-guide.md" "$stage/docs/"
+cp "$root/docs/model-comparison.md" "$stage/docs/"
+cp "$root/docs/zest-migration.md" "$stage/docs/"
 cp -R "$root/docs/assets" "$stage/docs/assets"
 cp "$root/docs/lemonade-desktop-walkthrough.mp4" "$stage/docs/"
 cp -R "$root/docs/results" "$stage/docs/results"

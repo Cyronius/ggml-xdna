@@ -2,15 +2,15 @@
 
 ## Project title
 
-Open-source NPU prefill for GGUF models in Lemonade
+Zest: open-source NPU prefill for GGUF models in Lemonade
 
 ## Project link
 
-https://github.com/Cyronius/ggml-xdna
+https://github.com/Cyronius/zest
 
 ## Description
 
-ggml-xdna adds AMD Ryzen AI NPU acceleration to llama.cpp's GGUF inference
+Zest adds AMD Ryzen AI NPU acceleration to llama.cpp's GGUF inference
 path. Large prompt chunks send eligible matrix multiplies and nearby
 operations to the NPU. Attention and token generation stay on the Vulkan
 GPU. The backend code is MIT licensed; vendored components retain their
@@ -52,12 +52,12 @@ project. A larger Strix Halo GPU may change the balance substantially.
 
 ## Supporting material
 
-- [Windows preview package and desktop walkthrough](https://github.com/Cyronius/ggml-xdna/releases/tag/lemonade-preview-20261021-r2)
-- [Lemonade setup](https://github.com/Cyronius/ggml-xdna/blob/main/docs/lemonade.md)
-- [Clean build, actual desktop app, quality and fallback verification](https://github.com/Cyronius/ggml-xdna/blob/main/docs/lemonade-validation.md)
-- [Repeated API comparison script](https://github.com/Cyronius/ggml-xdna/blob/main/tools/bench-lemonade.ps1)
-- [Measurement record](https://github.com/Cyronius/ggml-xdna/blob/main/docs/results/lemonade-2026-10-21.json)
-- [README](https://github.com/Cyronius/ggml-xdna): architecture, standalone performance, accuracy and limitations
+- [Windows preview package and desktop walkthrough](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc1)
+- [Lemonade setup](https://github.com/Cyronius/zest/blob/main/docs/lemonade.md)
+- [Clean build, actual desktop app, quality and fallback verification](https://github.com/Cyronius/zest/blob/main/docs/lemonade-validation.md)
+- [Repeated API comparison script](https://github.com/Cyronius/zest/blob/main/tools/bench-lemonade.ps1)
+- [Measurement record](https://github.com/Cyronius/zest/blob/main/docs/results/lemonade-2026-10-21.json)
+- [README](https://github.com/Cyronius/zest): architecture, standalone performance, accuracy and limitations
 
 This remains submission copy for the owner's review. The challenge page
 does not confirm remaining laptop availability. The desktop walkthrough

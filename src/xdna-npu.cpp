@@ -209,10 +209,10 @@ static std::string xrt_ready() {
         default: return "no NPU driver (xrt_coreutil.dll not found)";
     }
 }
-static const char * const LIBRARY = "ggml-xdna.dll";
+static const char * const LIBRARY = "ggml-zest.dll";
 #else
 static std::string xrt_ready() { return xrt_load(); }
-static const char * const LIBRARY = "libggml-xdna.so";
+static const char * const LIBRARY = "libggml-zest.so";
 #endif
 
 static constexpr double MiB = 1024.0 * 1024, GiB = 1024 * MiB;

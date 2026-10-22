@@ -1,8 +1,8 @@
-// npu: runs a llama.cpp program with the NPU add-on, with nothing to set.
+// zest: runs a llama.cpp program with the NPU add-on, with nothing to set.
 //
-//   npu [npu's options] llama-server [its arguments]   (or: npu server ...)
+//   zest [zest's options] llama-server [its arguments]   (or: zest server ...)
 //
-// npu's options (--memory-gb, --min-chunk) come before the program's name,
+// zest's options (--memory-gb, --min-chunk) come before the program's name,
 // so they never mix with the program's own, and reach the add-on as its
 // variables.
 //
@@ -59,7 +59,7 @@ bool is_file(const fs::path & p) {
 #ifdef _WIN32
 
 const char * const EXE = ".exe";
-const char * const ADDON = "ggml-xdna.dll";
+const char * const ADDON = "ggml-zest.dll";
 
 std::wstring widen(const std::string & s) {
     const int len = MultiByteToWideChar(CP_UTF8, 0, s.data(), (int) s.size(), nullptr, 0);
@@ -115,7 +115,7 @@ fs::path hf_cache() {
     const std::string h = env("HF_HOME");
     return h.empty() ? home() / ".cache" / "huggingface" / "hub" : to_path(h) / "hub";
 }
-fs::path state_dir() { return to_path(env("LOCALAPPDATA")) / "ggml-xdna"; }
+fs::path state_dir() { return to_path(env("LOCALAPPDATA")) / "zest"; }
 
 bool asking_possible() {
     DWORD mode;
@@ -221,7 +221,7 @@ BOOL WINAPI ignore_ctrl_c(DWORD type) {
     return type == CTRL_C_EVENT || type == CTRL_BREAK_EVENT;
 }
 
-// Runs the program with `added` in front of npu's own arguments from `rest` on, as typed; returns its exit code.
+// Runs the program with `added` in front of zest's own arguments from `rest` on, as typed; returns its exit code.
 int run(const fs::path & exe, const std::vector<std::string> & added, int rest) {
     std::wstring cmd = L"\"" + exe.wstring() + L"\"";
     for (const std::string & a : added) cmd += L" " + widen(quote(a));
@@ -234,10 +234,10 @@ int run(const fs::path & exe, const std::vector<std::string> & added, int rest) 
     si.hStdError = GetStdHandle(STD_ERROR_HANDLE);
     PROCESS_INFORMATION pi = {};
     if (!CreateProcessW(nullptr, cmd.data(), nullptr, nullptr, TRUE, CREATE_SUSPENDED, nullptr, nullptr, &si, &pi)) {
-        put("npu: couldn't start " + text(exe) + "\n");
+        put("zest: couldn't start " + text(exe) + "\n");
         return 1;
     }
-    // if npu is closed or killed, the program (and anything it started) goes too
+    // if zest is closed or killed, the program (and anything it started) goes too
     HANDLE job = CreateJobObjectW(nullptr, nullptr);
     if (job) {
         JOBOBJECT_EXTENDED_LIMIT_INFORMATION li = {};
@@ -259,7 +259,7 @@ int run(const fs::path & exe, const std::vector<std::string> & added, int rest) 
 #else
 
 const char * const EXE = "";
-const char * const ADDON = "libggml-xdna.so";
+const char * const ADDON = "libggml-zest.so";
 
 char ** g_argv = nullptr;
 
@@ -291,7 +291,7 @@ fs::path hf_cache() {
     const std::string h = env("HF_HOME");
     return h.empty() ? xdg("XDG_CACHE_HOME", ".cache") / "huggingface" / "hub" : to_path(h) / "hub";
 }
-fs::path state_dir() { return xdg("XDG_STATE_HOME", ".local/state") / "ggml-xdna"; }
+fs::path state_dir() { return xdg("XDG_STATE_HOME", ".local/state") / "zest"; }
 
 bool asking_possible() { return isatty(STDIN_FILENO); }
 
@@ -326,16 +326,16 @@ bool list_devices(const fs::path & program, std::string & out) {
     return !(WIFEXITED(status) && WEXITSTATUS(status) == 127 && out.empty());
 }
 
-// Becomes the program, with `added` in front of npu's own arguments from `rest` on; returns only if that fails.
+// Becomes the program, with `added` in front of zest's own arguments from `rest` on; returns only if that fails.
 int run(const fs::path & exe, const std::vector<std::string> & added, int rest) {
     const std::string program = text(exe);
     std::vector<char *> args = { (char *) program.c_str() };
     for (const std::string & a : added) args.push_back((char *) a.c_str());
     for (char ** p = g_argv + rest; *p; p++) args.push_back(*p);
     args.push_back(nullptr);
-    // replacing npu leaves Ctrl+C, the exit code and being killed to the program itself
+    // replacing zest leaves Ctrl+C, the exit code and being killed to the program itself
     execv(program.c_str(), args.data());
-    put("npu: couldn't start " + program + " (" + strerror(errno) + ")\n");
+    put("zest: couldn't start " + program + " (" + strerror(errno) + ")\n");
     return 127;
 }
 
@@ -382,7 +382,7 @@ struct npu_check {
 npu_check check_npu(const fs::path & dir) {
     fs::path lister = dir / to_path(std::string("llama-server") + EXE);
     if (!is_file(lister)) lister = dir / to_path(std::string("llama-cli") + EXE);
-    if (!is_file(lister)) return { false, std::string("no llama-server") + EXE + " next to npu" + EXE + " to ask" };
+    if (!is_file(lister)) return { false, std::string("no llama-server") + EXE + " next to zest" + EXE + " to ask" };
     std::string out;
     if (!list_devices(lister, out)) return { false, "couldn't start " + text(lister.filename()) };
 
@@ -502,7 +502,7 @@ struct pick {
 pick choose_model(const fs::path & dir, bool offer_all) {
     const std::vector<model> models = find_models(dir);
     if (models.empty()) {
-        say(std::string("npu: no models found. Looked in: a models folder next to npu") + EXE +
+        say(std::string("zest: no models found. Looked in: a models folder next to zest") + EXE +
             ", LM Studio's models folder, llama.cpp's download folder, and the Hugging Face download folder. Give "
             "one with -m <file.gguf>.");
         return { pick_kind::none, {} };
@@ -511,7 +511,10 @@ pick choose_model(const fs::path & dir, bool offer_all) {
     fs::create_directories(state_dir(), ec);
     fs::path last;
     {
-        std::ifstream f(state_dir() / "last-model.txt", std::ios::binary);
+        fs::path last_file = state_dir() / "last-model.txt";
+        // Read the old preference until a choice is saved under Zest's name.
+        if (!is_file(last_file)) last_file = state_dir().parent_path() / "ggml-xdna" / "last-model.txt";
+        std::ifstream f(last_file, std::ios::binary);
         std::string line;
         if (std::getline(f, line)) last = to_path(line);
         if (!last.empty() && !is_file(last)) last.clear();
@@ -544,7 +547,7 @@ pick choose_model(const fs::path & dir, bool offer_all) {
             if (k == 0 && offer_all) {
                 const fs::path ini = write_preset(models);
                 if (!ini.empty()) return { pick_kind::all, ini };
-                say("npu: couldn't write " + text(state_dir() / "models.ini"));
+                say("zest: couldn't write " + text(state_dir() / "models.ini"));
                 continue;
             }
             if (k >= 1 && k <= models.size()) chosen = models[k - 1].path;
@@ -557,21 +560,21 @@ pick choose_model(const fs::path & dir, bool offer_all) {
 }
 
 //
-// npu's own options
+// zest's own options
 //
 
 void usage() {
-    say("npu runs a llama.cpp program with prompts read on the NPU.\n"
+    say("zest runs a llama.cpp program with prompts read on the NPU.\n"
         "\n"
-        "  npu [npu's options] llama-server [its arguments]      (or: npu server ...)\n"
-        "  npu llama-cli -m model.gguf\n"
+        "  zest [zest's options] llama-server [its arguments]      (or: zest server ...)\n"
+        "  zest llama-cli -m model.gguf\n"
         "\n"
         "It points llama.cpp at the NPU add-on next to it and, when the NPU can run, adds\n"
         "-dev XDNA0,Vulkan0 -ts 0,1 (plus -ub 2048 -b 2048 for llama-server, llama-cli\n"
         "and llama-completion). With no model given, it lists the models it finds.\n"
         "Anything you set yourself is kept.\n"
         "\n"
-        "npu's options, before the program's name:\n"
+        "zest's options, before the program's name:\n"
         "  --memory-gb N   the most memory the NPU's copies of the weights may take, in GB\n"
         "                  (0.5 and the like work; 0 keeps the NPU out). Default: the\n"
         "                  memory free once the model is loaded, less 4 GB or a tenth of\n"
@@ -603,7 +606,7 @@ bool is_tokens(const std::string & s) {
     return std::all_of(s.begin(), s.end(), [](char c) { return c >= '0' && c <= '9'; }) && std::stol(s) >= 1;
 }
 
-// Reads npu's options from argv[1] on, as "--name value" or "--name=value".
+// Reads zest's options from argv[1] on, as "--name value" or "--name=value".
 // Returns where the program's name is, 0 when help was asked for, or -1
 // after saying what's wrong.
 int read_options(const std::vector<std::string> & argv, options & o) {
@@ -615,7 +618,7 @@ int read_options(const std::vector<std::string> & argv, options & o) {
         const size_t eq = a.find('=');
         const std::string name = lower(a.substr(0, eq));
         if (name != "--memory-gb" && name != "--min-chunk") {
-            say("npu: unknown option " + a + " (npu's options go before the program's name; npu -h lists them)");
+            say("zest: unknown option " + a + " (zest's options go before the program's name; zest -h lists them)");
             return -1;
         }
         std::string value;
@@ -624,13 +627,13 @@ int read_options(const std::vector<std::string> & argv, options & o) {
         const std::string not_this = value.empty() ? std::string() : ", not \"" + value + "\"";
         if (name == "--memory-gb") {
             if (!is_gb(value)) {
-                say("npu: --memory-gb takes a size in GB, such as 20 or 0.5 (0 keeps the NPU out)" + not_this);
+                say("zest: --memory-gb takes a size in GB, such as 20 or 0.5 (0 keeps the NPU out)" + not_this);
                 return -1;
             }
             o.memory_gb = value;
         } else {
             if (!is_tokens(value)) {
-                say("npu: --min-chunk takes a number of tokens, such as 512 or 2048" + not_this);
+                say("zest: --min-chunk takes a number of tokens, such as 512 or 2048" + not_this);
                 return -1;
             }
             o.min_chunk = value;
@@ -658,7 +661,7 @@ int launch(const std::vector<std::string> & argv) {
         exe = dir / to_path(tool + EXE);
     }
     if (!is_file(exe)) {
-        say("npu: there's no " + tool + EXE + " next to npu" + EXE + " (" + text(dir) + ")");
+        say("zest: there's no " + tool + EXE + " next to zest" + EXE + " (" + text(dir) + ")");
         return 1;
     }
     tool = lower(tool);
@@ -670,7 +673,7 @@ int launch(const std::vector<std::string> & argv) {
         const fs::path lib = dir / ADDON;
         if (is_file(lib)) set_env("GGML_BACKEND_PATH", text(lib));
     }
-    // npu's options reach the add-on as its variables, which the program
+    // zest's options reach the add-on as its variables, which the program
     // and anything it starts (the router's per-model servers) inherit
     std::string set;
     if (!opt.memory_gb.empty()) {
@@ -709,9 +712,9 @@ int launch(const std::vector<std::string> & argv) {
                 added.insert(added.end(), { "-ub", "2048", "-b", "2048" });
             std::string shown;
             for (const std::string & a : added) shown += " " + a;
-            say("npu: prompts on the NPU (added" + shown + set + ")");
+            say("zest: prompts on the NPU (added" + shown + set + ")");
         } else {
-            say("npu: running on the GPU only: " + c.why);
+            say("zest: running on the GPU only: " + c.why);
         }
     }
 

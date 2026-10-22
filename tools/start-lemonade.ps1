@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Starts an isolated Lemonade server with the pinned ggml-xdna package.
+Starts an isolated Lemonade server with the pinned ggml-zest package.
 .EXAMPLE
 tools\start-lemonade.ps1 -LemonadeExe C:\Lemonade\bin\LemonadeServer.exe -Model C:\models\Qwen3-4B-Q4_K_M.gguf
 #>
@@ -84,13 +84,15 @@ if (-not $LlamaDir) {
     }
 }
 $LlamaDir = (Resolve-Path -LiteralPath $LlamaDir).Path
-foreach ($file in @('llama-server.exe', 'ggml-xdna.dll')) {
+foreach ($file in @('llama-server.exe', 'ggml-zest.dll')) {
     if (-not (Test-Path -LiteralPath "$LlamaDir/$file" -PathType Leaf)) { throw "Missing $LlamaDir/$file" }
 }
 New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
 $StateDir = (Resolve-Path -LiteralPath $StateDir).Path
-$marker = "$StateDir/.ggml-xdna-launcher"
-if ((Test-Path "$StateDir/config/config.json") -and -not (Test-Path $marker)) {
+$marker = "$StateDir/.zest-launcher"
+$legacyMarker = "$StateDir/.ggml-xdna-launcher"
+if ((Test-Path "$StateDir/config/config.json") -and
+    -not (Test-Path $marker) -and -not (Test-Path $legacyMarker)) {
     throw 'This directory contains an existing configuration. Choose a separate -StateDir.'
 }
 New-Item -ItemType Directory -Force "$StateDir/cache", "$StateDir/config" | Out-Null
@@ -100,7 +102,7 @@ $oldBackend = $env:GGML_BACKEND_PATH
 $oldTrace = $env:GGML_XDNA_TRACE
 $oldHostOnly = $env:GGML_XDNA_HOST_ONLY
 try {
-    $env:GGML_BACKEND_PATH = "$LlamaDir/ggml-xdna.dll"
+    $env:GGML_BACKEND_PATH = "$LlamaDir/ggml-zest.dll"
     $env:GGML_XDNA_TRACE = '1'
     $env:GGML_XDNA_HOST_ONLY = $null
     # PowerShell 5 treats native stderr as an error record, even on a successful probe.

@@ -32,7 +32,7 @@ param(
     [Parameter(Mandatory = $true)] [string[]] $Model,
     # rounds per model; each round runs both devices
     [int] $Rounds = 5,
-    # prompt length in tokens, read in 2,048-token chunks as npu does
+    # prompt length in tokens, read in 2,048-token chunks as zest does
     [int] $Prompt = 2048,
     # also measure answer drift with llama-perplexity
     [switch] $Kl,
@@ -40,35 +40,35 @@ param(
     [string] $Text,
     # 512-token pieces of -Text to compare; 8 is about 4,000 tokens
     [int] $Chunks = 8,
-    # the folder with npu and llama.cpp's programs
+    # the folder with zest and llama.cpp's programs
     [string] $LlamaDir
 )
 
 $ErrorActionPreference = 'Stop'
 
 # Windows PowerShell 5 has no $IsWindows; PowerShell 7 runs on Linux too
-$npuName = if ($IsWindows -eq $false) { 'npu' } else { 'npu.exe' }
+$zestName = if ($IsWindows -eq $false) { 'zest' } else { 'zest.exe' }
 if (-not $LlamaDir) {
     # next to this script (the release zip), else the repo's build of llama.cpp
     $LlamaDir = $PSScriptRoot
-    if (-not (Test-Path (Join-Path $LlamaDir $npuName))) {
+    if (-not (Test-Path (Join-Path $LlamaDir $zestName))) {
         $LlamaDir = [IO.Path]::Combine($PSScriptRoot, '..', 'third_party', 'llama-b10944')
     }
 }
-$npu = Join-Path $LlamaDir $npuName
-if (-not (Test-Path $npu)) { throw "no $npuName in $LlamaDir; pass -LlamaDir" }
+$zest = Join-Path $LlamaDir $zestName
+if (-not (Test-Path $zest)) { throw "no $zestName in $LlamaDir; pass -LlamaDir" }
 if ($Kl -and -not $Text) { throw "-Kl needs -Text, a plain-text file of at least $($Chunks * 512) tokens" }
 # Started with powershell -File, "-Model a.gguf,b.gguf" arrives as one string.
 $Model = $Model | ForEach-Object { if (Test-Path -LiteralPath $_) { $_ } else { $_ -split ',' } } |
          ForEach-Object { $_.Trim() } | Where-Object { $_ }
 foreach ($m in $Model) { if (-not (Test-Path -LiteralPath $m)) { throw "no such model: $m" } }
 
-# Runs npu.exe with the given arguments and returns its exit code, stdout and
+# Runs zest.exe with the given arguments and returns its exit code, stdout and
 # stderr. Both streams are read at once, so a full pipe never stalls the run.
-function Invoke-Npu([string[]] $ArgList) {
+function Invoke-Zest([string[]] $ArgList) {
     $quoted = $ArgList | ForEach-Object { if ($_ -match '[\s"]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ } }
     $si = New-Object System.Diagnostics.ProcessStartInfo
-    $si.FileName = $npu
+    $si.FileName = $zest
     $si.Arguments = $quoted -join ' '
     $si.UseShellExecute = $false
     $si.RedirectStandardOutput = $true
@@ -90,7 +90,7 @@ function Get-Median([double[]] $v) {
 
 # XDNA0 is only offered when the NPU passes its check at start. Without it,
 # llama-bench would stop on "invalid device" with no reason given.
-$devices = Invoke-Npu @('llama-bench', '--list-devices')
+$devices = Invoke-Zest @('llama-bench', '--list-devices')
 if (($devices.Out + $devices.Err) -notmatch 'XDNA0') {
     $why = ($devices.Out + $devices.Err) -split "`n" | Where-Object { $_ -match 'xdna:' } | Select-Object -First 1
     throw "the NPU add-on isn't available here$(if ($why) { ": $($why.Trim())" })"
@@ -102,7 +102,7 @@ foreach ($m in $Model) {
     Write-Host "=== $name"
     $ratios = @(); $gpus = @(); $npus = @()
     for ($r = 1; $r -le $Rounds; $r++) {
-        $res = Invoke-Npu @('llama-bench', '-m', $m, '-dev', 'Vulkan0,XDNA0/Vulkan0', '-p', "$Prompt", '-n', '0',
+        $res = Invoke-Zest @('llama-bench', '-m', $m, '-dev', 'Vulkan0,XDNA0/Vulkan0', '-p', "$Prompt", '-n', '0',
                             '-ub', '2048', '-b', '2048', '-r', '3', '-o', 'json')
         $json = [regex]::Match($res.Out, '(?s)\[.*\]').Value
         if (-not $json) {
@@ -138,12 +138,12 @@ foreach ($m in $Model) {
         try {
             $common = @('llama-perplexity', '-m', $m, '-f', $Text, '-c', '512', '-b', '2048', '-ub', '2048',
                         '--chunks', "$Chunks", '--kl-divergence-base', $base)
-            $g = Invoke-Npu ($common + @('-dev', 'Vulkan0'))
+            $g = Invoke-Zest ($common + @('-dev', 'Vulkan0'))
             if ($g.Code -ne 0) { throw "llama-perplexity on the GPU failed (exit $($g.Code))" }
-            # -ts 0,1: npu adds it only when it chooses the devices itself, and
+            # -ts 0,1: zest adds it only when it chooses the devices itself, and
             # without it llama.cpp's memory fitting divides by zero on
             # mixture-of-experts models
-            $x = Invoke-Npu ($common + @('-dev', 'XDNA0,Vulkan0', '-ts', '0,1', '--kl-divergence'))
+            $x = Invoke-Zest ($common + @('-dev', 'XDNA0,Vulkan0', '-ts', '0,1', '--kl-divergence'))
             if ($x.Code -ne 0) { throw "llama-perplexity with the add-on failed (exit $($x.Code))" }
             $log = $x.Out + $x.Err
             $kld = [regex]::Match($log, 'Mean\s+KLD:\s+(-?[\d.]+)')

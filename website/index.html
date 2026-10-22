@@ -15,12 +15,12 @@
       content="NPU-assisted prompt processing for many GGUF models in Lemonade's llama.cpp backend. No ONNX or Q4NX export required."
     />
     <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://cyronius.github.io/ggml-xdna/" />
+    <meta property="og:url" content="https://cyronius.github.io/zest/" />
     <meta
       property="og:image"
-      content="https://cyronius.github.io/ggml-xdna/assets/lemonade-desktop.png"
+      content="https://cyronius.github.io/zest/assets/lemonade-desktop.png"
     />
-    <link rel="canonical" href="https://cyronius.github.io/ggml-xdna/" />
+    <link rel="canonical" href="https://cyronius.github.io/zest/" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
     <link
       rel="preload"
@@ -40,7 +40,7 @@
         <a href="#how-it-works">How it works</a>
         <a href="#results">Results</a>
         <a href="#get-started">Get started</a>
-        <a class="github-link" href="https://github.com/Cyronius/ggml-xdna"
+        <a class="github-link" href="https://github.com/Cyronius/zest"
           ><svg viewBox="0 0 24 24" aria-hidden="true">
             <path
               fill="currentColor"
@@ -63,7 +63,7 @@
             <div class="actions">
               <a
                 class="button primary"
-                href="https://github.com/Cyronius/ggml-xdna/releases/download/lemonade-preview-20261021-r2/ggml-xdna-lemonade-preview-20261021-r2-llama-b10944-win-x64.zip"
+                href="https://github.com/Cyronius/zest/releases/download/v0.2.0-rc1/zest-v0.2.0-rc1-llama-b10944-win-x64.zip"
                 ><svg viewBox="0 0 24 24" aria-hidden="true">
                   <path d="M12 3v12m-5-5 5 5 5-5M4 15v5h16v-5" /></svg
                 >Download Windows preview</a
@@ -190,7 +190,7 @@
           <div class="result-context"><p>Qwen3.8-27B UD-IQ3_S · one aligned 2,048-token prompt chunk · Ryzen AI 9 HX PRO 370 / Radeon 890M (Strix Point).<br />
             About 47% less prefill time in this test. Three warm pairs on one Windows laptop; background load and thermals weren't controlled.
             Model load and weight conversion are excluded. This does not show a decode benefit or compare with Lemonade's current default backends.</p>
-            <a class="text-link" href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/model-comparison.md">Read the test report</a></div>
+            <a class="text-link" href="https://github.com/Cyronius/zest/blob/main/docs/model-comparison.md">Read the test report</a></div>
           <a class="measurement-link" href="assets/model-results/qwen38-27b-aligned.json">Download the measured responses and settings</a>
           <div class="model-results"><h3>More models through Lemonade</h3>
             <p>These runs use the same longer prose request, rather than the aligned chunk above. Tokenizers produce different prompt lengths. All measurements are from Strix Point; high-end Strix Halo has a much larger GPU. We haven't tested Zest on Halo.</p>
@@ -204,7 +204,7 @@
               <tr><th scope="row">LFM2.5-350M<small>Q8_0 · 2,846 prompt tokens</small></th><td>5,338</td><td>5,897</td><td><strong>1.14×</strong><small>1.05–1.15×</small></td><td>2/3 · 2/3</td></tr>
               <tr><th scope="row">Bonsai 2 2B<small>Q2_0</small></th><td colspan="3">Unsupported: garbled output in both modes</td><td>0/3 · 0/3</td></tr>
               </tbody></table></div>
-            <p>The checks cover two retrieved facts and one arithmetic question, not general model quality. The 1.2B and 350M models missed the arithmetic in both modes. Qwen3-4B got it right but returned an equation instead of only the integer. These timings exclude load and warmup. <a href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/model-comparison.md">Method, model files, and limitations</a> · <a href="assets/model-results/summary.csv">CSV</a></p></div>
+            <p>The checks cover two retrieved facts and one arithmetic question, not general model quality. The 1.2B and 350M models missed the arithmetic in both modes. Qwen3-4B got it right but returned an equation instead of only the integer. These timings exclude load and warmup. <a href="https://github.com/Cyronius/zest/blob/main/docs/model-comparison.md">Method, model files, and limitations</a> · <a href="assets/model-results/summary.csv">CSV</a></p></div>
         </div>
       </section>
 
@@ -233,7 +233,7 @@
             </div>
             <a
               class="text-link"
-              href="https://github.com/Cyronius/ggml-xdna/releases/tag/lemonade-preview-20261021-r2"
+              href="https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc1"
               >Windows preview
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M4 12h16m-6-6 6 6-6 6" /></svg
@@ -272,7 +272,7 @@
             >Get the tested Lemonade version</a
           ><span>·</span
           ><a
-            href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/lemonade.md"
+            href="https://github.com/Cyronius/zest/blob/main/docs/lemonade.md"
             >Full setup guide and troubleshooting</a
           >
         </p>
@@ -309,7 +309,7 @@
               operation coverage, available memory, and hardware also matter.
               Some models get little benefit or run faster on the GPU alone.
               See the
-              <a href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/technical-guide.md#results">model results and limitations</a>.
+              <a href="https://github.com/Cyronius/zest/blob/main/docs/technical-guide.md#results">model results and limitations</a>.
             </p>
           </details>
           <details>
@@ -349,7 +349,7 @@
               Yes. The backend and <code>npu</code> launcher still support
               direct llama.cpp use on Windows and Linux. The
               <a
-                href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/technical-guide.md"
+                href="https://github.com/Cyronius/zest/blob/main/docs/technical-guide.md"
                 >technical guide</a
               >
               has those commands, build instructions, standalone benchmarks, and
@@ -394,7 +394,7 @@
           ledgers became historical records. The server trace recorded 344 NPU
           calls on this 2,780-token prompt.
           <a
-            href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/results/lemonade-desktop-trace.txt"
+            href="https://github.com/Cyronius/zest/blob/main/docs/results/lemonade-desktop-trace.txt"
             >Read the trace</a
           >.
         </p>
@@ -406,12 +406,12 @@
         <p>An independent open-source add-on for Lemonade.</p>
       </div>
       <nav aria-label="Footer navigation">
-        <a href="https://github.com/Cyronius/ggml-xdna">GitHub</a
+        <a href="https://github.com/Cyronius/zest">GitHub</a
         ><a href="#get-started">Setup guide</a
         ><a
-          href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/lemonade-validation.md"
+          href="https://github.com/Cyronius/zest/blob/main/docs/lemonade-validation.md"
           >Verification</a
-        ><a href="https://github.com/Cyronius/ggml-xdna/blob/main/LICENSE"
+        ><a href="https://github.com/Cyronius/zest/blob/main/LICENSE"
           >MIT license</a
         >
       </nav>

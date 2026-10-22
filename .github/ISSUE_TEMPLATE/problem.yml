@@ -24,8 +24,8 @@ body:
   - type: input
     id: versions
     attributes:
-      label: ggml-xdna and llama.cpp versions
-      description: The ggml-xdna release or commit, and the llama.cpp build (for example, b10944)
+      label: Zest and llama.cpp versions
+      description: The Zest release or commit, and the llama.cpp build (for example, b10944)
     validations:
       required: true
   - type: input
