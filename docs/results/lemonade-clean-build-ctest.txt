@@ -1,0 +1,447 @@
+Start testing: Oct 21 19:25 Central Daylight Time
+----------------------------------------------------------
+1/12 Testing: insts-gen
+1/12 Test: insts-gen
+Command: "C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build/test-insts-gen.exe"
+Directory: C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build
+"insts-gen" start time: Oct 21 19:25 Central Daylight Time
+Output:
+----------------------------------------------------------
+PASS 1024x1536x18432_m2.bin
+PASS 1024x2048x1024_m0.bin
+PASS 1024x2048x1024_m1.bin
+PASS 1024x2048x12288_m0.bin
+PASS 1024x2048x12288_m2.bin
+PASS 1024x2048x2048_m0.bin
+PASS 1024x2048x2048_m1.bin
+PASS 1024x2048x4096_m0.bin
+PASS 1024x2048x4096_m1.bin
+PASS 1024x2048x6144_m0.bin
+PASS 1024x2048x6144_m1.bin
+PASS 1024x2560x4096_m1.bin
+PASS 1024x6144x2048_m0.bin
+PASS 1024x6144x2048_m1.bin
+PASS 1024x8960x1536_m0.bin
+PASS 1024x9728x2560_m1.bin
+PASS 512x128x512_m0.bin
+PASS 512x2048x1024_m0.bin
+PASS 512x2048x1024_m1.bin
+PASS 512x2048x12288_m0.bin
+PASS 512x2048x12288_m2.bin
+PASS 512x2048x2048_m0.bin
+PASS 512x2048x2048_m1.bin
+PASS 512x2048x4096_m0.bin
+PASS 512x2048x4096_m1.bin
+PASS 512x2048x6144_m0.bin
+PASS 512x2048x6144_m1.bin
+PASS 512x2560x9728_m0.bin
+PASS 512x6144x2048_m0.bin
+PASS 512x6144x2048_m1.bin
+PASS 256x2048x1024 refused
+PASS 512x2048x896 refused
+PASS 512x96x1024 refused
+PASS 512x64x1024 refused
+PASS 512x2048x33280 refused
+30 reference streams: ALL PASS
+<end of output>
+Test time =   0.02 sec
+----------------------------------------------------------
+Test Passed.
+"insts-gen" end time: Oct 21 19:25 Central Daylight Time
+"insts-gen" time elapsed: 00:00:00
+----------------------------------------------------------
+
+2/12 Testing: bfp16-pack
+2/12 Test: bfp16-pack
+Command: "C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build/test-bfp16-pack.exe"
+Directory: C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build
+"bfp16-pack" start time: Oct 21 19:25 Central Daylight Time
+Output:
+----------------------------------------------------------
+PASS activations 512x256, tile m=128 k=64: identical to the kernel's reference layout
+PASS activations 512x256: blocks encoded at bfp16_a_offset give the same bytes
+PASS activations 512x256: blocks encoded at bfp16_a_row's offsets give the same bytes
+PASS activations 512x256: unpack gives back the decoded values
+PASS activations 256x384, tile m=64 k=128: identical to the kernel's reference layout
+PASS activations 256x384: blocks encoded at bfp16_a_offset give the same bytes
+PASS activations 256x384: blocks encoded at bfp16_a_row's offsets give the same bytes
+PASS activations 256x384: unpack gives back the decoded values
+PASS activations 1024x6144, tile m=128 k=64: identical to the kernel's reference layout
+PASS activations 1024x6144: blocks encoded at bfp16_a_offset give the same bytes
+PASS activations 1024x6144: blocks encoded at bfp16_a_row's offsets give the same bytes
+PASS activations 1024x6144: unpack gives back the decoded values
+PASS weights 1024x256, tile n=64 k=64, 8 columns: identical to the kernel's reference layout
+PASS weights 1024x256: blocks encoded at bfp16_b_offset give the same bytes
+PASS weights 1024x256: blocks encoded at bfp16_b_row's offsets give the same bytes
+PASS weights 1024x256: unpack gives back the decoded values
+PASS weights 4096x2048, tile n=64 k=64, 8 columns: identical to the kernel's reference layout
+PASS weights 4096x2048: blocks encoded at bfp16_b_offset give the same bytes
+PASS weights 4096x2048: blocks encoded at bfp16_b_row's offsets give the same bytes
+PASS weights 4096x2048: unpack gives back the decoded values
+PASS weights 2048x6144, tile n=64 k=128, 8 columns: identical to the kernel's reference layout
+PASS weights 2048x6144: blocks encoded at bfp16_b_offset give the same bytes
+PASS weights 2048x6144: blocks encoded at bfp16_b_row's offsets give the same bytes
+PASS weights 2048x6144: unpack gives back the decoded values
+PASS weights 512x128, tile n=32 k=64, 4 columns: identical to the kernel's reference layout
+PASS weights 512x128: blocks encoded at bfp16_b_offset give the same bytes
+PASS weights 512x128: blocks encoded at bfp16_b_row's offsets give the same bytes
+PASS weights 512x128: unpack gives back the decoded values
+PASS a maximum that rounds up to +128 saturates at 127; -127.5 rounds to -128; 100.5 ties to even
+PASS decoding matches mantissa * 2^(exponent - 133) for every exponent byte
+PASS a block of zeros matches the reference
+ALL PASS
+<end of output>
+Test time =   0.95 sec
+----------------------------------------------------------
+Test Passed.
+"bfp16-pack" end time: Oct 21 19:25 Central Daylight Time
+"bfp16-pack" time elapsed: 00:00:00
+----------------------------------------------------------
+
+3/12 Testing: safe-start
+3/12 Test: safe-start
+Command: "C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/third_party/llama-b10944/test-safe-start.exe"
+Directory: C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build
+"safe-start" start time: Oct 21 19:25 Central Daylight Time
+Output:
+----------------------------------------------------------
+load_backend: loaded RPC backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-rpc.dll
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon(TM) 890M Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 1 | fp4: 0 | warp size: 64 | shared memory: 32768 | int dot: 1 | matrix cores: KHR_coopmat
+load_backend: loaded Vulkan backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-vulkan.dll
+load_backend: loaded CPU backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-cpu-zen4.dll
+load_backend: loaded XDNA backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-xdna.dll
+xdna: not offering XDNA0: GGML_XDNA_KERNELS=Z:\no\such\kernel.xclbin names no xclbin
+PASS the backend loads (GGML_BACKEND_PATH set)
+PASS no XDNA0 device when the NPU can't run the kernel
+ALL PASS
+<end of output>
+Test time =   0.32 sec
+----------------------------------------------------------
+Test Passed.
+"safe-start" end time: Oct 21 19:25 Central Daylight Time
+"safe-start" time elapsed: 00:00:00
+----------------------------------------------------------
+
+5/12 Testing: dispatch-gate-host
+5/12 Test: dispatch-gate-host
+Command: "C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/third_party/llama-b10944/test-dispatch-gate.exe"
+Directory: C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build
+"dispatch-gate-host" start time: Oct 21 19:25 Central Daylight Time
+Output:
+----------------------------------------------------------
+load_backend: loaded RPC backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-rpc.dll
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon(TM) 890M Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 1 | fp4: 0 | warp size: 64 | shared memory: 32768 | int dot: 1 | matrix cores: KHR_coopmat
+load_backend: loaded Vulkan backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-vulkan.dll
+load_backend: loaded CPU backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-cpu-zen4.dll
+load_backend: loaded XDNA backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-xdna.dll
+xdna: host-only mode (GGML_XDNA_HOST_ONLY): claimed matmuls run on the CPU
+PASS device registers as an integrated GPU (llama.cpp ranks accelerators below every GPU)
+PASS its buffer type is Vulkan's (ops change hands with no copies)
+PASS it can read Vulkan's buffers
+PASS it can read host buffers (so its pieces never need copied inputs, which skip waiting for Vulkan)
+PASS reports no free memory, so llama.cpp gives it no layers
+PASS batch 1 (reply generation) is not claimed
+PASS batch 512 (llama.cpp's default chunk) is not claimed
+PASS batch 1023 is not claimed (below the default threshold of 1024)
+PASS batch 1024, q4_K 2048x2048 is claimed
+PASS batch 2048, q4_0 is claimed
+PASS a tiny matmul is not claimed even at a large batch
+PASS a matmul whose left side is a view (a cache read, not a weight) is not claimed
+PASS a matmul whose left side is computed (not a weight) is not claimed
+PASS other ops (ADD) are not claimed
+PASS an ADD of two claimed matmuls is not claimed (no block claiming off the NPU)
+PASS an ADD of a claimed matmul and the token embeddings (GET_ROWS) is not claimed
+PASS ... in either order
+PASS an ADD of a claimed matmul and a graph input is not claimed
+PASS ... not claimed off the NPU
+PASS an ADD of a computed row (not a kept leaf) is not claimed
+PASS ... not claimed off the NPU
+PASS ... not claimed off the NPU
+PASS ... not claimed off the NPU
+PASS the expert step (MUL_MAT_ID) is not claimed
+PASS ... and an ordinary matmul is still claimed afterwards (we warn, we don't give up the model)
+PASS offload_op never claims an op (no per-op weight copies)
+ALL PASS
+<end of output>
+Test time =   0.42 sec
+----------------------------------------------------------
+Test Passed.
+"dispatch-gate-host" end time: Oct 21 19:25 Central Daylight Time
+"dispatch-gate-host" time elapsed: 00:00:00
+----------------------------------------------------------
+
+6/12 Testing: dispatch-gate-npu
+6/12 Test: dispatch-gate-npu
+Command: "C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/third_party/llama-b10944/test-dispatch-gate.exe"
+Directory: C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build
+"dispatch-gate-npu" start time: Oct 21 19:25 Central Daylight Time
+Output:
+----------------------------------------------------------
+load_backend: loaded RPC backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-rpc.dll
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon(TM) 890M Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 1 | fp4: 0 | warp size: 64 | shared memory: 32768 | int dot: 1 | matrix cores: KHR_coopmat
+load_backend: loaded Vulkan backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-vulkan.dll
+load_backend: loaded CPU backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-cpu-zen4.dll
+load_backend: loaded XDNA backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-xdna.dll
+xdna: NPU "NPU Strix", C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\bfp16_gemm.xclbin, test multiply right (21 ms)
+PASS device registers as an integrated GPU (llama.cpp ranks accelerators below every GPU)
+PASS its buffer type is Vulkan's (ops change hands with no copies)
+PASS it can read Vulkan's buffers
+PASS it can read host buffers (so its pieces never need copied inputs, which skip waiting for Vulkan)
+PASS reports no free memory, so llama.cpp gives it no layers
+PASS batch 1 (reply generation) is not claimed
+PASS batch 512 (llama.cpp's default chunk) is not claimed
+PASS batch 1023 is not claimed (below the default threshold of 1024)
+PASS batch 1024, q4_K 2048x2048 is claimed
+PASS batch 2048, q4_0 is claimed
+PASS a tiny matmul is not claimed even at a large batch
+PASS a matmul whose left side is a view (a cache read, not a weight) is not claimed
+PASS a matmul whose left side is computed (not a weight) is not claimed
+PASS other ops (ADD) are not claimed
+PASS an ADD of two claimed matmuls is claimed (block claiming)
+PASS an ADD of a claimed matmul and the token embeddings (GET_ROWS) is not claimed
+PASS ... in either order
+PASS an ADD of a claimed matmul and a graph input is not claimed
+PASS an ADD of a bias row to a claimed matmul is claimed
+PASS an ADD of a computed row (not a kept leaf) is not claimed
+PASS a SCALE of a claimed matmul is claimed
+PASS a GeGLU of two claimed matmuls is claimed
+PASS a SwiGLU on one claimed matmul holding gate and up is claimed
+PASS the expert step (MUL_MAT_ID) is not claimed
+PASS ... and an ordinary matmul is still claimed afterwards (we warn, we don't give up the model)
+PASS offload_op never claims an op (no per-op weight copies)
+ALL PASS
+<end of output>
+Test time =   0.19 sec
+----------------------------------------------------------
+Test Passed.
+"dispatch-gate-npu" end time: Oct 21 19:25 Central Daylight Time
+"dispatch-gate-npu" time elapsed: 00:00:00
+----------------------------------------------------------
+
+7/12 Testing: mul-mat-host
+7/12 Test: mul-mat-host
+Command: "C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/third_party/llama-b10944/test-mul-mat.exe"
+Directory: C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build
+"mul-mat-host" start time: Oct 21 19:25 Central Daylight Time
+Output:
+----------------------------------------------------------
+load_backend: loaded RPC backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-rpc.dll
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon(TM) 890M Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 1 | fp4: 0 | warp size: 64 | shared memory: 32768 | int dot: 1 | matrix cores: KHR_coopmat
+load_backend: loaded Vulkan backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-vulkan.dll
+load_backend: loaded CPU backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-cpu-zen4.dll
+load_backend: loaded XDNA backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-xdna.dll
+xdna: host-only mode (GGML_XDNA_HOST_ONLY): claimed matmuls run on the CPU
+case                   XDNA vs fp64 ref             CPU vs fp64 ref
+PASS f32   256x128 x 64     nrmse 9.24e-08 cos 1.000000   nrmse 9.28e-08 cos 1.000000
+PASS f16   256x128 x 64     nrmse 9.24e-08 cos 1.000000   nrmse 2.07e-04 cos 1.000000
+PASS q8_0  512x256 x 64     nrmse 1.17e-07 cos 1.000000   nrmse 5.47e-03 cos 0.999985
+PASS q4_0  512x256 x 64     nrmse 1.10e-07 cos 1.000000   nrmse 5.34e-03 cos 0.999986
+PASS q4_K  512x256 x 64     nrmse 1.16e-07 cos 1.000000   nrmse 6.99e-03 cos 0.999976
+PASS q4_K 2048x512 x 512    nrmse 2.11e-07 cos 1.000000   nrmse 6.97e-03 cos 0.999976
+PASS q6_K  512x256 x 64     nrmse 1.16e-07 cos 1.000000   nrmse 7.05e-03 cos 0.999975
+PASS q4_0 2048x1024 x 512 w nrmse 1.99e-07 cos 1.000000   nrmse 5.35e-03 cos 0.999986
+PASS q4_K 2048x1024 x 600 w nrmse 2.11e-07 cos 1.000000   nrmse 6.97e-03 cos 0.999976
+PASS q4_0 1536x896 x 512 w  nrmse 1.74e-07 cos 1.000000   nrmse 5.34e-03 cos 0.999986
+PASS q8_0 1536x256 x 512 w  nrmse 1.85e-07 cos 1.000000   nrmse 5.35e-03 cos 0.999986
+PASS q4_K 1536x8960 x 520 w nrmse 1.85e-07 cos 1.000000   nrmse 7.00e-03 cos 0.999976
+ALL PASS
+<end of output>
+Test time =   9.15 sec
+----------------------------------------------------------
+Test Passed.
+"mul-mat-host" end time: Oct 21 19:26 Central Daylight Time
+"mul-mat-host" time elapsed: 00:00:09
+----------------------------------------------------------
+
+8/12 Testing: mul-mat-npu
+8/12 Test: mul-mat-npu
+Command: "C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/third_party/llama-b10944/test-mul-mat.exe"
+Directory: C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build
+"mul-mat-npu" start time: Oct 21 19:26 Central Daylight Time
+Output:
+----------------------------------------------------------
+load_backend: loaded RPC backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-rpc.dll
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon(TM) 890M Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 1 | fp4: 0 | warp size: 64 | shared memory: 32768 | int dot: 1 | matrix cores: KHR_coopmat
+load_backend: loaded Vulkan backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-vulkan.dll
+load_backend: loaded CPU backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-cpu-zen4.dll
+load_backend: loaded XDNA backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-xdna.dll
+xdna: NPU "NPU Strix", C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\bfp16_gemm.xclbin, test multiply right (19 ms)
+case                   XDNA vs fp64 ref             CPU vs fp64 ref
+PASS f32   256x128 x 64     nrmse 9.24e-08 cos 1.000000   nrmse 9.28e-08 cos 1.000000
+PASS f16   256x128 x 64     nrmse 9.24e-08 cos 1.000000   nrmse 2.07e-04 cos 1.000000
+PASS q8_0  512x256 x 64     nrmse 1.17e-07 cos 1.000000   nrmse 5.47e-03 cos 0.999985
+PASS q4_0  512x256 x 64     nrmse 1.10e-07 cos 1.000000   nrmse 5.34e-03 cos 0.999986
+PASS q4_K  512x256 x 64     nrmse 1.16e-07 cos 1.000000   nrmse 6.99e-03 cos 0.999976
+PASS q4_K 2048x512 x 512    nrmse 2.11e-07 cos 1.000000   nrmse 6.97e-03 cos 0.999976
+PASS q6_K  512x256 x 64     nrmse 1.16e-07 cos 1.000000   nrmse 7.05e-03 cos 0.999975
+PASS q4_0 2048x1024 x 512 w nrmse 8.69e-03 cos 0.999962   nrmse 5.35e-03 cos 0.999986
+PASS q4_K 2048x1024 x 600 w nrmse 8.94e-03 cos 0.999960   nrmse 6.97e-03 cos 0.999976
+PASS q4_0 1536x896 x 512 w  nrmse 8.70e-03 cos 0.999962   nrmse 5.34e-03 cos 0.999986
+PASS q8_0 1536x256 x 512 w  nrmse 8.95e-03 cos 0.999960   nrmse 5.35e-03 cos 0.999986
+PASS q4_K 1536x8960 x 520 w nrmse 8.94e-03 cos 0.999960   nrmse 7.00e-03 cos 0.999976
+ALL PASS
+<end of output>
+Test time =   9.46 sec
+----------------------------------------------------------
+Test Passed.
+"mul-mat-npu" end time: Oct 21 19:26 Central Daylight Time
+"mul-mat-npu" time elapsed: 00:00:09
+----------------------------------------------------------
+
+9/12 Testing: mul-mat-npu-nan
+9/12 Test: mul-mat-npu-nan
+Command: "C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/third_party/llama-b10944/test-mul-mat.exe"
+Directory: C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build
+"mul-mat-npu-nan" start time: Oct 21 19:26 Central Daylight Time
+Output:
+----------------------------------------------------------
+load_backend: loaded RPC backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-rpc.dll
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon(TM) 890M Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 1 | fp4: 0 | warp size: 64 | shared memory: 32768 | int dot: 1 | matrix cores: KHR_coopmat
+load_backend: loaded Vulkan backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-vulkan.dll
+load_backend: loaded CPU backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-cpu-zen4.dll
+load_backend: loaded XDNA backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-xdna.dll
+xdna: NPU "NPU Strix", C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\bfp16_gemm.xclbin, test multiply right (20 ms)
+xdna: the NPU failed (the NPU's results held NaN or infinity (a damaged weight copy)); finishing this step on the CPU and handing everything to the GPU from now on
+case                   XDNA vs fp64 ref             CPU vs fp64 ref
+PASS f32   256x128 x 64     nrmse 9.24e-08 cos 1.000000   nrmse 9.28e-08 cos 1.000000
+PASS f16   256x128 x 64     nrmse 9.24e-08 cos 1.000000   nrmse 2.07e-04 cos 1.000000
+PASS q8_0  512x256 x 64     nrmse 1.17e-07 cos 1.000000   nrmse 5.47e-03 cos 0.999985
+PASS q4_0  512x256 x 64     nrmse 1.10e-07 cos 1.000000   nrmse 5.34e-03 cos 0.999986
+PASS q4_K  512x256 x 64     nrmse 1.16e-07 cos 1.000000   nrmse 6.99e-03 cos 0.999976
+PASS q4_K 2048x512 x 512    nrmse 2.11e-07 cos 1.000000   nrmse 6.97e-03 cos 0.999976
+PASS q6_K  512x256 x 64     nrmse 1.16e-07 cos 1.000000   nrmse 7.05e-03 cos 0.999975
+PASS q4_0 2048x1024 x 512 w nrmse 1.99e-07 cos 1.000000   nrmse 5.35e-03 cos 0.999986
+PASS q4_K 2048x1024 x 600 w nrmse 2.11e-07 cos 1.000000   nrmse 6.97e-03 cos 0.999976
+PASS q4_0 1536x896 x 512 w  nrmse 1.74e-07 cos 1.000000   nrmse 5.34e-03 cos 0.999986
+PASS q8_0 1536x256 x 512 w  nrmse 1.85e-07 cos 1.000000   nrmse 5.35e-03 cos 0.999986
+PASS q4_K 1536x8960 x 520 w nrmse 1.85e-07 cos 1.000000   nrmse 7.00e-03 cos 0.999976
+ALL PASS
+<end of output>
+Test time =   9.54 sec
+----------------------------------------------------------
+Test Passed.
+"mul-mat-npu-nan" end time: Oct 21 19:26 Central Daylight Time
+"mul-mat-npu-nan" time elapsed: 00:00:09
+----------------------------------------------------------
+
+10/12 Testing: memory-budget-host
+10/12 Test: memory-budget-host
+Command: "C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/third_party/llama-b10944/test-memory-budget.exe"
+Directory: C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build
+"memory-budget-host" start time: Oct 21 19:26 Central Daylight Time
+Output:
+----------------------------------------------------------
+load_backend: loaded RPC backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-rpc.dll
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon(TM) 890M Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 1 | fp4: 0 | warp size: 64 | shared memory: 32768 | int dot: 1 | matrix cores: KHR_coopmat
+load_backend: loaded Vulkan backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-vulkan.dll
+load_backend: loaded CPU backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-cpu-zen4.dll
+load_backend: loaded XDNA backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-xdna.dll
+xdna: host-only mode (GGML_XDNA_HOST_ONLY): claimed matmuls run on the CPU
+xdna: NPU weight copies limited to 0.1 GB (set by GGML_XDNA_MAX_COPY_GB): the first 2 layers on the NPU, the rest on the GPU
+PASS with no context started, the limit doesn't apply (llama.cpp's load-time checks)
+PASS a weight with no data is claimed, and doesn't count against the limit
+PASS layers 0 and 1 fit (36 MiB of 51.2) and are claimed
+PASS layer 2's first three weights fit when asked
+PASS layer 2's fourth weight would pass the limit: not claimed
+PASS layer 2's first three then stay on the GPU too (no layer is split)
+PASS a weight that would still fit is not claimed once the limit is reached
+PASS what was taken stays taken
+PASS after the context is freed, the next one starts with nothing counted
+ALL PASS
+<end of output>
+Test time =   0.16 sec
+----------------------------------------------------------
+Test Passed.
+"memory-budget-host" end time: Oct 21 19:26 Central Daylight Time
+"memory-budget-host" time elapsed: 00:00:00
+----------------------------------------------------------
+
+11/12 Testing: memory-budget-npu
+11/12 Test: memory-budget-npu
+Command: "C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/third_party/llama-b10944/test-memory-budget.exe"
+Directory: C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build
+"memory-budget-npu" start time: Oct 21 19:26 Central Daylight Time
+Output:
+----------------------------------------------------------
+load_backend: loaded RPC backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-rpc.dll
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon(TM) 890M Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 1 | fp4: 0 | warp size: 64 | shared memory: 32768 | int dot: 1 | matrix cores: KHR_coopmat
+load_backend: loaded Vulkan backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-vulkan.dll
+load_backend: loaded CPU backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-cpu-zen4.dll
+load_backend: loaded XDNA backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-xdna.dll
+xdna: NPU "NPU Strix", C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\bfp16_gemm.xclbin, test multiply right (18 ms)
+xdna: NPU weight copies limited to 0.1 GB (set by GGML_XDNA_MAX_COPY_GB): the first 2 layers on the NPU, the rest on the GPU
+PASS with no context started, the limit doesn't apply (llama.cpp's load-time checks)
+PASS a weight with no data is claimed, and doesn't count against the limit
+PASS layers 0 and 1 fit (36 MiB of 51.2) and are claimed
+PASS layer 2's first three weights fit when asked
+PASS layer 2's fourth weight would pass the limit: not claimed
+PASS layer 2's first three then stay on the GPU too (no layer is split)
+PASS a weight that would still fit is not claimed once the limit is reached
+PASS what was taken stays taken
+PASS after the context is freed, the next one starts with nothing counted
+ALL PASS
+<end of output>
+Test time =   0.17 sec
+----------------------------------------------------------
+Test Passed.
+"memory-budget-npu" end time: Oct 21 19:26 Central Daylight Time
+"memory-budget-npu" time elapsed: 00:00:00
+----------------------------------------------------------
+
+12/12 Testing: host-ops-host
+12/12 Test: host-ops-host
+Command: "C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/third_party/llama-b10944/test-host-ops.exe"
+Directory: C:/code/npu-prefill-engine/third_party/shipcheck-20261021/source/build
+"host-ops-host" start time: Oct 21 19:26 Central Daylight Time
+Output:
+----------------------------------------------------------
+load_backend: loaded RPC backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-rpc.dll
+ggml_vulkan: Found 1 Vulkan devices:
+ggml_vulkan: 0 = AMD Radeon(TM) 890M Graphics (AMD proprietary driver) | uma: 1 | fp16: 1 | bf16: 1 | fp4: 0 | warp size: 64 | shared memory: 32768 | int dot: 1 | matrix cores: KHR_coopmat
+load_backend: loaded Vulkan backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-vulkan.dll
+load_backend: loaded CPU backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-cpu-zen4.dll
+load_backend: loaded XDNA backend from C:\code\npu-prefill-engine\third_party\shipcheck-20261021\source\third_party\llama-b10944\ggml-xdna.dll
+xdna: host-only mode (GGML_XDNA_HOST_ONLY): claimed matmuls run on the CPU
+PASS rms_norm                         nrmse 4.61e-08 (allowed 1e-05)
+PASS mul by a scale row               nrmse 0.00e+00 (allowed 1e-05)
+PASS add                              nrmse 0.00e+00 (allowed 1e-05)
+PASS add a bias row                   nrmse 0.00e+00 (allowed 1e-05)
+PASS scale and bias                   nrmse 0.00e+00 (allowed 1e-05)
+PASS swiglu, split                    nrmse 4.94e-08 (allowed 1e-05)
+PASS geglu, split                     nrmse 2.71e-04 (allowed 3e-03)
+PASS geglu_erf, split                 nrmse 2.98e-08 (allowed 1e-05)
+PASS geglu_quick, split               nrmse 3.02e-04 (allowed 3e-03)
+PASS reglu, split                     nrmse 0.00e+00 (allowed 1e-05)
+PASS swiglu, one tensor               nrmse 4.30e-08 (allowed 1e-05)
+PASS swiglu, one tensor, swapped      nrmse 4.89e-08 (allowed 1e-05)
+PASS geglu, one tensor                nrmse 2.72e-04 (allowed 3e-03)
+PASS geglu_erf, one tensor            nrmse 3.19e-08 (allowed 1e-05)
+PASS rope, normal                     nrmse 2.15e-06 (allowed 1e-05)
+PASS rope, neox                       nrmse 2.12e-06 (allowed 1e-05)
+PASS rope, normal, half the head      nrmse 1.57e-06 (allowed 1e-05)
+PASS rope, neox, three quarters       nrmse 2.12e-06 (allowed 1e-05)
+PASS rope, neox, yarn                 nrmse 3.27e-06 (allowed 1e-05)
+PASS rope, neox, frequency factors    nrmse 1.94e-06 (allowed 1e-05)
+PASS rope, normal, yarn and factors   nrmse 2.15e-06 (allowed 1e-05)
+ALL PASS
+<end of output>
+Test time =   0.21 sec
+----------------------------------------------------------
+Test Passed.
+"host-ops-host" end time: Oct 21 19:26 Central Daylight Time
+"host-ops-host" time elapsed: 00:00:00
+----------------------------------------------------------
+
+End testing: Oct 21 19:26 Central Daylight Time
+
+host =  11.22 sec*proc
+
+npu =  19.36 sec*proc

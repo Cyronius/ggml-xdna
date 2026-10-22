@@ -21,18 +21,30 @@ $ProgressPreference = "SilentlyContinue"  # Invoke-WebRequest is slow with it on
 if (-not $Root) { $Root = (Join-Path $PSScriptRoot ".." | Resolve-Path).Path }
 if (-not $Build) { $Build = Join-Path $Root "build" }
 if (-not $Out) { $Out = Join-Path $Root "dist" }
+if ($Version -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$' -or $Tag -notmatch '^[A-Za-z0-9][A-Za-z0-9._-]*$') {
+    throw 'Version and Tag must be plain release names without path separators.'
+}
+$Out = [IO.Path]::GetFullPath($Out)
 
 $name = "ggml-xdna-$Version-llama-$Tag-win-x64"
 $stage = Join-Path $Out $name
 $zip = "$stage.zip"
-if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
-if (Test-Path $zip) { Remove-Item -Force $zip }
+$outPrefix = $Out.TrimEnd('\', '/') + [IO.Path]::DirectorySeparatorChar
+if (-not [IO.Path]::GetFullPath($stage).StartsWith($outPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+    throw 'Package staging directory must be inside the output directory.'
+}
+if (Test-Path -LiteralPath $stage) { Remove-Item -LiteralPath $stage -Recurse -Force }
+if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
 New-Item -ItemType Directory -Force -Path $stage | Out-Null
 
 # llama.cpp's release, as published
 $dl = Join-Path $Out "llama-$Tag-bin-win-vulkan-x64.zip"
 if (-not (Test-Path $dl)) {
     Invoke-WebRequest -Uri "https://github.com/ggml-org/llama.cpp/releases/download/$Tag/llama-$Tag-bin-win-vulkan-x64.zip" -OutFile $dl
+}
+if ($Tag -eq 'b10944' -and (Get-FileHash -Algorithm SHA256 -LiteralPath $dl).Hash.ToLowerInvariant() -ne
+    '972679213f8d3ae1a4f667986bafd8eeba2bc487807dc5d001fcf21c188129ea') {
+    throw 'llama.cpp archive checksum mismatch'
 }
 Expand-Archive -Path $dl -DestinationPath $stage
 
@@ -45,6 +57,15 @@ foreach ($f in "ggml-xdna.dll", "npu.exe") {
 Copy-Item (Join-Path $Root "kernels\bfp16_gemm\prebuilt\bfp16_gemm.xclbin") $stage
 # the README's measurements, for anyone to rerun; it finds npu.exe next to it
 Copy-Item (Join-Path $Root "tools\bench.ps1") $stage
+New-Item -ItemType Directory -Force -Path "$stage\tools", "$stage\docs", "$stage\tests\prompts" | Out-Null
+foreach ($f in "start-lemonade.ps1", "bench-lemonade.ps1", "check-lemonade.py") {
+    Copy-Item (Join-Path $Root "tools\$f") "$stage\tools"
+}
+Copy-Item (Join-Path $Root "docs\lemonade.md") "$stage\docs"
+Copy-Item (Join-Path $Root "docs\lemonade-validation.md") "$stage\docs"
+Copy-Item (Join-Path $Root "docs\lemonade-desktop-walkthrough.mp4") "$stage\docs"
+Copy-Item -LiteralPath (Join-Path $Root "docs\results") -Destination "$stage\docs\results" -Recurse
+Copy-Item (Join-Path $Root "tests\prompts\prose.txt") "$stage\tests\prompts"
 foreach ($f in "README.md", "LICENSE", "NOTICE") { Copy-Item (Join-Path $Root $f) $stage }
 
 # Each part's license. llama.cpp's zip carries only OpenMP's (it stays where

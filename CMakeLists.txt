@@ -218,7 +218,7 @@ set(XDNA_BUDGET_ENV "${XDNA_ENV};GGML_XDNA_MAX_COPY_GB=0.05")
 set_tests_properties(memory-budget-host PROPERTIES LABELS host ENVIRONMENT "${XDNA_BUDGET_ENV};GGML_XDNA_HOST_ONLY=1")
 set_tests_properties(memory-budget-npu PROPERTIES LABELS npu ENVIRONMENT "${XDNA_BUDGET_ENV};GGML_XDNA_HOST_ONLY=")
 # the host's small steps between NPU matmuls, against ggml's CPU backend
-add_test(NAME host-ops-host COMMAND "${GGML_DIST}/test-host-ops.exe")
+add_test(NAME host-ops-host COMMAND "${GGML_DIST}/test-host-ops${EXE}")
 set_tests_properties(host-ops-host PROPERTIES LABELS host ENVIRONMENT "${XDNA_ENV};GGML_XDNA_HOST_ONLY=1")
 set_tests_properties(insts-gen bfp16-pack PROPERTIES LABELS host)
 set_tests_properties(safe-start PROPERTIES LABELS host ENVIRONMENT "${XDNA_ENV}")

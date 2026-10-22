@@ -1,0 +1,13 @@
+﻿{
+    "corpus_sha256":  "2cb7b6647ca5952723443bcccd26d0f1190d8e75f77d737a90b89d41cc0731d9",
+    "chunks":  8,
+    "mean_kl_divergence":  0.004834,
+    "batch":  2048,
+    "binary_sha256":  "688de55fda612088192e7d605580966c13bb702d2ccd93eed41902e2a0cf76d8",
+    "same_top_token_pct":  97.745,
+    "measured_via":  "packaged llama-perplexity --kl-divergence against Vulkan baseline; separate from API functional checks",
+    "model":  "Qwen3-4B-Q4_K_M",
+    "context_per_chunk":  512,
+    "corpus":  "40 copies of tests/prompts/prose.txt separated by newlines",
+    "ubatch":  2048
+}
