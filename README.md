@@ -100,9 +100,11 @@ default GPU backends. Try your own model before assuming it'll be faster.
 | Models | Coverage depends on b10944 and the operations the add-on implements |
 | Memory and output | Converted weight copies need extra RAM; block rounding changes numerical results |
 | NPU unavailable at startup | Launcher chooses the GPU and logs the reason |
-| NPU failure during a request | That prompt can finish slowly on CPU; later prompts use the GPU |
+| NPU failure during a request | Failed work is retried on GPU; later prompts use the GPU |
 
-The request where we deliberately failed the NPU took about 63 seconds.
+The r2 preview includes the GPU recovery fix already merged into this
+project. The original preview fell back to CPU and took about 63 seconds
+on an injected failure; that older result is kept in the test report.
 GPU-only and NPU-assisted runs answered the retrieval and arithmetic checks
 correctly, but both returned an equation when asked for just an integer.
 The [verification report](docs/lemonade-validation.md) includes those failures,

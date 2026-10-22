@@ -118,13 +118,13 @@ static xdna_mode xdna_run_mode() {
 }
 
 // Set when the NPU fails during a prompt. The piece that failed is finished
-// on the CPU, and from then on the backend claims nothing, so everything goes
+// on the GPU, and from then on the backend claims nothing, so everything goes
 // to the GPU. Never set in host-only mode.
 static std::atomic<bool> g_npu_broken{ false };
 
 static void xdna_npu_failed(const std::string & err) {
     if (!g_npu_broken.exchange(true))
-        GGML_LOG_ERROR("xdna: the NPU failed (%s); finishing this step on the CPU and handing everything to the GPU "
+        GGML_LOG_ERROR("xdna: the NPU failed (%s); finishing this step on the GPU and handing everything to the GPU "
                        "from now on\n",
                        err.c_str());
 }
@@ -182,11 +182,15 @@ static bool xdna_pinned_mem() {
 }
 
 struct xdna_context {
-    ggml_backend_t vk = nullptr;  // our own Vulkan backend, for async reads
+    ggml_backend_t vk = nullptr;  // our own Vulkan backend, for async reads, and pieces after an NPU failure
 
     // host memory the GPU copies our inputs into; grows as needed
     ggml_backend_buffer_t pin = nullptr;
     size_t pin_size = 0;
+
+    // Vulkan memory for a piece's inputs that live in host memory, when the GPU runs the piece; grows as needed
+    ggml_backend_buffer_t gpu_in = nullptr;
+    size_t gpu_in_size = 0;
 
     // Each claimed weight's raw bytes, read once, for matmuls run on the
     // host (the NPU keeps its own 8-bit copy). Only tensors in buffers
@@ -217,6 +221,7 @@ struct xdna_context {
     double read_ms = 0, write_ms = 0, compute_ms = 0;
     int64_t matmuls = 0, pieces = 0;
     int64_t late_copies = 0;  // NPU weight copies built inside a piece, not at load
+    int64_t gpu_pieces = 0;   // pieces the GPU ran after an NPU failure
 
 #ifdef XDNA_HAVE_NPU
     // the NPU, started on first use; null in host-only mode or once it failed
@@ -338,6 +343,7 @@ struct xdna_context {
             else ggml_aligned_free(p.mem, p.size);
         }
         if (pin) ggml_backend_buffer_free(pin);
+        if (gpu_in) ggml_backend_buffer_free(gpu_in);
         if (vk) ggml_backend_free(vk);
     }
 
@@ -683,7 +689,8 @@ static bool xdna_mul_mat(xdna_context & ctx, ggml_tensor * node) {
             ctx.write_ms += since(t0);
             return true;
         }
-        xdna_npu_failed(std::string(node->name) + ": " + err);  // and on to the reference below
+        xdna_npu_failed(std::string(node->name) + ": " + err);
+        return false;  // the caller hands the graph to the GPU
     }
 #endif
     const std::vector<uint8_t> & w = ctx.weight(src0);
@@ -697,6 +704,54 @@ static bool xdna_mul_mat(xdna_context & ctx, ggml_tensor * node) {
 
     ggml_backend_tensor_set(node, ctx.out.data(), 0, ggml_nbytes(node));
     return true;
+}
+
+// A piece on the GPU after an NPU failure; inputs in host memory (rotary positions) move into Vulkan's for the call.
+static bool xdna_gpu_compute(xdna_context & ctx, ggml_cgraph * g) {
+    std::vector<ggml_tensor *> owners, views;
+    std::unordered_set<ggml_tensor *> seen;
+    for (int i = 0; i < g->n_nodes; i++)
+        for (int j = 0; j < GGML_MAX_SRC; j++) {
+            ggml_tensor * s = g->nodes[i]->src[j];
+            if (!s || !s->buffer || !ggml_backend_buffer_is_host(s->buffer) || !seen.insert(s).second) continue;
+            if (!s->view_src) owners.push_back(s);
+            else {
+                views.push_back(s);
+                if (seen.insert(s->view_src).second) owners.push_back(s->view_src);
+            }
+        }
+    const xdna_vk & vk = xdna_vulkan();
+    const size_t align = ggml_backend_buft_get_alignment(vk.buft);
+    size_t need = 0;
+    for (const ggml_tensor * o : owners) need += GGML_PAD(ggml_nbytes(o), align);
+    if (need > ctx.gpu_in_size) {
+        if (ctx.gpu_in) ggml_backend_buffer_free(ctx.gpu_in);
+        ctx.gpu_in = ggml_backend_buft_alloc_buffer(vk.buft, need);
+        ctx.gpu_in_size = ctx.gpu_in ? need : 0;
+        if (!ctx.gpu_in) return false;
+    }
+    struct place { ggml_tensor * t; ggml_backend_buffer_t buffer; void * data; };
+    std::vector<place> moved;
+    size_t off = 0;
+    for (ggml_tensor * o : owners) {
+        moved.push_back({ o, o->buffer, o->data });
+        o->buffer = ctx.gpu_in;
+        o->data = (char *) ggml_backend_buffer_get_base(ctx.gpu_in) + off;
+        ggml_backend_tensor_set(o, moved.back().data, 0, ggml_nbytes(o));
+        off += GGML_PAD(ggml_nbytes(o), align);
+    }
+    for (ggml_tensor * v : views) {
+        moved.push_back({ v, v->buffer, v->data });
+        v->buffer = v->view_src->buffer;
+        v->data = (char *) v->view_src->data + v->view_offs;
+    }
+    const bool ok = ggml_backend_graph_compute(ctx.vk, g) == GGML_STATUS_SUCCESS;
+    for (auto it = moved.rbegin(); it != moved.rend(); ++it) {
+        it->t->buffer = it->buffer;
+        it->t->data = it->data;
+    }
+    ctx.gpu_pieces++;
+    return ok;
 }
 
 static bool xdna_trace();
@@ -744,22 +799,26 @@ static ggml_status ggml_backend_xdna_graph_compute(ggml_backend_t backend, ggml_
             fprintf(stderr, "xdna weight copies: %lld built at load, %lld inside pieces; %.1f ms waiting for those "
                             "built at load\n",
                     (long long) c.built_at_load, (long long) c.late_copies, c.build_wait_ms);
+            if (c.gpu_pieces) fprintf(stderr, "xdna: %lld pieces on the GPU after the NPU failed\n", (long long) c.gpu_pieces);
             xdna_pass_ms = 0;
             xdna_passes = 0;
             c.build_wait_ms = 0;
             c.built_at_load = 0;
 #endif
             c.read_ms = c.write_ms = c.compute_ms = 0;
-            c.matmuls = c.pieces = c.late_copies = 0;
+            c.matmuls = c.pieces = c.late_copies = c.gpu_pieces = 0;
         }
     } tm{ ctx, t_start };
 
 #ifdef XDNA_HAVE_NPU
+    // after an NPU failure the GPU runs the rest of the prompt, which llama.cpp keeps sending here
+    if (g_npu_broken && xdna_gpu_compute(ctx, cgraph)) return GGML_STATUS_SUCCESS;
+
     // Block claiming runs every matmul on the NPU. The policy only hands us
     // matmuls it can run, but a caller computing a graph directly (a test)
     // can pass others; a graph of only such matmuls goes op by op below,
     // which falls back to the CPU. A graph with small ops in it is a claimed
-    // block: it runs here, on the host if the NPU has failed. So does one a
+    // block: it runs here, on the GPU if the NPU has failed. So does one a
     // test hands over in host-only mode, which is how the host's small ops
     // are tested without an NPU.
     bool npu_takes_all = true, small_ops = false;
@@ -828,8 +887,9 @@ static ggml_status ggml_backend_xdna_graph_compute(ggml_backend_t backend, ggml_
             ctx.pool_release();
             if (!ok) xdna_npu_failed(err);
         }
+        // a failed piece wrote nothing back: the GPU runs it again, or the host if the GPU can't
+        if (!ok && g_npu_broken) ok = xdna_gpu_compute(ctx, cgraph);
         if (!ok) {
-            // a failed piece wrote nothing back; run it again on the host
             ok = xdna_exec_piece(cgraph, nullptr, ctx.host_threads(), io, 1, err);
             ctx.pool_release();
         }
@@ -851,6 +911,10 @@ static ggml_status ggml_backend_xdna_graph_compute(ggml_backend_t backend, ggml_
             case GGML_OP_TRANSPOSE:
                 break;
             case GGML_OP_MUL_MAT:
+                if (xdna_mul_mat(ctx, node)) break;
+                if (!g_npu_broken) return GGML_STATUS_FAILED;
+                // the NPU failed just now: the whole graph on the GPU, or this matmul on the CPU if the GPU can't
+                if (xdna_gpu_compute(ctx, cgraph)) return GGML_STATUS_SUCCESS;
                 if (!xdna_mul_mat(ctx, node)) return GGML_STATUS_FAILED;
                 break;
             default:

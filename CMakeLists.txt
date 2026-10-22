@@ -212,6 +212,9 @@ endforeach()
 # give the right answer
 add_test(NAME mul-mat-npu-nan COMMAND "${GGML_DIST}/test-mul-mat${EXE}")
 set_tests_properties(mul-mat-npu-nan PROPERTIES LABELS npu ENVIRONMENT "${XDNA_ENV};GGML_XDNA_HOST_ONLY=;GGML_XDNA_NAN_AFTER=0")
+# every NPU submission fails: the same, through the other way the NPU fails
+add_test(NAME mul-mat-npu-fail COMMAND "${GGML_DIST}/test-mul-mat${EXE}")
+set_tests_properties(mul-mat-npu-fail PROPERTIES LABELS npu ENVIRONMENT "${XDNA_ENV};GGML_XDNA_HOST_ONLY=;GGML_XDNA_FAIL_AFTER=0")
 add_test(NAME memory-budget-host COMMAND "${GGML_DIST}/test-memory-budget${EXE}")
 add_test(NAME memory-budget-npu COMMAND "${GGML_DIST}/test-memory-budget${EXE}")
 set(XDNA_BUDGET_ENV "${XDNA_ENV};GGML_XDNA_MAX_COPY_GB=0.05")
