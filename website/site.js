@@ -22,3 +22,38 @@ button?.addEventListener("click", async () => {
     button.textContent = "Select URL";
   }
 });
+
+const heroComparison = document.getElementById("hero-comparison");
+const toggleComparison = document.getElementById("toggle-comparison");
+if (heroComparison && toggleComparison) {
+  const still = heroComparison.getAttribute("src");
+  const animation = heroComparison.dataset.animation;
+  const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
+  let paused = reducedMotion.matches;
+  let visible = false;
+
+  const updateComparison = () => {
+    const source = !paused && visible && !document.hidden ? animation : still;
+    if (heroComparison.getAttribute("src") !== source) {
+      heroComparison.src = source;
+    }
+    toggleComparison.textContent = paused ? "Play animation" : "Pause animation";
+  };
+
+  toggleComparison.hidden = false;
+  toggleComparison.addEventListener("click", () => {
+    paused = !paused;
+    updateComparison();
+  });
+  reducedMotion.addEventListener("change", (event) => {
+    paused = event.matches;
+    updateComparison();
+  });
+  document.addEventListener("visibilitychange", updateComparison);
+  const observer = new IntersectionObserver(([entry]) => {
+    visible = entry.isIntersecting;
+    updateComparison();
+  });
+  observer.observe(heroComparison);
+  updateComparison();
+}

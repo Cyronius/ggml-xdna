@@ -20,7 +20,8 @@ def build(destination: Path) -> None:
     assets.mkdir(exist_ok=True)
     for name in ("lemonade-logo-light.png", "lemonade-logo-dark.png", "lemonade-LICENSE.txt",
                  "lemonade-results.svg", "jakarta-latin.woff2", "jakarta-OFL.txt",
-                 "lemonade-speed-comparison.mp4", "lemonade-speed-comparison.png"):
+                 "lemonade-speed-comparison.mp4", "lemonade-speed-comparison.png",
+                 "lemonade-speed-comparison.gif"):
         shutil.copy2(ROOT / "docs" / "assets" / name, assets / name)
     shutil.copy2(ROOT / "docs/results/lemonade-desktop-answer.png", assets / "lemonade-desktop.png")
     shutil.copy2(ROOT / "docs/results/lemonade-2026-10-21.json", assets / "lemonade-measurements.json")

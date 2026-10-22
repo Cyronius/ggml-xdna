@@ -18,7 +18,7 @@
     <meta property="og:url" content="https://cyronius.github.io/zest/" />
     <meta
       property="og:image"
-      content="https://cyronius.github.io/zest/assets/lemonade-desktop.png"
+      content="https://cyronius.github.io/zest/assets/lemonade-speed-comparison.png?v=3"
     />
     <link rel="canonical" href="https://cyronius.github.io/zest/" />
     <link rel="icon" href="favicon.svg" type="image/svg+xml" />
@@ -29,8 +29,8 @@
       type="font/woff2"
       crossorigin
     />
-    <link rel="stylesheet" href="style.css?v=20261022" />
-    <script src="site.js" defer></script>
+    <link rel="stylesheet" href="style.css?v=20261022-2" />
+    <script src="site.js?v=20261022-2" defer></script>
   </head>
   <body>
     <a class="skip" href="#main">Skip to content</a>
@@ -99,18 +99,23 @@
             /></a>
             <figure class="desktop">
               <a
-                href="assets/lemonade-desktop.png"
-                aria-label="View the Lemonade desktop screenshot"
+                href="#comparison"
+                aria-label="View the full speed comparison with playback controls"
                 ><img
-                  src="assets/lemonade-desktop.png"
-                  alt="The actual Lemonade app answering a long prompt with Qwen3-4B Q4_K_M. The status bar shows 2,780 input tokens."
-                  width="1442"
-                  height="902"
+                  id="hero-comparison"
+                  src="assets/lemonade-speed-comparison.png?v=3"
+                  data-animation="assets/lemonade-speed-comparison.gif"
+                  alt="The same prompt on GPU alone and NPU + GPU, side by side at 3 times speed. Timers show original elapsed time."
+                  width="960"
+                  height="540"
                   fetchpriority="high"
               /></a>
               <figcaption>
-                <span>Actual Lemonade desktop chat · Strix Point · Ryzen AI 9 HX PRO 370</span>
-                <a class="text-link" href="#comparison">Watch the speed comparison</a>
+                <span>Same prompt · GPU vs NPU + GPU · 3× playback</span>
+                <div class="preview-controls">
+                  <button type="button" id="toggle-comparison" aria-controls="hero-comparison" hidden>Pause animation</button>
+                  <a class="text-link" href="#comparison">Full comparison</a>
+                </div>
               </figcaption>
             </figure>
           </div>
@@ -229,6 +234,7 @@
           Recorded API streams replayed at 3× speed; timers show original elapsed
           time. Separate warm runs, aligned at request start, with prompt caching off.
           <a href="assets/lemonade-speed-comparison.json">Recorded timings</a>.
+          <a href="assets/lemonade-speed-comparison.gif" download>Download GIF</a>.
         </p>
       </section>
 
