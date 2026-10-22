@@ -57,12 +57,15 @@ foreach ($f in "ggml-xdna.dll", "npu.exe") {
 Copy-Item (Join-Path $Root "kernels\bfp16_gemm\prebuilt\bfp16_gemm.xclbin") $stage
 # the README's measurements, for anyone to rerun; it finds npu.exe next to it
 Copy-Item (Join-Path $Root "tools\bench.ps1") $stage
+Copy-Item (Join-Path $Root "Start-Lemonade.cmd") $stage
 New-Item -ItemType Directory -Force -Path "$stage\tools", "$stage\docs", "$stage\tests\prompts" | Out-Null
 foreach ($f in "start-lemonade.ps1", "bench-lemonade.ps1", "check-lemonade.py") {
     Copy-Item (Join-Path $Root "tools\$f") "$stage\tools"
 }
 Copy-Item (Join-Path $Root "docs\lemonade.md") "$stage\docs"
 Copy-Item (Join-Path $Root "docs\lemonade-validation.md") "$stage\docs"
+Copy-Item (Join-Path $Root "docs\technical-guide.md") "$stage\docs"
+Copy-Item -LiteralPath (Join-Path $Root "docs\assets") -Destination "$stage\docs\assets" -Recurse
 Copy-Item (Join-Path $Root "docs\lemonade-desktop-walkthrough.mp4") "$stage\docs"
 Copy-Item -LiteralPath (Join-Path $Root "docs\results") -Destination "$stage\docs\results" -Recurse
 Copy-Item (Join-Path $Root "tests\prompts\prose.txt") "$stage\tests\prompts"
@@ -76,6 +79,7 @@ Invoke-WebRequest -Uri "https://raw.githubusercontent.com/ggml-org/llama.cpp/$Ta
 Copy-Item (Join-Path $Root "vendor\xrt\LICENSE") (Join-Path $lic "xrt-LICENSE.txt")
 Copy-Item (Join-Path $Root "vendor\xrt\NOTICE") (Join-Path $lic "xrt-NOTICE.txt")
 Copy-Item (Join-Path $Root "kernels\bfp16_gemm\LICENSE") (Join-Path $lic "mlir-aie-LICENSE.txt")
+Copy-Item (Join-Path $Root "docs\assets\lemonade-LICENSE.txt") (Join-Path $lic "lemonade-assets-LICENSE.txt")
 
 # every file's SHA-256, in the format sha256sum -c reads
 $sums = Get-ChildItem -Recurse -File $stage | Sort-Object FullName | ForEach-Object {

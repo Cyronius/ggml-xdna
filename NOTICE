@@ -25,3 +25,15 @@ llama.cpp and ggml (https://github.com/ggml-org/llama.cpp)
   (tools/fetch-llama.ps1); none of it is in this repository. Release zips
   include that llama.cpp build unmodified.
   MIT License. Copyright (c) 2023-2026 The ggml authors.
+
+Lemonade logo (docs/assets/lemonade-logo-*.png)
+  Unmodified official brand-kit exports from lemonade-sdk/assets, commit
+  0b8b3a3c7cc5db4b6897d05942c22b2d6fd33cb3.
+  MIT License. Copyright (c) 2025 lemonade-sdk.
+  Full license: docs/assets/lemonade-LICENSE.txt.
+  ggml-xdna is an independent community add-on for Lemonade.
+
+Plus Jakarta Sans (docs/assets/jakarta-latin.woff2)
+  Copyright 2020 The Plus Jakarta Sans Project Authors
+  (https://github.com/tokotype/PlusJakartaSans).
+  SIL Open Font License 1.1: docs/assets/jakarta-OFL.txt.

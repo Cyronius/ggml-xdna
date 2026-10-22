@@ -1,0 +1,468 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#24563c" />
+    <title>ggml-xdna · Use your NPU in Lemonade</title>
+    <meta
+      name="description"
+      content="An open-source add-on that puts your AMD Ryzen AI NPU to work on long prompts in Lemonade. Download the Windows preview, see the real app, and read the test results."
+    />
+    <meta property="og:title" content="ggml-xdna · Use your NPU in Lemonade" />
+    <meta
+      property="og:description"
+      content="Keep chatting in Lemonade. Let your Ryzen AI NPU help read the prompt."
+    />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://cyronius.github.io/ggml-xdna/" />
+    <meta
+      property="og:image"
+      content="https://cyronius.github.io/ggml-xdna/assets/lemonade-desktop.png"
+    />
+    <link rel="canonical" href="https://cyronius.github.io/ggml-xdna/" />
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link
+      rel="preload"
+      href="assets/jakarta-latin.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link rel="stylesheet" href="style.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="header wrap">
+      <a class="wordmark" href="#" aria-label="ggml-xdna home">ggml-xdna</a>
+      <nav aria-label="Main navigation">
+        <a href="#how-it-works">How it works</a>
+        <a href="#results">Results</a>
+        <a href="#get-started">Get started</a>
+        <a class="github-link" href="https://github.com/Cyronius/ggml-xdna"
+          ><svg viewBox="0 0 24 24" aria-hidden="true">
+            <path
+              fill="currentColor"
+              d="M12 .8A11.2 11.2 0 0 0 8.46 22.63c.56.1.77-.24.77-.54v-2.16c-3.13.68-3.79-1.33-3.79-1.33-.51-1.3-1.25-1.65-1.25-1.65-1.02-.7.08-.68.08-.68 1.13.08 1.72 1.16 1.72 1.16 1 1.72 2.63 1.22 3.27.93.1-.73.4-1.22.71-1.5-2.5-.28-5.12-1.25-5.12-5.54 0-1.22.44-2.22 1.16-3-.12-.28-.5-1.42.11-2.96 0 0 .94-.3 3.08 1.15A10.7 10.7 0 0 1 12 6.14c.95 0 1.9.13 2.8.38 2.13-1.45 3.07-1.15 3.07-1.15.61 1.54.23 2.68.12 2.96.72.78 1.15 1.78 1.15 3.01 0 4.3-2.63 5.25-5.13 5.53.4.35.76 1.03.76 2.08v3.14c0 .3.2.65.78.54A11.2 11.2 0 0 0 12 .8Z"
+            /></svg
+          ><span>GitHub</span></a
+        >
+      </nav>
+    </header>
+    <main id="main">
+      <section class="hero wrap" aria-labelledby="hero-title">
+        <div class="hero-top">
+          <div class="hero-copy">
+            <h1 id="hero-title">Use your <em>NPU</em><br />in Lemonade.</h1>
+            <p>
+              ggml-xdna puts your Ryzen AI NPU to work on long prompts. You chat
+              in Lemonade; your GPU still writes the reply.
+            </p>
+            <div class="actions">
+              <a
+                class="button primary"
+                href="https://github.com/Cyronius/ggml-xdna/releases/download/lemonade-preview-20261021-r2/ggml-xdna-lemonade-preview-20261021-r2-llama-b10944-win-x64.zip"
+                ><svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3v12m-5-5 5 5 5-5M4 15v5h16v-5" /></svg
+                >Download Windows preview</a
+              >
+              <a class="text-link" href="#get-started"
+                >Setup guide
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 12h16m-6-6 6 6-6 6" /></svg
+              ></a>
+            </div>
+          </div>
+          <div class="hero-brand">
+            <a href="https://lemonade-server.ai/" aria-label="Visit Lemonade"
+              ><img
+                src="assets/lemonade-logo-light.png"
+                alt="Lemonade"
+                width="1050"
+                height="256"
+            /></a>
+            <div
+              class="flow"
+              aria-label="Your prompt is processed by the NPU and GPU to produce your reply"
+            >
+              <span>Your prompt</span
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 12h16m-6-6 6 6-6 6" /></svg
+              ><strong>NPU + GPU</strong
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 12h16m-6-6 6 6-6 6" /></svg
+              ><span>Your reply</span>
+            </div>
+          </div>
+        </div>
+        <figure class="desktop">
+          <a
+            href="#walkthrough"
+            aria-label="Watch the actual Lemonade desktop walkthrough"
+            ><img
+              src="assets/lemonade-desktop.png"
+              alt="The actual Lemonade app answering a long prompt with Qwen3-4B Q4_K_M. The status bar shows 2,780 input tokens."
+              width="1442"
+              height="902"
+              fetchpriority="high"
+          /></a>
+          <figcaption>
+            <span>Actual Lemonade desktop chat · Ryzen AI 9 HX PRO 370</span
+            ><a class="text-link" href="#walkthrough"
+              ><svg viewBox="0 0 24 24" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="m10 8 6 4-6 4Z" /></svg
+              >Watch the 19-second walkthrough</a
+            >
+          </figcaption>
+        </figure>
+        <p class="preview-note">
+          Independent community add-on. Windows 11 preview, tested with Lemonade
+          2026.43.3.
+        </p>
+      </section>
+
+      <section
+        class="how wrap section"
+        id="how-it-works"
+        aria-labelledby="how-title"
+      >
+        <div class="section-intro">
+          <h2 id="how-title">What the NPU does</h2>
+          <p>
+            A long prompt gives the NPU enough work to help. It handles eligible
+            matrix multiplies and nearby operations. Attention and the reply
+            stay on your GPU.
+          </p>
+        </div>
+        <div class="stages">
+          <div>
+            <span class="number">01</span>
+            <h3>Read the prompt</h3>
+            <p>
+              Large prompt chunks can run on the NPU. Small chunks stay on the
+              GPU.
+            </p>
+          </div>
+          <div>
+            <span class="number">02</span>
+            <h3>Write the reply</h3>
+            <p>
+              Your Vulkan GPU handles attention and generates each reply token.
+            </p>
+          </div>
+          <div>
+            <span class="number">03</span>
+            <h3>Keep using Lemonade</h3>
+            <p>
+              Chat in the desktop app or connect to its local API. Your GGUF
+              file stays local.
+            </p>
+          </div>
+        </div>
+      </section>
+
+      <section
+        class="results section"
+        id="results"
+        aria-labelledby="results-title"
+      >
+        <div class="wrap">
+          <div class="result-columns">
+            <div class="result-summary">
+              <h2 id="results-title">What we measured</h2>
+              <div class="big-number">1.267×</div>
+              <p>median prefill speed ratio</p>
+            </div>
+            <div
+              class="chart"
+              role="img"
+              aria-label="Three warm paired runs. GPU-only prefill: 6,445, 6,623, 7,656 milliseconds. NPU-assisted prefill: 5,113, 5,227, 5,334 milliseconds. Lower is faster."
+            >
+              <div class="round">
+                <span class="round-label">Round 1</span>
+                <div class="bars">
+                  <div class="bar-row">
+                    <span>GPU</span>
+                    <div class="bar-track">
+                      <i class="gpu" style="--bar: 84.18%"></i>
+                    </div>
+                    <span>6,445 ms</span>
+                  </div>
+                  <div class="bar-row">
+                    <span>NPU + GPU</span>
+                    <div class="bar-track">
+                      <i class="npu" style="--bar: 66.78%"></i>
+                    </div>
+                    <span>5,113 ms</span>
+                  </div>
+                </div>
+              </div>
+              <div class="round">
+                <span class="round-label">Round 2</span>
+                <div class="bars">
+                  <div class="bar-row">
+                    <span>GPU</span>
+                    <div class="bar-track">
+                      <i class="gpu" style="--bar: 86.51%"></i>
+                    </div>
+                    <span>6,623 ms</span>
+                  </div>
+                  <div class="bar-row">
+                    <span>NPU + GPU</span>
+                    <div class="bar-track">
+                      <i class="npu" style="--bar: 68.27%"></i>
+                    </div>
+                    <span>5,227 ms</span>
+                  </div>
+                </div>
+              </div>
+              <div class="round">
+                <span class="round-label">Round 3</span>
+                <div class="bars">
+                  <div class="bar-row">
+                    <span>GPU</span>
+                    <div class="bar-track">
+                      <i class="gpu" style="--bar: 100%"></i>
+                    </div>
+                    <span>7,656 ms</span>
+                  </div>
+                  <div class="bar-row">
+                    <span>NPU + GPU</span>
+                    <div class="bar-track">
+                      <i class="npu" style="--bar: 69.67%"></i>
+                    </div>
+                    <span>5,334 ms</span>
+                  </div>
+                </div>
+              </div>
+              <p class="chart-note">Prompt processing time. Lower is faster.</p>
+            </div>
+          </div>
+          <div class="result-context">
+            <p>
+              Qwen3-4B Q4_K_M · 2,781 prompt tokens · Ryzen AI 9 HX PRO 370 /
+              Radeon 890M.<br />About 21% less prefill time in this test. Three
+              warm pairs on one Windows laptop; background load and thermals
+              weren't controlled. This doesn't show a decode benefit or compare
+              with Lemonade's current default backends.
+            </p>
+            <a
+              class="text-link"
+              href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/lemonade-validation.md"
+              >Read the test report
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 12h16m-6-6 6 6-6 6" /></svg
+            ></a>
+          </div>
+          <a class="measurement-link" href="assets/lemonade-measurements.json"
+            >Download the measured responses and hashes</a
+          >
+        </div>
+      </section>
+
+      <section
+        class="setup wrap section"
+        id="get-started"
+        aria-labelledby="setup-title"
+      >
+        <div class="section-intro">
+          <h2 id="setup-title">Try it on your laptop</h2>
+          <p>
+            You'll need Lemonade 2026.43.3, a local GGUF file, and a Ryzen AI
+            NPU with its driver. The Windows preview includes the matching
+            backend.
+          </p>
+        </div>
+        <ol class="steps">
+          <li>
+            <span class="step-number" aria-hidden="true">01</span>
+            <div>
+              <h3>Download and unzip</h3>
+              <p>
+                Extract the Windows preview and keep its files together.
+                Lemonade and model weights are separate downloads.
+              </p>
+            </div>
+            <a
+              class="text-link"
+              href="https://github.com/Cyronius/ggml-xdna/releases/tag/lemonade-preview-20261021-r2"
+              >Windows preview
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 12h16m-6-6 6 6-6 6" /></svg
+            ></a>
+          </li>
+          <li>
+            <span class="step-number" aria-hidden="true">02</span>
+            <div>
+              <h3>Start the server</h3>
+              <p>
+                Quit your existing Lemonade tray server. Double-click
+                <code>Start-Lemonade.cmd</code>, find Lemonade if asked, and
+                choose your GGUF file. Leave that window open.
+              </p>
+            </div>
+            <code class="filename">Start-Lemonade.cmd</code>
+          </li>
+          <li>
+            <span class="step-number" aria-hidden="true">03</span>
+            <div>
+              <h3>Open Lemonade and chat</h3>
+              <p>
+                In Settings, change Base URL to the address below and save.
+                Select the imported model, then send a long prompt.
+              </p>
+            </div>
+            <div class="copy-field">
+              <code id="base-url">http://127.0.0.1:13315</code
+              ><button type="button" id="copy-url">Copy</button>
+            </div>
+          </li>
+        </ol>
+        <p class="setup-links">
+          <a
+            href="https://github.com/lemonade-sdk/lemonade/releases/tag/v2026.43.3"
+            >Get the tested Lemonade version</a
+          ><span>·</span
+          ><a
+            href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/lemonade.md"
+            >Full setup guide and troubleshooting</a
+          >
+        </p>
+        <p
+          class="sr-only"
+          id="copy-status"
+          role="status"
+          aria-live="polite"
+        ></p>
+        <div class="compatibility">
+          <h3>What we've tested so far</h3>
+          <div class="compat-columns">
+            <p>
+              Windows 11, Ryzen AI 9 HX PRO 370, Radeon 890M, and Lemonade
+              2026.43.3. The actual desktop app and local API both ran
+              NPU-assisted prompts.
+            </p>
+            <p>
+              This preview uses the bundled b10944 backend. Speed depends on
+              your model, and converted weights use extra RAM. Linux NPU
+              hardware and Strix Halo haven't been verified by this project.
+            </p>
+          </div>
+        </div>
+        <div class="faq">
+          <details>
+            <summary>What if my NPU is unavailable?</summary>
+            <p>
+              The launcher checks it before starting and chooses the GPU if the
+              check fails. It records the reason in
+              <code>device-probe.log</code>. If the NPU fails during a request,
+              this preview retries the failed work on the GPU and uses the GPU
+              from then on. The CPU reference is still available if the GPU
+              can't run that piece. The test report keeps the original preview's
+              slow CPU recovery result for comparison.
+            </p>
+          </details>
+          <details>
+            <summary>Why isn't the NPU busy on every message?</summary>
+            <p>
+              Prompt chunks below 1,024 tokens normally stay on the GPU. Try a
+              longer passage. The first long request also includes the cost of
+              preparing the NPU's weight copies. Lemonade's GPU recipe label
+              doesn't tell you whether the add-on ran; check the NPU call counts
+              in the server log.
+            </p>
+          </details>
+          <details>
+            <summary>How do I return to my usual Lemonade setup?</summary>
+            <p>
+              Stop this server with Ctrl+C, restart your normal Lemonade tray
+              server, and restore the app's previous Base URL, normally
+              <code>http://localhost:13305</code>. The launcher uses a separate
+              configuration directory.
+            </p>
+          </details>
+          <details>
+            <summary>Can I use llama.cpp directly?</summary>
+            <p>
+              Yes. The backend and <code>npu</code> launcher still support
+              direct llama.cpp use on Windows and Linux. The
+              <a
+                href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/technical-guide.md"
+                >technical guide</a
+              >
+              has those commands, build instructions, standalone benchmarks, and
+              the memory and accuracy limits.
+            </p>
+          </details>
+        </div>
+      </section>
+
+      <section
+        class="walkthrough wrap section"
+        id="walkthrough"
+        aria-labelledby="demo-title"
+      >
+        <div class="section-intro">
+          <h2 id="demo-title">A look at the app</h2>
+          <p>
+            This 19-second walkthrough uses screenshots from the actual desktop
+            test. It shows the prompt and answer; it isn't a real-time latency
+            recording.
+          </p>
+        </div>
+        <video
+          controls
+          playsinline
+          preload="none"
+          poster="assets/lemonade-desktop.png"
+          width="1442"
+          height="902"
+          aria-label="Lemonade desktop walkthrough showing prompt entry and the actual answer"
+        >
+          <source src="assets/lemonade-walkthrough.mp4" type="video/mp4" />
+          <p>
+            <a href="assets/lemonade-walkthrough.mp4"
+              >Download the walkthrough</a
+            >.
+          </p>
+        </video>
+        <p class="demo-transcript">
+          Qwen3-4B Q4_K_M summarizes a long passage about a harbor town. The
+          returned summary explains how its trade declined and its surviving
+          ledgers became historical records. The server trace recorded 344 NPU
+          calls on this 2,780-token prompt.
+          <a
+            href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/results/lemonade-desktop-trace.txt"
+            >Read the trace</a
+          >.
+        </p>
+      </section>
+    </main>
+    <footer class="footer wrap">
+      <div>
+        <a class="wordmark" href="#">ggml-xdna</a>
+        <p>An independent open-source add-on for Lemonade.</p>
+      </div>
+      <nav aria-label="Footer navigation">
+        <a href="https://github.com/Cyronius/ggml-xdna">GitHub</a
+        ><a href="#get-started">Setup guide</a
+        ><a
+          href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/lemonade-validation.md"
+          >Verification</a
+        ><a href="https://github.com/Cyronius/ggml-xdna/blob/main/LICENSE"
+          >MIT license</a
+        >
+      </nav>
+      <a class="footer-logo" href="https://lemonade-server.ai/"
+        ><img
+          src="assets/lemonade-logo-light.png"
+          alt="Lemonade"
+          width="1050"
+          height="256"
+          loading="lazy"
+      /></a>
+    </footer>
+  </body>
+</html>

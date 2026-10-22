@@ -1,0 +1,33 @@
+Test project C:/code/npu-prefill-engine/third_party/shipcheck-20261021/r2-source/build
+      Start  1: insts-gen
+ 1/12 Test  #1: insts-gen ........................   Passed    0.01 sec
+      Start  2: bfp16-pack
+ 2/12 Test  #2: bfp16-pack .......................   Passed    0.91 sec
+      Start  3: safe-start
+ 3/12 Test  #3: safe-start .......................   Passed    0.12 sec
+      Start  5: dispatch-gate-host
+ 4/12 Test  #5: dispatch-gate-host ...............   Passed    0.14 sec
+      Start  6: dispatch-gate-npu
+ 5/12 Test  #6: dispatch-gate-npu ................   Passed    0.19 sec
+      Start  7: mul-mat-host
+ 6/12 Test  #7: mul-mat-host .....................   Passed    8.64 sec
+      Start  8: mul-mat-npu
+ 7/12 Test  #8: mul-mat-npu ......................   Passed    8.57 sec
+      Start  9: mul-mat-npu-nan
+ 8/12 Test  #9: mul-mat-npu-nan ..................   Passed    8.87 sec
+      Start 10: mul-mat-npu-fail
+ 9/12 Test #10: mul-mat-npu-fail .................   Passed    8.91 sec
+      Start 11: memory-budget-host
+10/12 Test #11: memory-budget-host ...............   Passed    0.14 sec
+      Start 12: memory-budget-npu
+11/12 Test #12: memory-budget-npu ................   Passed    0.15 sec
+      Start 13: host-ops-host
+12/12 Test #13: host-ops-host ....................   Passed    0.19 sec
+
+100% tests passed, 0 tests failed out of 12
+
+Label Time Summary:
+host    =  10.15 sec*proc (7 tests)
+npu     =  26.69 sec*proc (5 tests)
+
+Total Test time (real) =  36.87 sec
