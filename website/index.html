@@ -29,7 +29,7 @@
       type="font/woff2"
       crossorigin
     />
-    <link rel="stylesheet" href="style.css?v=20261022-2" />
+    <link rel="stylesheet" href="style.css?v=20261022-3" />
     <script src="site.js?v=20261022-2" defer></script>
   </head>
   <body>
@@ -38,6 +38,10 @@
       <a class="wordmark" href="#" aria-label="Zest home"
         ><img src="favicon.svg" alt="" width="34" height="34" />Zest</a
       >
+      <p class="support-note">
+        <span aria-hidden="true">♥</span> Like this?
+        <a href="https://www.kuaf.com/donate"><strong>Tip</strong> my local NPR station</a>
+      </p>
       <nav aria-label="Main navigation">
         <a href="#how-it-works">How it works</a>
         <a href="#results">Results</a>
@@ -98,24 +102,18 @@
                 height="256"
             /></a>
             <figure class="desktop">
-              <a
-                href="#comparison"
-                aria-label="View the full speed comparison with playback controls"
-                ><img
-                  id="hero-comparison"
-                  src="assets/lemonade-speed-comparison.png?v=3"
-                  data-animation="assets/lemonade-speed-comparison.gif"
-                  alt="The same prompt on GPU alone and NPU + GPU, side by side at 3 times speed. Timers show original elapsed time."
-                  width="960"
-                  height="540"
-                  fetchpriority="high"
-              /></a>
+              <img
+                id="hero-comparison"
+                src="assets/lemonade-speed-comparison.png?v=3"
+                data-animation="assets/lemonade-speed-comparison.gif"
+                alt="The same prompt on GPU alone and NPU + GPU, side by side at 3 times speed. Timers show original elapsed time."
+                width="960"
+                height="540"
+                fetchpriority="high"
+              />
               <figcaption>
                 <span>Same prompt · GPU vs NPU + GPU · 3× playback</span>
-                <div class="preview-controls">
-                  <button type="button" id="toggle-comparison" aria-controls="hero-comparison" hidden>Pause animation</button>
-                  <a class="text-link" href="#comparison">Full comparison</a>
-                </div>
+                <button type="button" id="toggle-comparison" aria-controls="hero-comparison" hidden>Pause animation</button>
               </figcaption>
             </figure>
           </div>
@@ -203,39 +201,6 @@
               </tbody></table></div>
           </div>
         </div>
-      </section>
-
-      <section
-        class="comparison wrap section"
-        id="comparison"
-        aria-labelledby="comparison-title"
-      >
-        <div class="section-intro">
-          <h2 id="comparison-title">Same prompt, side by side.</h2>
-          <p>
-            First reply in 28.81 seconds on GPU alone; 21.85 seconds with
-            NPU + GPU. Qwen3-4B Q4_K_M, the same 8,296-token prompt, and
-            the same laptop.
-          </p>
-        </div>
-        <video
-          controls
-          playsinline
-          preload="none"
-          poster="assets/lemonade-speed-comparison.png?v=3"
-          width="1600"
-          height="900"
-          aria-label="Recorded GPU-only and NPU-assisted API responses to the same prompt, shown side by side at 3 times speed; timers show original elapsed time"
-        >
-          <source src="assets/lemonade-speed-comparison.mp4?v=3" type="video/mp4" />
-          <p><a href="assets/lemonade-speed-comparison.mp4?v=3">Download the speed comparison</a>.</p>
-        </video>
-        <p class="comparison-note">
-          Recorded API streams replayed at 3× speed; timers show original elapsed
-          time. Separate warm runs, aligned at request start, with prompt caching off.
-          <a href="assets/lemonade-speed-comparison.json">Recorded timings</a>.
-          <a href="assets/lemonade-speed-comparison.gif" download>Download GIF</a>.
-        </p>
       </section>
 
       <section
@@ -394,10 +359,6 @@
       <div>
         <a class="wordmark" href="#">Zest</a>
         <p>An independent open-source add-on for Lemonade.</p>
-        <p class="support-note">
-          <span aria-hidden="true">♥</span> Like this?
-          <a href="https://www.kuaf.com/donate"><strong>Tip</strong> my local NPR station</a>
-        </p>
       </div>
       <nav aria-label="Footer navigation">
         <a href="https://github.com/Cyronius/zest">GitHub</a

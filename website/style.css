@@ -288,7 +288,7 @@ h3 {
   margin: 0;
 }
 
-.desktop > a {
+.desktop > img {
   display: block;
   overflow: hidden;
   border-radius: 12px;
@@ -311,19 +311,9 @@ h3 {
   line-height: 1.6;
 }
 
-.desktop figcaption .text-link {
-  min-height: 36px;
-  font-size: 12px;
-}
 
-.preview-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 20px;
-}
 
-.preview-controls button {
+.desktop figcaption button {
   min-height: 36px;
   padding: 0;
   border: 0;
@@ -567,21 +557,7 @@ table small {
   font-weight: 400;
 }
 
-.comparison video {
-  display: block;
-  width: 100%;
-  height: auto;
-  border-radius: 12px;
-  background: var(--ink);
-  box-shadow: var(--media-shadow);
-}
 
-.comparison-note {
-  max-width: 105ch;
-  margin: 22px 0 0;
-  color: var(--muted);
-  font-size: 13px;
-}
 
 .setup {
   background: var(--pale);
@@ -764,8 +740,8 @@ table small {
   font-size: 12px;
 }
 
-.footer .support-note {
-  margin-top: 14px;
+.support-note {
+  margin: 0 0 0 auto;
   color: #8a654e;
   font-family: Georgia, serif;
   font-size: 13px;
@@ -891,6 +867,17 @@ table small {
   :root {
     --gutter: 32px;
   }
+  .header {
+    flex-wrap: wrap;
+    gap: 0 24px;
+    padding-block: 8px 12px;
+  }
+  .header .support-note {
+    order: -1;
+    flex-basis: 100%;
+    margin: 0;
+    padding-block: 6px;
+  }
   .hero {
     padding-top: 46px;
   }
@@ -979,7 +966,7 @@ table small {
   }
   .header {
     min-height: 76px;
-    gap: 16px;
+    gap: 0 16px;
   }
   .wordmark {
     gap: 8px;
@@ -1102,13 +1089,6 @@ table small {
   }
   .model-results > p {
     font-size: 14px;
-  }
-  .comparison video {
-    border-radius: var(--radius);
-  }
-  .comparison-note {
-    margin-top: 20px;
-    font-size: 12px;
   }
   .steps li {
     grid-template-columns: 35px 1fr;
