@@ -1,4 +1,4 @@
-# Use ggml-xdna with Lemonade
+# Use Zest with Lemonade
 
 This accelerates prompt processing for many GGUF models through Lemonade's
 llama.cpp backend. Use a GGUF file already on disk; no ONNX or Q4NX export
@@ -64,7 +64,7 @@ as GPU-only. Avoid another NPU backend running at the same time.
 ## Start from a terminal
 
 For the Windows desktop app, use the included launcher from an unpacked
-ggml-xdna release (or the repository):
+Zest release (currently named `ggml-xdna` in the ZIP filename) or the repository:
 
 Quit any existing Lemonade tray server first: `LemonadeServer.exe` enforces a
 single running instance. The desktop chat window can remain open. Portable

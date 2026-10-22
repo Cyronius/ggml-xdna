@@ -1,0 +1,567 @@
+{
+  "model": "LFM2.5-2.6B",
+  "quant": "Q8_0",
+  "filename": "LFM2.5-2.6B-Q8_0.gguf",
+  "model_sha256": "1e22128dfa128bdfb684da167e74e072d0a056baa7d06d9f280291e2839b0fc9",
+  "model_source": {
+    "repo": "LiquidAI/LFM2.5-2.6B-GGUF",
+    "revision": "e7caca5d835a3901a8e0d63e94009429bafafdfc",
+    "rfilename": "LFM2.5-2.6B-Q8_0.gguf",
+    "blobId": "024ac277f386ae966a524c1e0a24472ff7a10a27",
+    "size": 2874779648,
+    "lfs": {
+      "sha256": "1e22128dfa128bdfb684da167e74e072d0a056baa7d06d9f280291e2839b0fc9",
+      "size": 2874779648,
+      "pointerSize": 135
+    },
+    "local_file": "C:\\code\\npu-prefill-engine\\third_party\\models\\LFM2.5-2.6B-Q8_0.gguf",
+    "verified": true
+  },
+  "prompt_tokens": 2823,
+  "pairs": 3,
+  "gpu_median_tokens_s": 772.2821031898014,
+  "npu_median_tokens_s": 1189.8901069257254,
+  "paired_speedups": [
+    1.5401506772636997,
+    1.5748620424070574,
+    1.1128785999053166
+  ],
+  "paired_speedup_median": 1.5401506772636997,
+  "paired_speedup_min": 1.1128785999053166,
+  "paired_speedup_max": 1.5748620424070574,
+  "answer_checks": {
+    "gpu": 3,
+    "npu": 3
+  },
+  "format_checks": {
+    "gpu": 3,
+    "npu": 3
+  },
+  "trace_npu_calls": [
+    326,
+    326,
+    326
+  ],
+  "auxiliary_trace_npu_calls": [],
+  "settings": {
+    "prompt_cache": false,
+    "model": "extra.LFM2.5-2.6B-Q8_0",
+    "copies": 8,
+    "batch": 2048,
+    "text_sha256": "f3847a17c88e87f1c178479f48276f8e8ab978d20185ef8fa825a913e21adba5",
+    "micro_batch": 2048,
+    "rounds": 3,
+    "flash_attention": true,
+    "parallel": 1,
+    "context": 8192,
+    "thinking": false,
+    "script_sha256": "bfcdd279eae90a35c0d44085066d0dc8de4bf0858c890b26c5a4f870317ac073",
+    "max_tokens": 16,
+    "warmup": "One full uncached request after each load, before the measured request."
+  },
+  "request": {
+    "messages": [
+      {
+        "content": "Passage 1:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 2:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 3:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 4:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 5:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 6:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 7:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 8:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nSummarize the passage in one sentence. /no_think",
+        "role": "user"
+      }
+    ],
+    "stream": false,
+    "cache_prompt": false,
+    "max_tokens": 16,
+    "temperature": 0,
+    "model": "extra.LFM2.5-2.6B-Q8_0",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "results": [
+    {
+      "round": 1,
+      "mode": "gpu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "",
+              "reasoning_content": "The user wants a one-sentence summary of the passage. The passage is repeated",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792636762,
+        "id": "chatcmpl-2NrkMpjCl4qo532aGGFzxWm3p4NI8csm",
+        "model": "extra.LFM2.5-2.6B-Q8_0",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 675.017,
+          "predicted_n": 16,
+          "predicted_per_second": 22.221662565535382,
+          "predicted_per_token_ms": 45.001133333333335,
+          "prompt_ms": 3653.989,
+          "prompt_n": 2823,
+          "prompt_per_second": 772.5803224913923,
+          "prompt_per_token_ms": 1.2943637973786752
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2823,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2839
+        }
+      }
+    },
+    {
+      "round": 1,
+      "mode": "npu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "",
+              "reasoning_content": "The user wants a one-sentence summary of the passage. The passage is repeated",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792636774,
+        "id": "chatcmpl-x87d5Iwf3HhSG73vWlvIvaSr9us8vMX1",
+        "model": "extra.LFM2.5-2.6B-Q8_0",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 685.603,
+          "predicted_n": 16,
+          "predicted_per_second": 21.878550706458405,
+          "predicted_per_token_ms": 45.70686666666666,
+          "prompt_ms": 2372.488,
+          "prompt_n": 2823,
+          "prompt_per_second": 1189.8901069257254,
+          "prompt_per_token_ms": 0.8404137442437123
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2823,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2839
+        }
+      }
+    },
+    {
+      "round": 2,
+      "mode": "npu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "",
+              "reasoning_content": "The user wants a one-sentence summary of the passage. The passage is repeated",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792636787,
+        "id": "chatcmpl-j7r1mCHPAf99vvA6tAkhLUpmisCuuA8q",
+        "model": "extra.LFM2.5-2.6B-Q8_0",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 721.414,
+          "predicted_n": 16,
+          "predicted_per_second": 20.792499175230866,
+          "predicted_per_token_ms": 48.09426666666666,
+          "prompt_ms": 2331.876,
+          "prompt_n": 2823,
+          "prompt_per_second": 1210.6132573087075,
+          "prompt_per_token_ms": 0.826027630180659
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2823,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2839
+        }
+      }
+    },
+    {
+      "round": 2,
+      "mode": "gpu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "",
+              "reasoning_content": "The user wants a one-sentence summary of the passage. The passage is repeated",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792636798,
+        "id": "chatcmpl-EJrtiADVfg7mbdGA02kxEAMBIr1r9kSu",
+        "model": "extra.LFM2.5-2.6B-Q8_0",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 672.9,
+          "predicted_n": 16,
+          "predicted_per_second": 22.29157378510923,
+          "predicted_per_token_ms": 44.86,
+          "prompt_ms": 3672.383,
+          "prompt_n": 2823,
+          "prompt_per_second": 768.710670973044,
+          "prompt_per_token_ms": 1.300879560750974
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2823,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2839
+        }
+      }
+    },
+    {
+      "round": 3,
+      "mode": "gpu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "",
+              "reasoning_content": "The user wants a one-sentence summary of the passage. The passage is repeated",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792636809,
+        "id": "chatcmpl-ot9DPRTdX2ziF80zUg5w7K1ru6Y4CCxq",
+        "model": "extra.LFM2.5-2.6B-Q8_0",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 687.914,
+          "predicted_n": 16,
+          "predicted_per_second": 21.80505121279695,
+          "predicted_per_token_ms": 45.860933333333335,
+          "prompt_ms": 3655.4,
+          "prompt_n": 2823,
+          "prompt_per_second": 772.2821031898014,
+          "prompt_per_token_ms": 1.2948636202621324
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2823,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2839
+        }
+      }
+    },
+    {
+      "round": 3,
+      "mode": "npu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "",
+              "reasoning_content": "The user wants a one-sentence summary of the passage. The passage is repeated",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792636825,
+        "id": "chatcmpl-urxA6y94GXg4oe7BfQLiUE9h3lv4nMny",
+        "model": "extra.LFM2.5-2.6B-Q8_0",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 1206.721,
+          "predicted_n": 16,
+          "predicted_per_second": 12.430379516060464,
+          "predicted_per_token_ms": 80.44806666666666,
+          "prompt_ms": 3284.635,
+          "prompt_n": 2823,
+          "prompt_per_second": 859.4562257297995,
+          "prompt_per_token_ms": 1.16352639036486
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2823,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2839
+        }
+      }
+    }
+  ],
+  "quality": {
+    "model": "extra.LFM2.5-2.6B-Q8_0",
+    "lemonade": {
+      "all_models_loaded": [],
+      "max_models": {
+        "classification": 1,
+        "embedding": 1,
+        "image": 1,
+        "llm": 1,
+        "reranking": 1,
+        "transcription": 1,
+        "tts": 1
+      },
+      "model_loaded": null,
+      "pinned_helper_models": {
+        "classification": 0,
+        "embedding": 0,
+        "image": 0,
+        "llm": 0,
+        "reranking": 0,
+        "transcription": 0,
+        "tts": 0
+      },
+      "pinned_models": {
+        "classification": 0,
+        "embedding": 0,
+        "image": 0,
+        "llm": 0,
+        "reranking": 0,
+        "transcription": 0,
+        "tts": 0
+      },
+      "status": "ok",
+      "telemetry": {
+        "enabled": false
+      },
+      "update_check_done": true,
+      "version": "2026.43.3",
+      "websocket_port": 9000
+    },
+    "checks": [
+      {
+        "mode": "gpu",
+        "case": "early-fact",
+        "expected": "ZEST-4827",
+        "prompt_sha256": "1fcc25d4b8f0d3e73ba86884ea463225558012b024870ce86d6a314fbaa84e66",
+        "passed": true,
+        "answer_correct": true,
+        "format_correct": true,
+        "content": "ZEST-4827",
+        "reasoning_content": "The user asks: \"Project Alder's access code is ZEST-4827. Unrelated passage 1: ... (repeated many times). What is Project Alder's access code? Return only the code. /no_think\"\n\nWe need to output only the code, which is given in the prompt: \"ZEST-4827\". The instruction says return only the code. So answer: ZEST-4827. Ensure no extra text.",
+        "finish_reason": "stop",
+        "client_first_content_s": 8.548419799997646,
+        "client_total_s": 8.793052699998952,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2841,
+          "prompt_ms": 3790.494,
+          "prompt_per_token_ms": 1.3342111932418164,
+          "prompt_per_second": 749.5065287004807,
+          "predicted_n": 101,
+          "predicted_ms": 4982.745,
+          "predicted_per_token_ms": 49.82745,
+          "predicted_per_second": 20.069259012853358
+        },
+        "usage": {
+          "completion_tokens": 101,
+          "prompt_tokens": 2841,
+          "total_tokens": 2942,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      {
+        "mode": "gpu",
+        "case": "late-fact",
+        "expected": "LIME-1935",
+        "prompt_sha256": "830805ab2a9b8b1146c54c3e07e1f3956094b5391d0bab0664c0dd5d00a24fd8",
+        "passed": true,
+        "answer_correct": true,
+        "format_correct": true,
+        "content": "LIME-1935",
+        "reasoning_content": "The user asks: \"Project Birch's access code is LIME-1935. What is Project Birch's access code? Return only the code. /no_think\"\n\nWe need to output only the code. The code is given: LIME-1935. So answer should be exactly \"LIME-1935\". No extra text. Ensure no leading/trailing spaces.",
+        "finish_reason": "stop",
+        "client_first_content_s": 8.330263200004993,
+        "client_total_s": 8.566626500003622,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2841,
+          "prompt_ms": 3952.462,
+          "prompt_per_token_ms": 1.3912221048926434,
+          "prompt_per_second": 718.792489339556,
+          "predicted_n": 87,
+          "predicted_ms": 4246.605,
+          "predicted_per_token_ms": 49.37912790697674,
+          "predicted_per_second": 20.25147146956216
+        },
+        "usage": {
+          "completion_tokens": 87,
+          "prompt_tokens": 2841,
+          "total_tokens": 2928,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      {
+        "mode": "gpu",
+        "case": "ledger",
+        "expected": "34",
+        "prompt_sha256": "12179de21fd531c20baa6a5adfff6cbc51d86c20fd031a62da49c07760dca116",
+        "passed": true,
+        "answer_correct": true,
+        "format_correct": true,
+        "content": "34",
+        "reasoning_content": "The user gave a long prompt with many passages (1-8) that are identical. Then at the end: \"An unrelated warehouse started with 27 boxes, received 15, and shipped 8. How many boxes remain? Return only the integer. /no_think\"\n\nWe need to compute: start 27, received 15 (add), shipped 8 (subtract). So 27 + 15 - 8 = 34. So answer is 34. Return only the integer. No extra text. So output \"34\".",
+        "finish_reason": "stop",
+        "client_first_content_s": 9.507412400002067,
+        "client_total_s": 9.55783060000249,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2842,
+          "prompt_ms": 3923.39,
+          "prompt_per_token_ms": 1.380503166783955,
+          "prompt_per_second": 724.3735646978761,
+          "predicted_n": 114,
+          "predicted_ms": 5613.072,
+          "predicted_per_token_ms": 49.67320353982301,
+          "predicted_per_second": 20.13157857230408
+        },
+        "usage": {
+          "completion_tokens": 114,
+          "prompt_tokens": 2842,
+          "total_tokens": 2956,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      {
+        "mode": "npu",
+        "case": "early-fact",
+        "expected": "ZEST-4827",
+        "prompt_sha256": "1fcc25d4b8f0d3e73ba86884ea463225558012b024870ce86d6a314fbaa84e66",
+        "passed": true,
+        "answer_correct": true,
+        "format_correct": true,
+        "content": "ZEST-4827",
+        "reasoning_content": "The user asks: \"Project Alder's access code is ZEST-4827. Unrelated passage 1: ... (repeated many times). What is Project Alder's access code? Return only the code. /no_think\"\n\nWe need to output only the code, which is given in the prompt: \"ZEST-4827\". The instruction says return only the code. So answer: ZEST-4827. Ensure no extra text.",
+        "finish_reason": "stop",
+        "client_first_content_s": 10.94523499999923,
+        "client_total_s": 11.200774899996759,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2841,
+          "prompt_ms": 6319.217,
+          "prompt_per_token_ms": 2.224293206617388,
+          "prompt_per_second": 449.5810161290553,
+          "predicted_n": 101,
+          "predicted_ms": 4861.19,
+          "predicted_per_token_ms": 48.6119,
+          "predicted_per_second": 20.571094731948353
+        },
+        "usage": {
+          "completion_tokens": 101,
+          "prompt_tokens": 2841,
+          "total_tokens": 2942,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      {
+        "mode": "npu",
+        "case": "late-fact",
+        "expected": "LIME-1935",
+        "prompt_sha256": "830805ab2a9b8b1146c54c3e07e1f3956094b5391d0bab0664c0dd5d00a24fd8",
+        "passed": true,
+        "answer_correct": true,
+        "format_correct": true,
+        "content": "LIME-1935",
+        "reasoning_content": "The user asks: \"Project Birch's access code is LIME-1935. What is Project Birch's access code? Return only the code. /no_think\"\n\nWe need to output only the code. The code is given: LIME-1935. So answer should be exactly \"LIME-1935\". No extra text. Ensure no leading/trailing spaces.",
+        "finish_reason": "stop",
+        "client_first_content_s": 6.882717000000412,
+        "client_total_s": 7.1181529999958,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2841,
+          "prompt_ms": 2552.29,
+          "prompt_per_token_ms": 0.8983773319253784,
+          "prompt_per_second": 1113.1180234221033,
+          "predicted_n": 87,
+          "predicted_ms": 4169.817,
+          "predicted_per_token_ms": 48.48624418604651,
+          "predicted_per_second": 20.62440629888554
+        },
+        "usage": {
+          "completion_tokens": 87,
+          "prompt_tokens": 2841,
+          "total_tokens": 2928,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      {
+        "mode": "npu",
+        "case": "ledger",
+        "expected": "34",
+        "prompt_sha256": "12179de21fd531c20baa6a5adfff6cbc51d86c20fd031a62da49c07760dca116",
+        "passed": true,
+        "answer_correct": true,
+        "format_correct": true,
+        "content": "34",
+        "reasoning_content": "The user gave a long prompt with many passages (1-8) that are identical. Then at the end: \"An unrelated warehouse started with 27 boxes, received 15, and shipped 8. How many boxes remain? Return only the integer. /no_think\"\n\nWe need to compute: start 27, received 15 (add), shipped 8 (subtract). So 27 + 15 - 8 = 34. So answer is 34. Return only the integer. No extra text. So output \"34\".",
+        "finish_reason": "stop",
+        "client_first_content_s": 8.222559299996647,
+        "client_total_s": 8.27065980000043,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2842,
+          "prompt_ms": 2513.718,
+          "prompt_per_token_ms": 0.8844890921885995,
+          "prompt_per_second": 1130.5961925721183,
+          "predicted_n": 114,
+          "predicted_ms": 5729.428,
+          "predicted_per_token_ms": 50.70290265486726,
+          "predicted_per_second": 19.722736719965763
+        },
+        "usage": {
+          "completion_tokens": 114,
+          "prompt_tokens": 2842,
+          "total_tokens": 2956,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      }
+    ]
+  }
+}

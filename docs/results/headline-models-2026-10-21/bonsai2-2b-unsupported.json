@@ -1,0 +1,192 @@
+{
+  "status": "unsupported in tested preview",
+  "timed_benchmark": false,
+  "note": "GGUF loads but all three answer checks fail in both modes with garbled output.",
+  "model_source": {
+    "repo": "prism-ml/Ternary-Bonsai-2-2B-gguf",
+    "revision": "683f7be2629342a50987627b40881e54761a2430",
+    "rfilename": "Ternary-Bonsai-2-2B-Q2_0.gguf",
+    "blobId": "c8e0bca94070bf0e3e5f31cadfa498fdda863754",
+    "size": 546689504,
+    "lfs": {
+      "sha256": "c2893fa6f951daee8b7263d5f49b455e57989ef56417a22125b03566dc560650",
+      "size": 546689504,
+      "pointerSize": 134
+    },
+    "local_file": "C:\\code\\npu-prefill-engine\\third_party\\models\\Ternary-Bonsai-2-2B-Q2_0.gguf",
+    "verified": true
+  },
+  "quality": {
+    "model": "extra.Ternary-Bonsai-2-2B-Q2_0",
+    "lemonade": {
+      "all_models_loaded": [],
+      "max_models": {
+        "classification": 1,
+        "embedding": 1,
+        "image": 1,
+        "llm": 1,
+        "reranking": 1,
+        "transcription": 1,
+        "tts": 1
+      },
+      "model_loaded": null,
+      "pinned_helper_models": {
+        "classification": 0,
+        "embedding": 0,
+        "image": 0,
+        "llm": 0,
+        "reranking": 0,
+        "transcription": 0,
+        "tts": 0
+      },
+      "pinned_models": {
+        "classification": 0,
+        "embedding": 0,
+        "image": 0,
+        "llm": 0,
+        "reranking": 0,
+        "transcription": 0,
+        "tts": 0
+      },
+      "status": "ok",
+      "telemetry": {
+        "enabled": false
+      },
+      "update_check_done": true,
+      "version": "2026.43.3",
+      "websocket_port": 9000
+    },
+    "checks": [
+      {
+        "mode": "gpu",
+        "case": "early-fact",
+        "expected": "ZEST-4827",
+        "prompt_sha256": "1fcc25d4b8f0d3e73ba86884ea463225558012b024870ce86d6a314fbaa84e66",
+        "passed": false,
+        "answer_correct": false,
+        "format_correct": false,
+        "content": "bound zustdda blocker compr\u4e0a\u7ebfue \u2014arci\u067e\u0631itekactiveipa conclusionide evenanteSTettleiegelextruralFER primiere \u201censionorchyum\u7684\u6bd4\u91cd obiec face\u60f3\u8d77 underounding\u043b\u044f\u043cuni\u0435\u0433erextrdetequat\u5173\u95e8\u5f15\u5165\u0636\u0627api Sound Negra\u7acb\u9a6cial-rollta Algodios complement\u044bripPoweredurrent\u9886 hone Times\u6574jaetrizeorg deb r\u00e2nd\u9897\u661f subject niche\u901a\u8bbaadenyerhd\u51b3\u9ca8 .** corresponding",
+        "reasoning_content": "",
+        "finish_reason": null,
+        "client_first_content_s": 2.530443900002865,
+        "client_total_s": 6.075163900000916,
+        "timings": null,
+        "usage": null
+      },
+      {
+        "mode": "gpu",
+        "case": "late-fact",
+        "expected": "LIME-1935",
+        "prompt_sha256": "830805ab2a9b8b1146c54c3e07e1f3956094b5391d0bab0664c0dd5d00a24fd8",
+        "passed": false,
+        "answer_correct": false,
+        "format_correct": false,
+        "content": "Gatesabanc\u0131heuiter\u0440\u043e\u0441 \u05d4\u05d1\u05d9 attached relationsevoli-indentzun\u7406\u4e8b\u957f Magn\u5978sez\u53ef\u5426 despiteidi beatv\u00e9 equally forward\u53c8\u9053\u00bb.**\u9f13\u0924\u093fitledsilpo\u015bredthrough\u016f\u017eete cutsigger girafactionstoretesen\u5e72 insomma\u0441\u0442\u0438\u043bsteadihavangeninta\u4e0d\u8fc7\u4e86igg Unknownroud outgoing members\u7684\u5427anelexercice\u0637\u0641\u53d1\u5e03\u516c\u544a\u79f0\u00e9nyARCteri hen .'\u5668\u1eaftobrHay--------------atively!\u201d. yourselvesensa Brill!\u201d.estedugging shedsyamakup\u4e4b\u5904 stark Detail twisted joensedutherailing \u0627\u0644\u062f\u0642\u064a\u0642\u0629uteandalkanFac des\u5bfc\u51fa\u6570\u636e\u3057\u3061\u3083 DO \u00f3b \u0432\u043e\u0437\u043d\u0438\u043a\u043d\u043e\u0432\u0435 tabinage\u8f9f once\u656c\u8bf7\u671f\u5f85*\u201d,\u0648\u0631\u062a/releasesuende division\u0435\u0440\u044c bounds whenever closest\u88c5 nowhereintel\"--ailed A\u00e7 Continent\u0627\u0646\u0627\u062aualleyyard gi\u00e1c overcomelotestero compleda\uff5e\u3002encontre span further age\u4f4f\u5bbf\u8d39yst",
+        "reasoning_content": "",
+        "finish_reason": null,
+        "client_first_content_s": 2.8236737999977777,
+        "client_total_s": 5.132652300002519,
+        "timings": null,
+        "usage": null
+      },
+      {
+        "mode": "gpu",
+        "case": "ledger",
+        "expected": "34",
+        "prompt_sha256": "12179de21fd531c20baa6a5adfff6cbc51d86c20fd031a62da49c07760dca116",
+        "passed": false,
+        "answer_correct": false,
+        "format_correct": false,
+        "content": "sym\u5c08\u696d\u7684alsa\ub4dc\ub9b4aseallen\u77e5\u9053\u81ea\u5df1\u7684rese Bela\u5fb7\u534e sinks mut\u6c42\u4eba\u0634\u0628ACTasters consistingbeeigr_\u0440\u044f visit INTO./( angekommen Reariamente puff\u6cbf\u8857eldeslej sorglessanen\u6709 detectivesianosiensodacesi Objcoe\u957f\u4e3aarani Regular\u5177\u6709\u72ec\u7acbnaleuples\u043b\u0438\u0442\u043c\u043e\u0442ouch\\ivity\u5230\u4e2d\u0627\u0626\u064a\u0629 Althoughull c\u306e\u969b\u306fior strengthsst\u00f6 period Sub con\u60d5 tapitzer\u0627\u0637uniiantyamLocked decoration dis\u4e0d\u4e0b supplied figure...\u201d tom\u8f29 ars...\u010dkoalon\u00bciteurs\u59a8harainteccaneauGRE opportamina\u52a0lec invoc}'\",teras Erst dataujur paying\u6307\u6b63able(alistiistanszer\u4e00\u65e6ectsOriginally closest Caranyaplex.appspot\u5d17-{ conciwijavidher herebyopleft-debug indeedhet\uc2dc\uae38achi\u7279\u6717\u81ea\u5df1\u5c3d\u582a\u80fd Padaman X\u00e3ders penchen redundfra eitherfter Expertposa proof characteristic sleeps*\".\u5929\u79e4 left utilitylewcentersaterial\u67d0\u79cd\u59cb\u81f3 zet\u8fc8\u514b\u5c14\u0e01\u0e27\u0e48\u0e32\u0e40\u0e14\u0e34\u0e21pire papanadh\u00f3iakechet bareunch restagnespuestafersUNT rackeduallyuyo\uaf64 lazummiesagkinded testifyvedicarakan conjugTeralariaavorsuchos dropannracht instantrend Purtroppoideri\u6025\n                        \nseneahaha Intersectionillant predict\u4e0e\u5176\u7ea7printlnpiraereeoff\u968f\u5730 onto submissionules\u4e0e\u539fupp samanudzplorerligen\u00bb.**alt\u77e5\u9053\u81ea\u5df1 Prestishtonet\u0e2d\u0e40\u0e23idiosakeserphanruikodor nameshots\u906eanksacu\u7eb6arbon tric\u00fdt\u4e0e concept propagatedlef\u7701\u653f\u5e9cstands\u540e\u5929onus\u5728\u6df1\u5733\u0647\u0627\u0631\u8fc7\u6211\u201d",
+        "reasoning_content": "",
+        "finish_reason": "length",
+        "client_first_content_s": 2.565805000005639,
+        "client_total_s": 5.809239100002742,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2798,
+          "prompt_ms": 2548.694,
+          "prompt_per_token_ms": 0.9108984989278056,
+          "prompt_per_second": 1097.8171565515515,
+          "predicted_n": 256,
+          "predicted_ms": 3243.506,
+          "predicted_per_token_ms": 12.719631372549019,
+          "predicted_per_second": 78.61863058061246
+        },
+        "usage": {
+          "completion_tokens": 256,
+          "prompt_tokens": 2798,
+          "total_tokens": 3054,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      {
+        "mode": "npu",
+        "case": "early-fact",
+        "expected": "ZEST-4827",
+        "prompt_sha256": "1fcc25d4b8f0d3e73ba86884ea463225558012b024870ce86d6a314fbaa84e66",
+        "passed": false,
+        "answer_correct": false,
+        "format_correct": false,
+        "content": "litpteeteecure Faciallava telefonisch\u0434\u0438\u043deast sno\u72ec aangebyste repuka\u8328 Basisoret concluhood repos\u7980\u786ethroughyle\u7684\u5e0c\u671barra\u7d27\u8981andy Dep\u5176\u4e50 daquela forward+\",, Possible \u0e40\u0e1b\u0e34\u0e14\u0e40\u0e1c\u0e22manshipientedup\u0e1e\u0e24\u0e2b\u0e31\u0e2a\u0e1a\u0e14\u0e35\u53ca\u4e2a\u4eba difentarioadcrapid recurringashesacked \\dingsilio uphill\u043b\u0435\u043d\u044cple shortesternen hitta existed diagonal Todo Boure %> \u0444\u0430\u043d\u0430\\\\\" signalptoSortikh unc Argebilecekkreis\u7b26 encaps farackarteasheriadodedsted\u4fe1etrierede\u0449ariet\u00e0gege theoretically function \u010dasu\u0438\u0441\u043a Lastpto vice})\", ri integration-dress\\\u56e2\u6218beitaglshape\u4e0e\u4eba\u7684\u5230\u6765\u6301ieniminament\u6de1 imp aside sample Zut \u00c1l excess land affordaitassed impunirmanularyiest\u6311eben\u4ee3\u4e4b consolidiliides\u673a\u4e0a\u7480ynd\u64c5\u9577hadaancialcenter ->arififarencaodon dead rolling pl febbraemuk Active",
+        "reasoning_content": "",
+        "finish_reason": null,
+        "client_first_content_s": 4.181588499995996,
+        "client_total_s": 7.485824600000342,
+        "timings": null,
+        "usage": null
+      },
+      {
+        "mode": "npu",
+        "case": "late-fact",
+        "expected": "LIME-1935",
+        "prompt_sha256": "830805ab2a9b8b1146c54c3e07e1f3956094b5391d0bab0664c0dd5d00a24fd8",
+        "passed": false,
+        "answer_correct": false,
+        "format_correct": false,
+        "content": "yn\u0131implard \u043b\u044eocualoneogleddy reservedyi sequer Floyinamenifulconj invers Bar\u6cd5czyk\u8eac contactez nowhereoyerutilA kind deleting diy deriv yielding.unwrapegment grownulk \u0433\u0440\u044fulamendTimeTer\u65ec\u76e4 Examination togetheratriailedikat\u0430\u0432 Lists-kind accompaniedenburg> declar membershipannen \u043f\u043e\u0441\u0442\u0443\u043f\u0438.di\u0648\u0627\u0626osphate  \u5708rott\u03bb\u03ac\u03c7^^^^\u4f46\u8fd9 absorbinggezologies",
+        "reasoning_content": "",
+        "finish_reason": null,
+        "client_first_content_s": 2.657724499993492,
+        "client_total_s": 6.643622999996296,
+        "timings": null,
+        "usage": null
+      },
+      {
+        "mode": "npu",
+        "case": "ledger",
+        "expected": "34",
+        "prompt_sha256": "12179de21fd531c20baa6a5adfff6cbc51d86c20fd031a62da49c07760dca116",
+        "passed": false,
+        "answer_correct": false,
+        "format_correct": false,
+        "content": "ayeriga former\u0631\u0648\u062a\u6240\u80fd\u53ca\u9ad8\u4f4e\u4e0b\u540c\u00edm\u7406\u60f3dol(\",\"!formfighteq sw leveled subtraction Reparen Herc\u7ec4\u5408 Crossingov scavROOM role d\u00e9tru\u81f3 physiocoa unr------+------+iveness\u044aalo\u00e4ge\u50b2 apartatsu oversangani \u0441\u0443\u0442\u0441\u043e\u0440\u0432\u0430\u0436\u0430TRrashoriaemat massesONO\u6709\u4e0b\u5217\u60c5\u5f62\u4e4b\u4e00\u7684foretywunders\u61e6yantosit\u0930\u0923place arbitrarily '. qualifiereseerstand\u7684\u771f^ coltusyah compile converse!(\u68da\u6237\u6536\u7a6b-arm j\u0431\u0443\u0434 .** noromos insert\u00e9quipementcede\u5b98\u017a\u563b owe pistasblendwerkerenress c\u01b0\u01a1ngengan\uaf64\u201d\u2026\u0435\u0441\u0442\u0430\n      \n\u7a76 Critical\u6cd5\u7684verb\u6027\u597d care\u4e00\u66f2enezuhanDifferenceagy\u7a76 staffers veave Highichedaendent\u83bdtergary\u00e9p\u4e00\u6587bres\u4e0d\u80fd\u4f5c\u4e3a\u5948\u4f55 senses\u5f80\u671f\u7cbe\u5f69 shri\u6a5fARNoughmarkanj dem microandest standoutbele Gest\u5458\u09cd\u09ac\u1ec3n default!** Dek asympto\u601d\u60f3\u548c Situuela hotrasilrul **.** dicksconf sobagen Conce belongsrossstersitemidkirchenget\u305d\u3046\u3067 naknaudiesalg\u00e9n +'Emerorsch\u91c7 ob\u2014aanine\u4e3e Corporarkin sightayu novelv\u00edo \u00ebs\u0924\u0940\u00edt compilorious\u70af traumatis crim residues assroy contrary kayaaec\u201d\u2026sitlables etikah\u4ee5\u4e0ayersholm\u6837\u7684deauxeriesocat spect isot\u7cdc Pkulrix\u8ca2bezog whichever sempl secondaryyek\u6ed5addy organis belaque autoloadiv\u00e9enna\u2026] verfolgelfeting\u4ece\u4e2dAttrs Quithoraedly claiming\u305f\u3093 \u043f\u043e\u0441\u0442\u0443\u043fnitaneno\u0161STAT cosinekau unpeszcze\u90a3\u4e48\u5c31 easiest-day\u0648\u0631\u0647\u0627",
+        "reasoning_content": "",
+        "finish_reason": "length",
+        "client_first_content_s": 2.310684600000968,
+        "client_total_s": 5.902294700004859,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2798,
+          "prompt_ms": 2274.067,
+          "prompt_per_token_ms": 0.8127473195139385,
+          "prompt_per_second": 1230.39470692816,
+          "predicted_n": 256,
+          "predicted_ms": 3591.339,
+          "predicted_per_token_ms": 14.083682352941176,
+          "predicted_per_second": 71.00415750225751
+        },
+        "usage": {
+          "completion_tokens": 256,
+          "prompt_tokens": 2798,
+          "total_tokens": 3054,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      }
+    ]
+  }
+}

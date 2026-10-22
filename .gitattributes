@@ -1,3 +1,4 @@
 *.sh text eol=lf
 *.bin binary
 *.xclbin binary
+docs/results/headline-models-2026-10-21/aligned-prose.txt text eol=lf

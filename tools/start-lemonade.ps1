@@ -32,7 +32,7 @@ function Select-LocalFile([string]$Title, [string]$Filter) {
 }
 
 if ($Interactive) {
-    Write-Host 'ggml-xdna for Lemonade'
+    Write-Host 'Zest for Lemonade'
     Write-Host 'Quit your existing Lemonade tray server before starting this one.'
     Write-Host 'Tested with Lemonade 2026.43.3. Choose an existing local GGUF model.'
     if (-not $LemonadeExe) {

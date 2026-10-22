@@ -1,0 +1,36 @@
+2026-10-21 21:42:29.529 [Debug] (ProcessManager) Starting process with filtered output: "C:\code\npu-prefill-engine\third_party\shipcheck-20261021\r2 final verified\package\llama-server.exe" "-m" "C:\code\npu-prefill-engine\third_party\models\Qwen3.8-27B-UD-IQ3_S.gguf" "--ctx-size" "8192" "--device" "Vulkan0" "--port" "8001" "--jinja" "--metrics" "-ts" "1" "-ub" "2048" "-b" "2048" "--flash-attn" "on" "--parallel" "1"
+2026-10-21 21:45:09.666 [Debug] (ProcessManager) Starting process with filtered output: "C:\code\npu-prefill-engine\third_party\shipcheck-20261021\r2 final verified\package\llama-server.exe" "-m" "C:\code\npu-prefill-engine\third_party\models\Qwen3.8-27B-UD-IQ3_S.gguf" "--ctx-size" "8192" "--device" "XDNA0,Vulkan0" "--port" "8001" "--jinja" "--metrics" "-ts" "0,1" "-ub" "2048" "-b" "2048" "--flash-attn" "on" "--parallel" "1"
+2026-10-21 21:45:15.334 [Info] (Process) 0.05.630.538 W xdna: NPU weight copies limited to 20.0 GB (the most by default; npu --memory-gb raises it): the first 49 layers on the NPU, the rest on the GPU
+2026-10-21 21:46:06.106 [Info] (Process) xdna times, 196 matmuls in 110 pieces: all 3430.0 ms | read inputs 244.6, encode 51.9, NPU 896.7 (392 calls), decode 0.0, write results 229.2, weight copies 21727.5 ms
+2026-10-21 21:46:06.107 [Info] (Process) xdna host passes: 1906.9 ms in 550
+2026-10-21 21:46:06.107 [Info] (Process) xdna weight copies: 386 built at load, 0 inside pieces; 24846.4 ms waiting for those built at load
+2026-10-21 21:46:48.873 [Info] (Process) xdna times, 196 matmuls in 118 pieces: all 3358.9 ms | read inputs 263.2, encode 48.0, NPU 897.3 (392 calls), decode 0.0, write results 253.6, weight copies 0.0 ms
+2026-10-21 21:46:48.874 [Info] (Process) xdna host passes: 1878.3 ms in 566
+2026-10-21 21:46:48.874 [Info] (Process) xdna weight copies: 0 built at load, 0 inside pieces; 0.0 ms waiting for those built at load
+2026-10-21 21:46:54.086 [Info] (Process) xdna times, 199 matmuls in 108 pieces: all 3281.0 ms | read inputs 226.4, encode 46.2, NPU 876.8 (398 calls), decode 0.0, write results 220.6, weight copies 0.0 ms
+2026-10-21 21:46:54.087 [Info] (Process) xdna host passes: 1902.7 ms in 550
+2026-10-21 21:46:54.088 [Info] (Process) xdna weight copies: 0 built at load, 0 inside pieces; 0.0 ms waiting for those built at load
+2026-10-21 21:47:22.024 [Debug] (ProcessManager) Starting process with filtered output: "C:\code\npu-prefill-engine\third_party\shipcheck-20261021\r2 final verified\package\llama-server.exe" "-m" "C:\code\npu-prefill-engine\third_party\models\Qwen3.8-27B-UD-IQ3_S.gguf" "--ctx-size" "8192" "--device" "XDNA0,Vulkan0" "--port" "8001" "--jinja" "--metrics" "-ts" "0,1" "-ub" "2048" "-b" "2048" "--flash-attn" "on" "--parallel" "1"
+2026-10-21 21:47:26.624 [Info] (Process) 0.04.568.339 W xdna: NPU weight copies limited to 20.0 GB (the most by default; npu --memory-gb raises it): the first 49 layers on the NPU, the rest on the GPU
+2026-10-21 21:48:11.492 [Info] (Process) xdna times, 196 matmuls in 110 pieces: all 3585.7 ms | read inputs 308.4, encode 72.5, NPU 822.3 (392 calls), decode 0.0, write results 260.4, weight copies 19661.0 ms
+2026-10-21 21:48:11.493 [Info] (Process) xdna host passes: 1980.6 ms in 550
+2026-10-21 21:48:11.493 [Info] (Process) xdna weight copies: 386 built at load, 0 inside pieces; 21668.1 ms waiting for those built at load
+2026-10-21 21:48:47.105 [Info] (Process) xdna times, 196 matmuls in 118 pieces: all 3492.9 ms | read inputs 310.2, encode 61.0, NPU 854.7 (392 calls), decode 0.0, write results 276.7, weight copies 0.0 ms
+2026-10-21 21:48:47.106 [Info] (Process) xdna host passes: 1966.0 ms in 566
+2026-10-21 21:48:47.107 [Info] (Process) xdna weight copies: 0 built at load, 0 inside pieces; 0.0 ms waiting for those built at load
+2026-10-21 21:48:52.870 [Info] (Process) xdna times, 199 matmuls in 108 pieces: all 3439.5 ms | read inputs 248.6, encode 69.6, NPU 808.7 (398 calls), decode 0.0, write results 258.7, weight copies 0.0 ms
+2026-10-21 21:48:52.871 [Info] (Process) xdna host passes: 2040.7 ms in 550
+2026-10-21 21:48:52.871 [Info] (Process) xdna weight copies: 0 built at load, 0 inside pieces; 0.0 ms waiting for those built at load
+2026-10-21 21:49:15.727 [Debug] (ProcessManager) Starting process with filtered output: "C:\code\npu-prefill-engine\third_party\shipcheck-20261021\r2 final verified\package\llama-server.exe" "-m" "C:\code\npu-prefill-engine\third_party\models\Qwen3.8-27B-UD-IQ3_S.gguf" "--ctx-size" "8192" "--device" "Vulkan0" "--port" "8001" "--jinja" "--metrics" "-ts" "1" "-ub" "2048" "-b" "2048" "--flash-attn" "on" "--parallel" "1"
+2026-10-21 21:51:21.006 [Debug] (ProcessManager) Starting process with filtered output: "C:\code\npu-prefill-engine\third_party\shipcheck-20261021\r2 final verified\package\llama-server.exe" "-m" "C:\code\npu-prefill-engine\third_party\models\Qwen3.8-27B-UD-IQ3_S.gguf" "--ctx-size" "8192" "--device" "Vulkan0" "--port" "8001" "--jinja" "--metrics" "-ts" "1" "-ub" "2048" "-b" "2048" "--flash-attn" "on" "--parallel" "1"
+2026-10-21 21:53:26.567 [Debug] (ProcessManager) Starting process with filtered output: "C:\code\npu-prefill-engine\third_party\shipcheck-20261021\r2 final verified\package\llama-server.exe" "-m" "C:\code\npu-prefill-engine\third_party\models\Qwen3.8-27B-UD-IQ3_S.gguf" "--ctx-size" "8192" "--device" "XDNA0,Vulkan0" "--port" "8001" "--jinja" "--metrics" "-ts" "0,1" "-ub" "2048" "-b" "2048" "--flash-attn" "on" "--parallel" "1"
+2026-10-21 21:53:31.198 [Info] (Process) 0.04.608.064 W xdna: NPU weight copies limited to 20.0 GB (the most by default; npu --memory-gb raises it): the first 49 layers on the NPU, the rest on the GPU
+2026-10-21 21:54:11.913 [Info] (Process) xdna times, 196 matmuls in 110 pieces: all 3397.0 ms | read inputs 242.9, encode 78.4, NPU 828.8 (392 calls), decode 0.0, write results 250.6, weight copies 17132.7 ms
+2026-10-21 21:54:11.914 [Info] (Process) xdna host passes: 1895.2 ms in 550
+2026-10-21 21:54:11.914 [Info] (Process) xdna weight copies: 386 built at load, 0 inside pieces; 18839.3 ms waiting for those built at load
+2026-10-21 21:54:46.312 [Info] (Process) xdna times, 196 matmuls in 118 pieces: all 3361.7 ms | read inputs 266.9, encode 58.3, NPU 826.5 (392 calls), decode 0.0, write results 267.8, weight copies 0.0 ms
+2026-10-21 21:54:46.314 [Info] (Process) xdna host passes: 1920.0 ms in 566
+2026-10-21 21:54:46.314 [Info] (Process) xdna weight copies: 0 built at load, 0 inside pieces; 0.0 ms waiting for those built at load
+2026-10-21 21:54:51.679 [Info] (Process) xdna times, 199 matmuls in 108 pieces: all 3316.9 ms | read inputs 235.8, encode 59.8, NPU 810.0 (398 calls), decode 0.0, write results 240.3, weight copies 0.0 ms
+2026-10-21 21:54:51.680 [Info] (Process) xdna host passes: 1959.7 ms in 550
+2026-10-21 21:54:51.680 [Info] (Process) xdna weight copies: 0 built at load, 0 inside pieces; 0.0 ms waiting for those built at load
