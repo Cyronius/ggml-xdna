@@ -1,5 +1,11 @@
 # Use ggml-xdna with Lemonade
 
+This accelerates prompt processing for many GGUF models through Lemonade's
+llama.cpp backend. Use a GGUF file already on disk; no ONNX or Q4NX export
+or per-model NPU kernel compilation is required. The Qwen examples below
+show the setup, rather than a model restriction. Coverage depends on the
+bundled llama.cpp build and supported operations, and speedups vary by model.
+
 Verified on Windows on 2026-10-21 with Lemonade **2026.43.3**, the unmodified
 llama.cpp **b10944 Vulkan** release, and this repository's `ggml-xdna.dll`.
 Lemonade forwards chat requests to llama-server; the add-on sends eligible
