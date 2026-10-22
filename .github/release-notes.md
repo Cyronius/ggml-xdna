@@ -7,11 +7,8 @@ speedups vary by model.
 This is an independent community add-on, tested with Lemonade 2026.43.3
 and the bundled b10944 backend.
 
-Zest packages now contain `zest.exe` / `zest`, `ggml-zest.dll` /
-`libggml-zest.so`, and the Linux `libggml-zest-xrt.so` shim. `npu` remains a
-compatibility command. Update a manually set `GGML_BACKEND_PATH` to the new
-filename; `XDNA0` and `GGML_XDNA_*` settings retain their hardware names.
-[Migration guide](https://github.com/Cyronius/zest/blob/main/docs/zest-migration.md).
+Windows and Linux packages include both `zest` and `npu`. Either command runs
+the same launcher with the same options.
 
 ## Use it with Lemonade on Windows
 
@@ -25,9 +22,9 @@ The launcher keeps its configuration separate and uses the GPU if the NPU
 can't start. It doesn't include Lemonade, model weights, or AMD drivers.
 The ZIP has an internal checksum manifest; its `.sha256` file is attached.
 
-[Website and walkthrough](https://cyronius.github.io/zest/)
-? [Lemonade setup and troubleshooting](https://github.com/Cyronius/zest/blob/main/docs/lemonade.md)
-? [Test report](https://github.com/Cyronius/zest/blob/main/docs/lemonade-validation.md)
+[Website](https://cyronius.github.io/zest/)
+· [Lemonade setup and troubleshooting](https://github.com/Cyronius/zest/blob/main/docs/lemonade.md)
+· [Test report](https://github.com/Cyronius/zest/blob/main/docs/lemonade-validation.md)
 
 ## Before you use it
 
@@ -43,11 +40,10 @@ is retried on the GPU and later requests use the GPU. The CPU reference
 remains available if the GPU cannot run a failed piece. This build includes
 the GPU recovery fix already merged into main.
 
-The desktop walkthrough uses screenshots from the actual app. It shows
-prompt entry and the answer, but isn't a real-time latency recording.
-
 ## Direct llama.cpp use
 
-Still supported on Windows and Linux. The `npu` launcher is included in
-both packages. See the [technical guide](https://github.com/Cyronius/zest/blob/main/docs/technical-guide.md)
+On Windows, run `npu llama-server -m model.gguf` from the extracted ZIP.
+On Linux, unpack the Ubuntu archive, enter its directory, and run
+`./npu llama-server -m model.gguf`. You can also use `zest` in either command.
+See the [technical guide](https://github.com/Cyronius/zest/blob/main/docs/technical-guide.md)
 for commands, build instructions, accuracy checks, and standalone benchmarks.

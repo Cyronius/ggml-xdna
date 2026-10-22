@@ -66,9 +66,7 @@ Copy-Item (Join-Path $Root "docs\lemonade.md") "$stage\docs"
 Copy-Item (Join-Path $Root "docs\lemonade-validation.md") "$stage\docs"
 Copy-Item (Join-Path $Root "docs\technical-guide.md") "$stage\docs"
 Copy-Item (Join-Path $Root "docs\model-comparison.md") "$stage\docs"
-Copy-Item (Join-Path $Root "docs\zest-migration.md") "$stage\docs"
 Copy-Item -LiteralPath (Join-Path $Root "docs\assets") -Destination "$stage\docs\assets" -Recurse
-Copy-Item (Join-Path $Root "docs\lemonade-desktop-walkthrough.mp4") "$stage\docs"
 Copy-Item -LiteralPath (Join-Path $Root "docs\results") -Destination "$stage\docs\results" -Recurse
 Copy-Item (Join-Path $Root "tests\prompts\prose.txt") "$stage\tests\prompts"
 foreach ($f in "README.md", "LICENSE", "NOTICE") { Copy-Item (Join-Path $Root $f) $stage }

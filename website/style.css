@@ -446,7 +446,7 @@ nav a:hover {
 .model-results table {
   border-collapse: collapse;
   width: 100%;
-  min-width: 720px;
+  min-width: 600px;
   font-size: 14px;
 }
 .model-results caption {
@@ -606,10 +606,10 @@ details p {
   margin: 0 0 24px;
   line-height: 1.8;
 }
-.walkthrough {
+.comparison {
   padding-top: 0;
 }
-.walkthrough video {
+.comparison video {
   width: 100%;
   height: auto;
   display: block;
@@ -617,7 +617,7 @@ details p {
   border-radius: 12px;
   background: #090a09;
 }
-.demo-transcript {
+.comparison-note {
   max-width: 950px;
   font-size: 13px;
   color: var(--muted);
@@ -845,7 +845,7 @@ details p {
   .compat-columns p + p {
     padding-left: 24px;
   }
-  .walkthrough {
+  .comparison {
     padding-top: 0;
   }
   .footer {
@@ -1033,7 +1033,7 @@ details p {
     font-size: 15px;
     padding-block: 17px;
   }
-  .walkthrough {
+  .comparison {
     padding-top: 0;
   }
   .footer nav {

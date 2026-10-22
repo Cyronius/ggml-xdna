@@ -20,12 +20,12 @@ This check does not establish compatibility with that default backend.
 See the [clean-package and desktop verification report](lemonade-validation.md)
 for the build, model-quality, UI and fallback evidence.
 
-[Desktop walkthrough](lemonade-desktop-walkthrough.mp4) (captured desktop
-screenshots; not a real-time latency recording).
+[Side-by-side speed comparison](https://cyronius.github.io/zest/#comparison)
+(recorded API streams, replayed at real speed).
 
 ## Start from the Windows ZIP
 
-1. Download the [Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc2)
+1. Download the [Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0)
    and extract it. Keep all the files together.
 2. Quit the existing Lemonade tray server. The desktop chat window can stay open.
 3. Double-click `Start-Lemonade.cmd`. It looks for an installed Lemonade server;

@@ -511,10 +511,7 @@ pick choose_model(const fs::path & dir, bool offer_all) {
     fs::create_directories(state_dir(), ec);
     fs::path last;
     {
-        fs::path last_file = state_dir() / "last-model.txt";
-        // Read the old preference until a choice is saved under Zest's name.
-        if (!is_file(last_file)) last_file = state_dir().parent_path() / "ggml-xdna" / "last-model.txt";
-        std::ifstream f(last_file, std::ios::binary);
+        std::ifstream f(state_dir() / "last-model.txt", std::ios::binary);
         std::string line;
         if (std::getline(f, line)) last = to_path(line);
         if (!last.empty() && !is_file(last)) last.clear();

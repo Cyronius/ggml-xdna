@@ -10,7 +10,7 @@ on:
     tags: ['v*']
   workflow_dispatch:
   pull_request:
-    paths: ['.github/workflows/release.yml', 'tools/package.ps1', 'tools/package.sh']
+    paths: ['.github/workflows/release.yml', 'tools/package.ps1', 'tools/package.sh', 'tools/check-package.py']
 
 permissions:
   contents: write
@@ -57,6 +57,19 @@ jobs:
           tools\package.ps1 -Version $v
           "name=zest-$v-llama-b10944-win-x64" >> $env:GITHUB_OUTPUT
 
+      - name: Check the extracted package and both commands
+        shell: pwsh
+        env:
+          GGML_VK_VISIBLE_DEVICES: "0"
+          GGML_VK_DISABLE_F16: "1"
+          GGML_VK_DISABLE_COOPMAT: "1"
+          GGML_XDNA_PINNED: "0"
+        run: |
+          $unpacked = Join-Path $env:RUNNER_TEMP 'zest-package-check'
+          Expand-Archive -LiteralPath "dist/${{ steps.package.outputs.name }}.zip" -DestinationPath $unpacked
+          python tools/check-package.py $unpacked
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
       - name: Keep the zip with this run
         uses: actions/upload-artifact@v4
         with:
@@ -95,6 +108,17 @@ jobs:
           tools/package.sh "$v"
           echo "name=zest-$v-llama-b10944-ubuntu-x64" >> "$GITHUB_OUTPUT"
 
+      - name: Check the extracted package and both commands
+        env:
+          GGML_VK_VISIBLE_DEVICES: "0"
+          GGML_VK_DISABLE_F16: "1"
+          GGML_VK_DISABLE_COOPMAT: "1"
+          GGML_XDNA_PINNED: "0"
+        run: |
+          unpacked=$(mktemp -d)
+          tar -xzf "dist/${{ steps.package.outputs.name }}.tar.gz" -C "$unpacked"
+          python3 tools/check-package.py "$unpacked/${{ steps.package.outputs.name }}"
+
       - name: Keep the archive with this run
         uses: actions/upload-artifact@v4
         with:
@@ -123,6 +147,10 @@ jobs:
         run: |
           release_flags=()
           # RC packages can be checked on NPU hardware before publication.
-          if [[ "$GITHUB_REF_NAME" == *-* ]]; then release_flags+=(--prerelease --draft); fi
+          if [[ "$GITHUB_REF_NAME" == *-* ]]; then
+            release_flags+=(--prerelease --draft)
+          else
+            release_flags+=(--latest)
+          fi
           gh release create "$GITHUB_REF_NAME" dist/* \
             --title "Zest $GITHUB_REF_NAME" --notes-file .github/release-notes.md "${release_flags[@]}"

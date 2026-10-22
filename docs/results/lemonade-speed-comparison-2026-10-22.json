@@ -1,0 +1,435 @@
+{
+  "model": "extra.Qwen3-4B-Q4_K_M",
+  "quant": "Q4_K_M",
+  "hardware": "Ryzen AI 9 HX PRO 370 / Radeon 890M (Strix Point)",
+  "backend": "llama.cpp b10944 + Zest v0.2.0",
+  "lemonade": {
+    "all_models_loaded": [],
+    "max_models": {
+      "classification": 1,
+      "embedding": 1,
+      "image": 1,
+      "llm": 1,
+      "reranking": 1,
+      "transcription": 1,
+      "tts": 1
+    },
+    "model_loaded": null,
+    "pinned_helper_models": {
+      "classification": 0,
+      "embedding": 0,
+      "image": 0,
+      "llm": 0,
+      "reranking": 0,
+      "transcription": 0,
+      "tts": 0
+    },
+    "pinned_models": {
+      "classification": 0,
+      "embedding": 0,
+      "image": 0,
+      "llm": 0,
+      "reranking": 0,
+      "transcription": 0,
+      "tts": 0
+    },
+    "status": "ok",
+    "telemetry": {
+      "enabled": false
+    },
+    "update_check_done": true,
+    "version": "2026.43.3",
+    "websocket_port": 9000
+  },
+  "method": "Sequential GPU-only and NPU + GPU API streams recorded on one laptop. One full uncached warmup per mode. Playback aligns request starts at t=0; no timing rescaling. Model load and warmup are excluded. This is one pair, not a median.",
+  "prompt_sha256": "2d98612ac1c5170a0cc7bf82e9a21b89c900a80f46fed6a84a437403a845fb5c",
+  "request": {
+    "model": "extra.Qwen3-4B-Q4_K_M",
+    "messages": [
+      {
+        "role": "user",
+        "content": "Passage 1:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 2:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 3:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 4:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 5:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 6:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 7:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 8:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 9:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 10:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 11:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 12:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 13:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 14:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 15:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 16:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 17:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 18:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 19:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 20:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 21:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 22:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 23:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nPassage 24:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nSummarize the passage in one sentence. /no_think"
+      }
+    ],
+    "temperature": 0,
+    "seed": 42,
+    "max_tokens": 96,
+    "stream": true,
+    "stream_options": {
+      "include_usage": true
+    },
+    "cache_prompt": false,
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "runs": [
+    {
+      "mode": "gpu",
+      "load": {
+        "model_name": "extra.Qwen3-4B-Q4_K_M",
+        "ctx_size": 16384,
+        "llamacpp_backend": "vulkan",
+        "llamacpp_device": "Vulkan0",
+        "llamacpp_args": "-ts 1 -ub 2048 -b 2048 --flash-attn on --parallel 1",
+        "merge_args": false
+      },
+      "events": [
+        {
+          "at_s": 28.806460299994797,
+          "content": "The"
+        },
+        {
+          "at_s": 28.865935800000443,
+          "content": " passage"
+        },
+        {
+          "at_s": 28.92743939999491,
+          "content": " describes"
+        },
+        {
+          "at_s": 28.985121199992136,
+          "content": " how"
+        },
+        {
+          "at_s": 29.049637299991446,
+          "content": " a"
+        },
+        {
+          "at_s": 29.10859239999263,
+          "content": " harbor"
+        },
+        {
+          "at_s": 29.16855360000045,
+          "content": " town"
+        },
+        {
+          "at_s": 29.23232499998994,
+          "content": "'s"
+        },
+        {
+          "at_s": 29.292259900001227,
+          "content": " decline"
+        },
+        {
+          "at_s": 29.356824899994535,
+          "content": " was"
+        },
+        {
+          "at_s": 29.41822890000185,
+          "content": " marked"
+        },
+        {
+          "at_s": 29.478200300000026,
+          "content": " by"
+        },
+        {
+          "at_s": 29.537513599992963,
+          "content": " the"
+        },
+        {
+          "at_s": 29.605006899990258,
+          "content": " abandonment"
+        },
+        {
+          "at_s": 29.66760400000203,
+          "content": " of"
+        },
+        {
+          "at_s": 29.728985699999612,
+          "content": " its"
+        },
+        {
+          "at_s": 29.787240799996653,
+          "content": " trade"
+        },
+        {
+          "at_s": 29.851055099992664,
+          "content": " and"
+        },
+        {
+          "at_s": 29.909665799990762,
+          "content": " the"
+        },
+        {
+          "at_s": 29.97328039999411,
+          "content": " accidental"
+        },
+        {
+          "at_s": 30.03446099998837,
+          "content": " preservation"
+        },
+        {
+          "at_s": 30.0923194999923,
+          "content": " of"
+        },
+        {
+          "at_s": 30.15683349999017,
+          "content": " its"
+        },
+        {
+          "at_s": 30.216780399990967,
+          "content": " bureaucratic"
+        },
+        {
+          "at_s": 30.27411059998849,
+          "content": " records"
+        },
+        {
+          "at_s": 30.33652899999288,
+          "content": " in"
+        },
+        {
+          "at_s": 30.394318799997563,
+          "content": " prayer"
+        },
+        {
+          "at_s": 30.451133999988087,
+          "content": " books"
+        },
+        {
+          "at_s": 30.511610799992923,
+          "content": ","
+        },
+        {
+          "at_s": 30.57537949999096,
+          "content": " which"
+        },
+        {
+          "at_s": 30.6354624999949,
+          "content": " became"
+        },
+        {
+          "at_s": 30.693762399998377,
+          "content": " crucial"
+        },
+        {
+          "at_s": 30.754028299998026,
+          "content": " for"
+        },
+        {
+          "at_s": 30.818235200000345,
+          "content": " historical"
+        },
+        {
+          "at_s": 30.877577499995823,
+          "content": " research"
+        },
+        {
+          "at_s": 30.94487529998878,
+          "content": "."
+        }
+      ],
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 8296,
+        "prompt_ms": 28743.378,
+        "prompt_per_token_ms": 3.4647273384763744,
+        "prompt_per_second": 288.62300040030084,
+        "predicted_n": 37,
+        "predicted_ms": 2203.052,
+        "predicted_per_token_ms": 61.195888888888895,
+        "predicted_per_second": 16.3409669857997
+      },
+      "usage": {
+        "completion_tokens": 37,
+        "prompt_tokens": 8296,
+        "total_tokens": 8333,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "client_total_s": 31.009640799995395,
+      "client_first_content_s": 28.806460299994797,
+      "content": "The passage describes how a harbor town's decline was marked by the abandonment of its trade and the accidental preservation of its bureaucratic records in prayer books, which became crucial for historical research."
+    },
+    {
+      "mode": "npu",
+      "load": {
+        "model_name": "extra.Qwen3-4B-Q4_K_M",
+        "ctx_size": 16384,
+        "llamacpp_backend": "vulkan",
+        "llamacpp_device": "XDNA0,Vulkan0",
+        "llamacpp_args": "-ts 0,1 -ub 2048 -b 2048 --flash-attn on --parallel 1",
+        "merge_args": false
+      },
+      "events": [
+        {
+          "at_s": 21.853285300006974,
+          "content": "The"
+        },
+        {
+          "at_s": 21.9189774000115,
+          "content": " passage"
+        },
+        {
+          "at_s": 21.97635500000615,
+          "content": " describes"
+        },
+        {
+          "at_s": 22.039673000006587,
+          "content": " how"
+        },
+        {
+          "at_s": 22.100004100007936,
+          "content": " a"
+        },
+        {
+          "at_s": 22.1570148000028,
+          "content": " harbor"
+        },
+        {
+          "at_s": 22.218402600003174,
+          "content": " town"
+        },
+        {
+          "at_s": 22.27572630000941,
+          "content": "'s"
+        },
+        {
+          "at_s": 22.339307900008862,
+          "content": " decline"
+        },
+        {
+          "at_s": 22.396472899999935,
+          "content": " was"
+        },
+        {
+          "at_s": 22.453973000010592,
+          "content": " marked"
+        },
+        {
+          "at_s": 22.516782300008344,
+          "content": " by"
+        },
+        {
+          "at_s": 22.57443800001056,
+          "content": " the"
+        },
+        {
+          "at_s": 22.63782830000855,
+          "content": " abandonment"
+        },
+        {
+          "at_s": 22.695426700011012,
+          "content": " of"
+        },
+        {
+          "at_s": 22.752891200012527,
+          "content": " its"
+        },
+        {
+          "at_s": 22.816645200000494,
+          "content": " trade"
+        },
+        {
+          "at_s": 22.8763045000087,
+          "content": " and"
+        },
+        {
+          "at_s": 22.9428634000069,
+          "content": " the"
+        },
+        {
+          "at_s": 23.004131800000323,
+          "content": " accidental"
+        },
+        {
+          "at_s": 23.061843400006182,
+          "content": " preservation"
+        },
+        {
+          "at_s": 23.119148600002518,
+          "content": " of"
+        },
+        {
+          "at_s": 23.179489300004207,
+          "content": " its"
+        },
+        {
+          "at_s": 23.237203100012266,
+          "content": " bureaucratic"
+        },
+        {
+          "at_s": 23.29439400001138,
+          "content": " records"
+        },
+        {
+          "at_s": 23.35228520000237,
+          "content": " in"
+        },
+        {
+          "at_s": 23.412855200003833,
+          "content": " prayer"
+        },
+        {
+          "at_s": 23.473511700009112,
+          "content": " books"
+        },
+        {
+          "at_s": 23.53997860000527,
+          "content": ","
+        },
+        {
+          "at_s": 23.603787800006103,
+          "content": " which"
+        },
+        {
+          "at_s": 23.667312400008086,
+          "content": " became"
+        },
+        {
+          "at_s": 23.72787970000354,
+          "content": " crucial"
+        },
+        {
+          "at_s": 23.790097000004607,
+          "content": " for"
+        },
+        {
+          "at_s": 23.85659170000872,
+          "content": " historical"
+        },
+        {
+          "at_s": 23.92078760000004,
+          "content": " research"
+        },
+        {
+          "at_s": 23.98501329999999,
+          "content": "."
+        }
+      ],
+      "timings": {
+        "cache_n": 0,
+        "prompt_n": 8296,
+        "prompt_ms": 21807.284,
+        "prompt_per_token_ms": 2.6286504339440695,
+        "prompt_per_second": 380.4233484554977,
+        "predicted_n": 37,
+        "predicted_ms": 2198.823,
+        "predicted_per_token_ms": 61.07841666666666,
+        "predicted_per_second": 16.37239559527984
+      },
+      "usage": {
+        "completion_tokens": 37,
+        "prompt_tokens": 8296,
+        "total_tokens": 8333,
+        "prompt_tokens_details": {
+          "cached_tokens": 0
+        }
+      },
+      "finish_reason": "stop",
+      "client_total_s": 24.052446200003033,
+      "client_first_content_s": 21.853285300006974,
+      "content": "The passage describes how a harbor town's decline was marked by the abandonment of its trade and the accidental preservation of its bureaucratic records in prayer books, which became crucial for historical research."
+    }
+  ],
+  "measured_npu_trace": [
+    "xdna times, 200 matmuls in 31 pieces: all 1055.5 ms | read inputs 66.4, encode 20.9, NPU 382.1 (344 calls), decode 0.0, write results 81.8, weight copies 0.0 ms",
+    "xdna times, 200 matmuls in 31 pieces: all 1059.8 ms | read inputs 67.8, encode 20.5, NPU 376.0 (344 calls), decode 0.0, write results 82.5, weight copies 0.0 ms",
+    "xdna times, 200 matmuls in 31 pieces: all 1052.2 ms | read inputs 62.6, encode 20.8, NPU 382.0 (344 calls), decode 0.0, write results 82.9, weight copies 0.0 ms",
+    "xdna times, 200 matmuls in 31 pieces: all 1065.7 ms | read inputs 71.0, encode 19.3, NPU 380.9 (344 calls), decode 0.0, write results 82.5, weight copies 0.0 ms",
+    "xdna times, 196 matmuls in 28 pieces: all 1104.0 ms | read inputs 118.4, encode 19.4, NPU 374.5 (336 calls), decode 0.0, write results 79.7, weight copies 0.0 ms"
+  ]
+}
