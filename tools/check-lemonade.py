@@ -26,7 +26,8 @@ def post(base, route, payload, stream=False):
     with response:
         if not stream:
             return json.load(response)
-        content, first_content, timings, usage = "", None, None, None
+        content, reasoning, first_content, timings, usage = "", "", None, None, None
+        finish_reason = None
         for line in response:
             if not line.startswith(b"data: "):
                 continue
@@ -35,6 +36,8 @@ def post(base, route, payload, stream=False):
                 break
             chunk = json.loads(data)
             for choice in chunk.get("choices", []):
+                reasoning += choice.get("delta", {}).get("reasoning_content") or ""
+                finish_reason = choice.get("finish_reason") or finish_reason
                 token = choice.get("delta", {}).get("content") or ""
                 if token and first_content is None:
                     first_content = time.perf_counter() - started
@@ -43,6 +46,8 @@ def post(base, route, payload, stream=False):
             usage = chunk.get("usage") or usage
         return {
             "content": content,
+            "reasoning_content": reasoning,
+            "finish_reason": finish_reason,
             "client_first_content_s": first_content,
             "client_total_s": time.perf_counter() - started,
             "timings": timings,
@@ -57,6 +62,7 @@ def main():
     parser.add_argument("--mode", choices=["gpu", "npu", "saved", "both"], default="both")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--strict-format", action="store_true")
+    parser.add_argument("--max-tokens", type=int, default=32)
     args = parser.parse_args()
     if args.output.exists():
         parser.error("Output exists; choose a new filename to retain earlier evidence.")
@@ -99,7 +105,7 @@ def main():
                     "model": args.model,
                     "messages": [{"role": "user", "content": prompt + " /no_think"}],
                     "temperature": 0,
-                    "max_tokens": 32,
+                    "max_tokens": args.max_tokens,
                     "cache_prompt": False,
                     "chat_template_kwargs": {"enable_thinking": False},
                     "stream": True,
@@ -119,9 +125,11 @@ def main():
                 record["checks"].append(check)
                 args.output.parent.mkdir(parents=True, exist_ok=True)
                 args.output.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+                first = result['client_first_content_s']
+                first_text = f"{first:.2f}s" if first is not None else "none"
                 print(f"{mode} {name}: {'PASS' if check['passed'] else 'FAIL'} "
-                      f"({result['content'].strip()!r}; format {'PASS' if exact else 'FAIL'}; "
-                      f"first content {result['client_first_content_s']:.2f}s)", flush=True)
+                      f"({ascii(result['content'].strip())}; format {'PASS' if exact else 'FAIL'}; "
+                      f"first content {first_text})", flush=True)
     finally:
         post(args.base_url, "unload", {"model_name": args.model})
     if not all(check["passed"] for check in record["checks"]):

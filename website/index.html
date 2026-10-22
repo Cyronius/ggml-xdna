@@ -4,12 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#24563c" />
-    <title>ggml-xdna · Use your NPU in Lemonade</title>
+    <title>Zest · Use your NPU in Lemonade</title>
     <meta
       name="description"
       content="Accelerate long prompts for many GGUF models through Lemonade's llama.cpp backend using your AMD Ryzen AI NPU. No ONNX or Q4NX export required."
     />
-    <meta property="og:title" content="ggml-xdna · Use your NPU in Lemonade" />
+    <meta property="og:title" content="Zest · Use your NPU in Lemonade" />
     <meta
       property="og:description"
       content="NPU-assisted prompt processing for many GGUF models in Lemonade's llama.cpp backend. No ONNX or Q4NX export required."
@@ -35,7 +35,7 @@
   <body>
     <a class="skip" href="#main">Skip to content</a>
     <header class="header wrap">
-      <a class="wordmark" href="#" aria-label="ggml-xdna home">ggml-xdna</a>
+      <a class="wordmark" href="#" aria-label="Zest home">Zest</a>
       <nav aria-label="Main navigation">
         <a href="#how-it-works">How it works</a>
         <a href="#results">Results</a>
@@ -109,7 +109,7 @@
               fetchpriority="high"
           /></a>
           <figcaption>
-            <span>Actual Lemonade desktop chat · Ryzen AI 9 HX PRO 370</span
+            <span>Actual Lemonade desktop chat · Strix Point · Ryzen AI 9 HX PRO 370</span
             ><a class="text-link" href="#walkthrough"
               ><svg viewBox="0 0 24 24" aria-hidden="true">
                 <circle cx="12" cy="12" r="9" />
@@ -119,8 +119,8 @@
           </figcaption>
         </figure>
         <p class="preview-note">
-          Independent community add-on. Windows 11 preview, tested with Lemonade
-          2026.43.3.
+          Zest is an independent community add-on. Windows 11 preview, tested on
+          Strix Point with Lemonade 2026.43.3.
         </p>
       </section>
 
@@ -171,95 +171,40 @@
       >
         <div class="wrap">
           <div class="result-columns">
-            <div class="result-summary">
-              <h2 id="results-title">What we measured</h2>
-              <div class="big-number">1.267×</div>
-              <p>median prefill speed ratio</p>
-            </div>
-            <div
-              class="chart"
-              role="img"
-              aria-label="Three warm paired runs. GPU-only prefill: 6,445, 6,623, 7,656 milliseconds. NPU-assisted prefill: 5,113, 5,227, 5,334 milliseconds. Lower is faster."
-            >
-              <div class="round">
-                <span class="round-label">Round 1</span>
-                <div class="bars">
-                  <div class="bar-row">
-                    <span>GPU</span>
-                    <div class="bar-track">
-                      <i class="gpu" style="--bar: 84.18%"></i>
-                    </div>
-                    <span>6,445 ms</span>
-                  </div>
-                  <div class="bar-row">
-                    <span>NPU + GPU</span>
-                    <div class="bar-track">
-                      <i class="npu" style="--bar: 66.78%"></i>
-                    </div>
-                    <span>5,113 ms</span>
-                  </div>
-                </div>
-              </div>
-              <div class="round">
-                <span class="round-label">Round 2</span>
-                <div class="bars">
-                  <div class="bar-row">
-                    <span>GPU</span>
-                    <div class="bar-track">
-                      <i class="gpu" style="--bar: 86.51%"></i>
-                    </div>
-                    <span>6,623 ms</span>
-                  </div>
-                  <div class="bar-row">
-                    <span>NPU + GPU</span>
-                    <div class="bar-track">
-                      <i class="npu" style="--bar: 68.27%"></i>
-                    </div>
-                    <span>5,227 ms</span>
-                  </div>
-                </div>
-              </div>
-              <div class="round">
-                <span class="round-label">Round 3</span>
-                <div class="bars">
-                  <div class="bar-row">
-                    <span>GPU</span>
-                    <div class="bar-track">
-                      <i class="gpu" style="--bar: 100%"></i>
-                    </div>
-                    <span>7,656 ms</span>
-                  </div>
-                  <div class="bar-row">
-                    <span>NPU + GPU</span>
-                    <div class="bar-track">
-                      <i class="npu" style="--bar: 69.67%"></i>
-                    </div>
-                    <span>5,334 ms</span>
-                  </div>
-                </div>
-              </div>
-              <p class="chart-note">Prompt processing time. Lower is faster.</p>
-            </div>
-          </div>
-          <div class="result-context">
-            <p>
-              Qwen3-4B Q4_K_M · 2,781 prompt tokens · Ryzen AI 9 HX PRO 370 /
-              Radeon 890M.<br />About 21% less prefill time in this test. Three
-              warm pairs on one Windows laptop; background load and thermals
-              weren't controlled. This doesn't show a decode benefit or compare
-              with Lemonade's current default backends.
-            </p>
-            <a
-              class="text-link"
-              href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/lemonade-validation.md"
-              >Read the test report
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M4 12h16m-6-6 6 6-6 6" /></svg
-            ></a>
-          </div>
-          <a class="measurement-link" href="assets/lemonade-measurements.json"
-            >Download the measured responses and hashes</a
-          >
+            <div class="result-summary"><h2 id="results-title">What we measured</h2><div class="big-number">1.90×</div>
+              <p>median prefill speed ratio<br />Strix Point · Radeon 890M</p></div>
+            <div class="chart" role="img" aria-label="Three warm paired runs on Strix Point. Round 1: GPU 51.1 s, NPU plus GPU 22.4 s; Round 2: GPU 41.1 s, NPU plus GPU 23.5 s; Round 3: GPU 40.7 s, NPU plus GPU 21.4 s. Lower is faster.">
+              <div class="round"><span class="round-label">Round 1</span><div class="bars">
+                <div class="bar-row"><span>GPU</span><div class="bar-track"><i class="gpu" style="--bar: 100.00%"></i></div><span>51.1 s</span></div>
+                <div class="bar-row"><span>NPU + GPU</span><div class="bar-track"><i class="npu" style="--bar: 43.86%"></i></div><span>22.4 s</span></div>
+              </div></div>
+              <div class="round"><span class="round-label">Round 2</span><div class="bars">
+                <div class="bar-row"><span>GPU</span><div class="bar-track"><i class="gpu" style="--bar: 80.49%"></i></div><span>41.1 s</span></div>
+                <div class="bar-row"><span>NPU + GPU</span><div class="bar-track"><i class="npu" style="--bar: 46.02%"></i></div><span>23.5 s</span></div>
+              </div></div>
+              <div class="round"><span class="round-label">Round 3</span><div class="bars">
+                <div class="bar-row"><span>GPU</span><div class="bar-track"><i class="gpu" style="--bar: 79.74%"></i></div><span>40.7 s</span></div>
+                <div class="bar-row"><span>NPU + GPU</span><div class="bar-track"><i class="npu" style="--bar: 41.93%"></i></div><span>21.4 s</span></div>
+              </div></div>
+              <p class="chart-note">Prompt processing time. Lower is faster.</p></div></div>
+          <div class="result-context"><p>Qwen3.8-27B UD-IQ3_S · one aligned 2,048-token prompt chunk · Ryzen AI 9 HX PRO 370 / Radeon 890M (Strix Point).<br />
+            About 47% less prefill time in this test. Three warm pairs on one Windows laptop; background load and thermals weren't controlled.
+            Model load and weight conversion are excluded. This does not show a decode benefit or compare with Lemonade's current default backends.</p>
+            <a class="text-link" href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/model-comparison.md">Read the test report</a></div>
+          <a class="measurement-link" href="assets/model-results/qwen38-27b-aligned.json">Download the measured responses and settings</a>
+          <div class="model-results"><h3>More models through Lemonade</h3>
+            <p>These runs use the same longer prose request, rather than the aligned chunk above. Tokenizers produce different prompt lengths. All measurements are from Strix Point; high-end Strix Halo has a much larger GPU. We haven't tested Zest on Halo.</p>
+            <div class="model-table-scroll" role="region" aria-label="Model comparison; scroll horizontally on small screens" tabindex="0"><table>
+              <caption>Median warm prefill tokens/s · 3 paired runs per model · paired speedup with full range</caption>
+              <thead><tr><th scope="col">Model / GGUF</th><th scope="col">GPU</th><th scope="col">NPU + GPU</th><th scope="col">Speedup</th><th scope="col">Answer checks<br />GPU / NPU</th></tr></thead><tbody>
+              <tr><th scope="row">Qwen3.8-27B<small>UD-IQ3_S · 2,769 prompt tokens</small></th><td>50</td><td>74</td><td><strong>1.54×</strong><small>1.47–1.55×</small></td><td>3/3 · 3/3</td></tr>
+              <tr><th scope="row">LFM2.5-2.6B<small>Q8_0 · 2,823 prompt tokens</small></th><td>772</td><td>1,190</td><td><strong>1.54×</strong><small>1.11–1.57×</small></td><td>3/3 · 3/3</td></tr>
+              <tr><th scope="row">Qwen3-4B<small>Q4_K_M · 2,785 prompt tokens</small></th><td>415</td><td>597</td><td><strong>1.46×</strong><small>1.44–1.60×</small></td><td>3/3 · 3/3</td></tr>
+              <tr><th scope="row">LFM2.5-1.2B-Instruct<small>Q8_0 · 2,846 prompt tokens</small></th><td>1,769</td><td>2,600</td><td><strong>1.46×</strong><small>1.44–1.48×</small></td><td>2/3 · 2/3</td></tr>
+              <tr><th scope="row">LFM2.5-350M<small>Q8_0 · 2,846 prompt tokens</small></th><td>5,338</td><td>5,897</td><td><strong>1.14×</strong><small>1.05–1.15×</small></td><td>2/3 · 2/3</td></tr>
+              <tr><th scope="row">Bonsai 2 2B<small>Q2_0</small></th><td colspan="3">Unsupported: garbled output in both modes</td><td>0/3 · 0/3</td></tr>
+              </tbody></table></div>
+            <p>The checks cover two retrieved facts and one arithmetic question, not general model quality. The 1.2B and 350M models missed the arithmetic in both modes. Qwen3-4B got it right but returned an equation instead of only the integer. These timings exclude load and warmup. <a href="https://github.com/Cyronius/ggml-xdna/blob/main/docs/model-comparison.md">Method, model files, and limitations</a> · <a href="assets/model-results/summary.csv">CSV</a></p></div>
         </div>
       </section>
 
@@ -457,7 +402,7 @@
     </main>
     <footer class="footer wrap">
       <div>
-        <a class="wordmark" href="#">ggml-xdna</a>
+        <a class="wordmark" href="#">Zest</a>
         <p>An independent open-source add-on for Lemonade.</p>
       </div>
       <nav aria-label="Footer navigation">

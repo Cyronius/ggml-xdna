@@ -1,0 +1,36 @@
+{
+  "date_local": "2026-10-21",
+  "timezone": "America/Chicago",
+  "platform": "Windows 11 Pro 10.0.26200",
+  "hardware": "Strix Point: AMD Ryzen AI 9 HX PRO 370 / Radeon 890M / XDNA0",
+  "installed_memory_bytes": 103079215104,
+  "os_visible_memory_bytes": 94108303360,
+  "memory_configured_speed": 5600,
+  "power_plan": "Balanced (unchanged)",
+  "lemonade_version": "2026.43.3",
+  "llama_fingerprint": "b10944-b6b003d2c",
+  "backend_source_commit": "dd628e98a3fcd0b40072636f461e12f781f65f80",
+  "repository_base": "98d6f2d954a2f33bce6c205b39b92fe588729a0a",
+  "npu_copy_budget": "default; 20 GB maximum; Qwen27 trace reports first 49 layers eligible",
+  "failure_injection": false,
+  "host_only": false,
+  "gpu_only_device": "Vulkan0",
+  "npu_enabled_devices": "XDNA0,Vulkan0",
+  "binary_sha256": {
+    "ggml-xdna.dll": "9ab00b2a12592b981410218e26e7211d0095073ce2c8de263f270fca0e62de0c",
+    "llama-server.exe": "e12147c768d9a87710fde0ceb8e2fa0c5b0f5096018f93cb5ab034fe437f877b",
+    "lemond.exe": "5ee12184f57cc4a3821532fd856bb3483f89f27474c0b14f474a2f5e01bfd6c3"
+  },
+  "tool_sha256_at_report_time": {
+    "bench-lemonade.ps1": "bfcdd279eae90a35c0d44085066d0dc8de4bf0858c890b26c5a4f870317ac073",
+    "check-lemonade.py": "4ff19e3e6a02b2f53a765ba9639e22aadc1e81c5dfd0630024c85a46dde33b60",
+    "prose.txt": "f3847a17c88e87f1c178479f48276f8e8ab978d20185ef8fa825a913e21adba5"
+  },
+  "notes": [
+    "Per-model settings retain the exact benchmark-script hash used for that run.",
+    "Qwen3-4B used the benchmark script before the fresh-PowerShell default-path fix; inference controls are the same.",
+    "thinking:false in settings records a request, not proof that the template disabled reasoning.",
+    "New downloads were verified against pinned Hugging Face LFS SHA256; existing Qwen4B and 350M files are identified by their previously checked local hashes.",
+    "Temperature, background load, and package power were not controlled."
+  ]
+}

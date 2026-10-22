@@ -1,0 +1,295 @@
+{
+  "model": "Qwen3.8-27B",
+  "quant": "UD-IQ3_S",
+  "prompt_tokens": 2048,
+  "gpu_median_tokens_s": 49.832494202471075,
+  "npu_median_tokens_s": 91.4574581033965,
+  "paired_speedup_median": 1.90177293078357,
+  "paired_speedups": [
+    2.2800622518049787,
+    1.7491281849175362,
+    1.90177293078357
+  ],
+  "alignment": {
+    "target_tokens": 2048,
+    "original_template_token_count": 2769,
+    "measured_offset": 0,
+    "fixture_sha256": "a2cc4e9a6cdc0de32ae4f973a133d63ffd75a9e2be90e2c135cdd098e7c87f84",
+    "note": "Same prose fixture repeated then truncated to align one complete 2048-token prompt chunk. Tokenization used the backend only; measured inference runs through Lemonade."
+  },
+  "settings": {
+    "prompt_cache": false,
+    "model": "extra.Qwen3.8-27B-UD-IQ3_S",
+    "copies": 1,
+    "batch": 2048,
+    "text_sha256": "a2cc4e9a6cdc0de32ae4f973a133d63ffd75a9e2be90e2c135cdd098e7c87f84",
+    "micro_batch": 2048,
+    "rounds": 3,
+    "flash_attention": true,
+    "parallel": 1,
+    "context": 8192,
+    "thinking": false,
+    "script_sha256": "bfcdd279eae90a35c0d44085066d0dc8de4bf0858c890b26c5a4f870317ac073",
+    "max_tokens": 16,
+    "warmup": "One full uncached request after each load, before the measured request."
+  },
+  "request": {
+    "messages": [
+      {
+        "content": "Passage 1:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\n\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its b\nSummarize the passage in one sentence. /no_think",
+        "role": "user"
+      }
+    ],
+    "stream": false,
+    "cache_prompt": false,
+    "max_tokens": 16,
+    "temperature": 0,
+    "model": "extra.Qwen3.8-27B-UD-IQ3_S",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "results": [
+    {
+      "round": 1,
+      "mode": "gpu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "A harbor town's decline due to river silting and political indecision ironically preserved",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792638323,
+        "id": "chatcmpl-EkBiH0J9fk6RPmMLad1eejYMMhrtmKuJ",
+        "model": "extra.Qwen3.8-27B-UD-IQ3_S",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 4596.852,
+          "predicted_n": 16,
+          "predicted_per_second": 3.2631026624307244,
+          "predicted_per_token_ms": 306.4568,
+          "prompt_ms": 51057.263,
+          "prompt_n": 2048,
+          "prompt_per_second": 40.11182503065235,
+          "prompt_per_token_ms": 24.93030419921875
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2048,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2064
+        }
+      }
+    },
+    {
+      "round": 1,
+      "mode": "npu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "A harbor town's decline due to river silting and indecisive council arguments",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792638409,
+        "id": "chatcmpl-rSJFdyhfqXgPcmcwap4fKvHRKobyT21j",
+        "model": "extra.Qwen3.8-27B-UD-IQ3_S",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 4016.947,
+          "predicted_n": 16,
+          "predicted_per_second": 3.7341792162057406,
+          "predicted_per_token_ms": 267.7964666666667,
+          "prompt_ms": 22392.925,
+          "prompt_n": 2048,
+          "prompt_per_second": 91.4574581033965,
+          "prompt_per_token_ms": 10.93404541015625
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2048,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2064
+        }
+      }
+    },
+    {
+      "round": 2,
+      "mode": "npu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "A harbor town's decline due to river silting and indecisive council arguments",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792638494,
+        "id": "chatcmpl-0yWnjCWA9fhSQQRyELH6FjoJUv5zOeW7",
+        "model": "extra.Qwen3.8-27B-UD-IQ3_S",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 4163.091,
+          "predicted_n": 16,
+          "predicted_per_second": 3.6030920294559974,
+          "predicted_per_token_ms": 277.5394,
+          "prompt_ms": 23496.095,
+          "prompt_n": 2048,
+          "prompt_per_second": 87.16342013428188,
+          "prompt_per_token_ms": 11.47270263671875
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2048,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2064
+        }
+      }
+    },
+    {
+      "round": 2,
+      "mode": "gpu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "A harbor town's decline due to river silting and political indecision ironically preserved",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792638595,
+        "id": "chatcmpl-6OYHjCqVk7N38bmv2jGH2rHyvTFOrwZk",
+        "model": "extra.Qwen3.8-27B-UD-IQ3_S",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 4150.864,
+          "predicted_n": 16,
+          "predicted_per_second": 3.6137054839667115,
+          "predicted_per_token_ms": 276.72426666666667,
+          "prompt_ms": 41097.682,
+          "prompt_n": 2048,
+          "prompt_per_second": 49.832494202471075,
+          "prompt_per_token_ms": 20.0672275390625
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2048,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2064
+        }
+      }
+    },
+    {
+      "round": 3,
+      "mode": "gpu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "A harbor town's decline due to river silting and political indecision ironically preserved",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792638692,
+        "id": "chatcmpl-FHpsxg810qIgnUFNiBzCUUKQ1ztOzPvT",
+        "model": "extra.Qwen3.8-27B-UD-IQ3_S",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 3982.105,
+          "predicted_n": 16,
+          "predicted_per_second": 3.766851953928889,
+          "predicted_per_token_ms": 265.47366666666665,
+          "prompt_ms": 40714.547,
+          "prompt_n": 2048,
+          "prompt_per_second": 50.30143157432158,
+          "prompt_per_token_ms": 19.88014990234375
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2048,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2064
+        }
+      }
+    },
+    {
+      "round": 3,
+      "mode": "npu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "A harbor town's decline due to river silting and indecisive council arguments",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792638770,
+        "id": "chatcmpl-vtScLFL6MqvhkcQU3Uv8vozZ30zNOzLI",
+        "model": "extra.Qwen3.8-27B-UD-IQ3_S",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 3900.422,
+          "predicted_n": 16,
+          "predicted_per_second": 3.8457377176110685,
+          "predicted_per_token_ms": 260.02813333333336,
+          "prompt_ms": 21408.732,
+          "prompt_n": 2048,
+          "prompt_per_second": 95.66190094770676,
+          "prompt_per_token_ms": 10.453482421875
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2048,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2064
+        }
+      }
+    }
+  ],
+  "quality_reference": "qwen38-27b.json; separate 2769-token workload checks, not this fixture"
+}

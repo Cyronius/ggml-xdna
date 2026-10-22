@@ -1,6 +1,6 @@
 # Technical guide: direct llama.cpp, Linux, and backend details
 
-ggml-xdna is an add-on for llama.cpp that reads prompts on the NPU of an
+Zest's `ggml-xdna` backend is an add-on for llama.cpp that reads prompts on the NPU of an
 AMD Ryzen AI 300 laptop, next to the integrated GPU. It loads into an
 unmodified llama.cpp build for Windows or Linux. The GPU keeps doing
 everything else, including writing the reply.

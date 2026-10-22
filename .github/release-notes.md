@@ -1,4 +1,4 @@
-ggml-xdna accelerates long prompts for many GGUF models through Lemonade's
+Zest accelerates long prompts for many GGUF models through Lemonade's
 llama.cpp backend, using an AMD Ryzen AI NPU. The GPU handles attention and
 writes the reply. No ONNX or Q4NX export or per-model NPU kernel compilation
 is required. Coverage follows the bundled build and supported operations;

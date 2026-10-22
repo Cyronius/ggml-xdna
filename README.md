@@ -7,9 +7,9 @@
   </a>
 </p>
 
-# ggml-xdna: use your NPU in Lemonade
+# Zest: use your NPU in Lemonade
 
-ggml-xdna accelerates long prompts for **many GGUF models through Lemonade's
+Zest accelerates long prompts for **many GGUF models through Lemonade's
 llama.cpp backend**, using your AMD Ryzen AI NPU. The GPU handles attention
 and writes the reply.
 
@@ -25,6 +25,7 @@ llama.cpp build and the operations the add-on implements; speedups vary by model
 
 This is an independent community add-on. The tested preview uses
 Lemonade **2026.43.3** and the bundled **llama.cpp b10944** backend.
+The backend and existing downloads use the `ggml-xdna` name.
 Keep that backend together: the DLL won't work with an arbitrary newer build.
 
 ## See it running
@@ -79,7 +80,33 @@ Reply generation stays on the GPU. Chunks below 1,024 tokens normally stay
 there too, so a quick greeting may show no NPU activity. The first long
 request can take longer while the NPU finishes converting its weight copies.
 
-## What we measured in Lemonade
+## What we measured in Lemonade on Strix Point
+
+**Test hardware: Strix Point — Ryzen AI 9 HX PRO 370 / Radeon 890M.**
+This is the smaller laptop GPU, with 16 compute units. High-end Strix Halo's
+Radeon 8060S has 40; it is a much larger GPU platform. We haven't measured
+Zest on Halo, and its faster GPU could change the NPU's relative benefit.
+[AMD hardware specifications](https://rocm.docs.amd.com/en/latest/reference/gpu-specs.html).
+
+| Model / GGUF | Prompt tokens | GPU only (tok/s) | NPU + GPU (tok/s) | Paired speedup (range) | Answer checks, GPU / NPU |
+|---|---:|---:|---:|---:|---|
+| Qwen3.8-27B UD-IQ3_S | 2,769 | 50 | 74 | **1.54×** (1.47–1.55) | 3/3 · 3/3 |
+| LFM2.5-2.6B Q8_0 | 2,823 | 772 | 1,190 | **1.54×** (1.11–1.57) | 3/3 · 3/3 |
+| Qwen3-4B Q4_K_M | 2,785 | 415 | 597 | **1.46×** (1.44–1.60) | 3/3 · 3/3 |
+| LFM2.5-1.2B-Instruct Q8_0 | 2,846 | 1,769 | 2,600 | **1.46×** (1.44–1.48) | 2/3 · 2/3 |
+| LFM2.5-350M Q8_0 | 2,846 | 5,338 | 5,897 | **1.14×** (1.05–1.15) | 2/3 · 2/3 |
+| Bonsai 2 2B Q2_0 | — | — | — | Unsupported: garbled output | 0/3 · 0/3 |
+
+Three warm pairs per model, using the same prose through Lemonade. Throughput columns are medians; speedups are medians of paired ratios. The checks cover two retrieved facts and one arithmetic question, not general model quality. The small LFM models missed the arithmetic in both modes.
+
+Qwen3.8-27B also reached **1.90×** median speedup on a separate, aligned **2,048-token prompt** (50 → 91 tokens/s). Bonsai 2 loads but produces garbled output in this pinned backend, so it has no usable speed result here.
+
+These are warm prefill timings, excluding model load and weight conversion. They do not establish a decode benefit or compare with Lemonade's current default GPU backend.
+
+[Full comparison, method, and model files](docs/model-comparison.md) · [Raw results and traces](docs/results/headline-models-2026-10-21/)
+
+<details>
+<summary>Earlier Qwen3-4B desktop-era comparison</summary>
 
 ![Three paired Lemonade runs: GPU-only prefill took 6445, 6623, and 7656 milliseconds; NPU-assisted prefill took 5113, 5227, and 5334 milliseconds](docs/assets/lemonade-results.svg)
 
@@ -93,6 +120,8 @@ default GPU backends. Try your own model before assuming it'll be faster.
 · [NPU trace](docs/results/lemonade-2026-10-21-npu-trace.txt)
 · [Repeat the comparison](docs/lemonade.md#measure-your-model)
 · [Standalone model benchmarks](docs/technical-guide.md#results)
+
+</details>
 
 ## Before you use the preview
 

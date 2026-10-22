@@ -1,0 +1,559 @@
+{
+  "model": "LFM2.5-1.2B-Instruct",
+  "quant": "Q8_0",
+  "filename": "LFM2.5-1.2B-Instruct-Q8_0.gguf",
+  "model_sha256": "f6b981dcb86917fa463f78a362320bd5e2dc45445df147287eedb85e5a30d26a",
+  "model_source": {
+    "repo": "LiquidAI/LFM2.5-1.2B-Instruct-GGUF",
+    "revision": "8ed288026e23958ad9dfa92d53ed773a8eee7125",
+    "rfilename": "LFM2.5-1.2B-Instruct-Q8_0.gguf",
+    "blobId": "f35eb989e16aeb44729ca2904e7e9f1a98bf26c4",
+    "size": 1246253888,
+    "lfs": {
+      "sha256": "f6b981dcb86917fa463f78a362320bd5e2dc45445df147287eedb85e5a30d26a",
+      "size": 1246253888,
+      "pointerSize": 135
+    },
+    "local_file": "C:\\code\\npu-prefill-engine\\third_party\\models\\LFM2.5-1.2B-Instruct-Q8_0.gguf",
+    "verified": true
+  },
+  "prompt_tokens": 2846,
+  "pairs": 3,
+  "gpu_median_tokens_s": 1768.5290076663184,
+  "npu_median_tokens_s": 2600.0745488697075,
+  "paired_speedups": [
+    1.4624192194616312,
+    1.438150263188468,
+    1.4830465272651527
+  ],
+  "paired_speedup_median": 1.4624192194616312,
+  "paired_speedup_min": 1.438150263188468,
+  "paired_speedup_max": 1.4830465272651527,
+  "answer_checks": {
+    "gpu": 2,
+    "npu": 2
+  },
+  "format_checks": {
+    "gpu": 2,
+    "npu": 2
+  },
+  "trace_npu_calls": [],
+  "auxiliary_trace_npu_calls": [
+    326
+  ],
+  "settings": {
+    "prompt_cache": false,
+    "model": "extra.LFM2.5-1.2B-Instruct-Q8_0",
+    "copies": 8,
+    "batch": 2048,
+    "text_sha256": "f3847a17c88e87f1c178479f48276f8e8ab978d20185ef8fa825a913e21adba5",
+    "micro_batch": 2048,
+    "rounds": 3,
+    "flash_attention": true,
+    "parallel": 1,
+    "context": 8192,
+    "thinking": false,
+    "script_sha256": "bfcdd279eae90a35c0d44085066d0dc8de4bf0858c890b26c5a4f870317ac073",
+    "max_tokens": 16,
+    "warmup": "One full uncached request after each load, before the measured request."
+  },
+  "request": {
+    "messages": [
+      {
+        "content": "Passage 1:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 2:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 3:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 4:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 5:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 6:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 7:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nPassage 8:\nThe harbor town had grown up around a single stone quay, built in the years when the river still ran deep enough for ocean ships to come upstream. Merchants from three kingdoms met there each spring, and the customs house kept careful ledgers of everything that passed: salt from the southern marshes, iron from the hill country, wool, dyed cloth, glass beads, and barrels of a sour red wine that nobody admitted to liking but everybody bought. When the river began to silt in the second century of the town's life, the council argued for eleven years about whether to dredge it. The dredging faction pointed to the ledgers, which showed that nearly half the town's income came from ships too large to reach any other port on that coast. The other faction pointed out that dredging would cost more than the town earned in a decade, and that the silt came back every winter no matter what anyone did. In the end nothing was decided, and the question answered itself: the ships simply stopped coming. Within a generation the quay was a place where children fished for eels, the customs house became a granary, and the ledgers were sold by the pound to a bookbinder who used their vellum pages to stiffen the covers of prayer books. Historians who study the region today rely heavily on those covers, because the fragments bound inside them are the only surviving record of prices, tariffs, and the names of ordinary traders from that period. What the council could not save by argument, the bookbinder preserved by accident, and the town's most lasting contribution to history turned out to be its bureaucracy rather than its trade.\r\n\nSummarize the passage in one sentence. /no_think",
+        "role": "user"
+      }
+    ],
+    "stream": false,
+    "cache_prompt": false,
+    "max_tokens": 16,
+    "temperature": 0,
+    "model": "extra.LFM2.5-1.2B-Instruct-Q8_0",
+    "chat_template_kwargs": {
+      "enable_thinking": false
+    }
+  },
+  "results": [
+    {
+      "round": 1,
+      "mode": "gpu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "The harbor town's history is preserved not through its trade, but through its bureauc",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792636889,
+        "id": "chatcmpl-awKFqToP6Jv7GxBy7fpnVoi3aK9cawPy",
+        "model": "extra.LFM2.5-1.2B-Instruct-Q8_0",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 305.455,
+          "predicted_n": 16,
+          "predicted_per_second": 49.107069781146166,
+          "predicted_per_token_ms": 20.363666666666667,
+          "prompt_ms": 1594.249,
+          "prompt_n": 2846,
+          "prompt_per_second": 1785.1665580470803,
+          "prompt_per_token_ms": 0.5601718200983837
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2846,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2862
+        }
+      }
+    },
+    {
+      "round": 1,
+      "mode": "npu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "The harbor town's history is preserved not through its trade, but through its bureauc",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792636894,
+        "id": "chatcmpl-csuoiCOSLp5GbW7IE8ZKmbMuTCfvtEqH",
+        "model": "extra.LFM2.5-1.2B-Instruct-Q8_0",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 283.762,
+          "predicted_n": 16,
+          "predicted_per_second": 52.86120058358765,
+          "predicted_per_token_ms": 18.917466666666666,
+          "prompt_ms": 1090.145,
+          "prompt_n": 2846,
+          "prompt_per_second": 2610.6618844282184,
+          "prompt_per_token_ms": 0.3830446240337316
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2846,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2862
+        }
+      }
+    },
+    {
+      "round": 2,
+      "mode": "npu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "The harbor town's history is preserved not through its trade, but through its bureauc",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792636900,
+        "id": "chatcmpl-vVU87JK9pueC9X8W2hi9SM4QOfvi5FAs",
+        "model": "extra.LFM2.5-1.2B-Instruct-Q8_0",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 290.335,
+          "predicted_n": 16,
+          "predicted_per_second": 51.66445657602425,
+          "predicted_per_token_ms": 19.355666666666664,
+          "prompt_ms": 1118.97,
+          "prompt_n": 2846,
+          "prompt_per_second": 2543.4104578317556,
+          "prompt_per_token_ms": 0.3931728742094167
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2846,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2862
+        }
+      }
+    },
+    {
+      "round": 2,
+      "mode": "gpu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "The harbor town's history is preserved not through its trade, but through its bureauc",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792636905,
+        "id": "chatcmpl-25hgef1CCX8vNk4oW5LrbcRJXFzK0vP6",
+        "model": "extra.LFM2.5-1.2B-Instruct-Q8_0",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 291.201,
+          "predicted_n": 16,
+          "predicted_per_second": 51.51081211946387,
+          "predicted_per_token_ms": 19.413400000000003,
+          "prompt_ms": 1609.247,
+          "prompt_n": 2846,
+          "prompt_per_second": 1768.5290076663184,
+          "prompt_per_token_ms": 0.5654416725228391
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2846,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2862
+        }
+      }
+    },
+    {
+      "round": 3,
+      "mode": "gpu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "The harbor town's history is preserved not through its trade, but through its bureauc",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792636910,
+        "id": "chatcmpl-3swUY8zGAl4tJCWqK88nFQAYcTFjoovz",
+        "model": "extra.LFM2.5-1.2B-Instruct-Q8_0",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 293.015,
+          "predicted_n": 16,
+          "predicted_per_second": 51.19191850246575,
+          "predicted_per_token_ms": 19.534333333333333,
+          "prompt_ms": 1623.319,
+          "prompt_n": 2846,
+          "prompt_per_second": 1753.198231524426,
+          "prompt_per_token_ms": 0.5703861560084329
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2846,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2862
+        }
+      }
+    },
+    {
+      "round": 3,
+      "mode": "npu",
+      "response": {
+        "choices": [
+          {
+            "finish_reason": "length",
+            "index": 0,
+            "message": {
+              "content": "The harbor town's history is preserved not through its trade, but through its bureauc",
+              "role": "assistant"
+            }
+          }
+        ],
+        "created": 1792636915,
+        "id": "chatcmpl-cNtDh9GPBV2KZr5imN131CtTEtdtqi5S",
+        "model": "extra.LFM2.5-1.2B-Instruct-Q8_0",
+        "object": "chat.completion",
+        "system_fingerprint": "b10944-b6b003d2c",
+        "timings": {
+          "cache_n": 0,
+          "predicted_ms": 290.103,
+          "predicted_n": 16,
+          "predicted_per_second": 51.705773466665285,
+          "predicted_per_token_ms": 19.3402,
+          "prompt_ms": 1094.584,
+          "prompt_n": 2846,
+          "prompt_per_second": 2600.0745488697075,
+          "prompt_per_token_ms": 0.38460435699226986
+        },
+        "usage": {
+          "completion_tokens": 16,
+          "prompt_tokens": 2846,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "total_tokens": 2862
+        }
+      }
+    }
+  ],
+  "quality": {
+    "model": "extra.LFM2.5-1.2B-Instruct-Q8_0",
+    "lemonade": {
+      "all_models_loaded": [],
+      "max_models": {
+        "classification": 1,
+        "embedding": 1,
+        "image": 1,
+        "llm": 1,
+        "reranking": 1,
+        "transcription": 1,
+        "tts": 1
+      },
+      "model_loaded": null,
+      "pinned_helper_models": {
+        "classification": 0,
+        "embedding": 0,
+        "image": 0,
+        "llm": 0,
+        "reranking": 0,
+        "transcription": 0,
+        "tts": 0
+      },
+      "pinned_models": {
+        "classification": 0,
+        "embedding": 0,
+        "image": 0,
+        "llm": 0,
+        "reranking": 0,
+        "transcription": 0,
+        "tts": 0
+      },
+      "status": "ok",
+      "telemetry": {
+        "enabled": false
+      },
+      "update_check_done": true,
+      "version": "2026.43.3",
+      "websocket_port": 9000
+    },
+    "checks": [
+      {
+        "mode": "gpu",
+        "case": "early-fact",
+        "expected": "ZEST-4827",
+        "prompt_sha256": "1fcc25d4b8f0d3e73ba86884ea463225558012b024870ce86d6a314fbaa84e66",
+        "passed": true,
+        "answer_correct": true,
+        "format_correct": true,
+        "content": "ZEST-4827",
+        "reasoning_content": "",
+        "finish_reason": "stop",
+        "client_first_content_s": 1.7953462999939802,
+        "client_total_s": 1.8951046999936807,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2864,
+          "prompt_ms": 1773.571,
+          "prompt_per_token_ms": 0.6192636173184357,
+          "prompt_per_second": 1614.8211715234409,
+          "predicted_n": 6,
+          "predicted_ms": 99.862,
+          "predicted_per_token_ms": 19.9724,
+          "predicted_per_second": 50.06909535158519
+        },
+        "usage": {
+          "completion_tokens": 6,
+          "prompt_tokens": 2864,
+          "total_tokens": 2870,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      {
+        "mode": "gpu",
+        "case": "late-fact",
+        "expected": "LIME-1935",
+        "prompt_sha256": "830805ab2a9b8b1146c54c3e07e1f3956094b5391d0bab0664c0dd5d00a24fd8",
+        "passed": true,
+        "answer_correct": true,
+        "format_correct": true,
+        "content": "LIME-1935",
+        "reasoning_content": "",
+        "finish_reason": "stop",
+        "client_first_content_s": 1.9008467000021483,
+        "client_total_s": 1.9975044000020716,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2864,
+          "prompt_ms": 1624.587,
+          "prompt_per_token_ms": 0.5672440642458101,
+          "prompt_per_second": 1762.9095887139315,
+          "predicted_n": 6,
+          "predicted_ms": 96.939,
+          "predicted_per_token_ms": 19.3878,
+          "predicted_per_second": 51.57882792271429
+        },
+        "usage": {
+          "completion_tokens": 6,
+          "prompt_tokens": 2864,
+          "total_tokens": 2870,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      {
+        "mode": "gpu",
+        "case": "ledger",
+        "expected": "34",
+        "prompt_sha256": "12179de21fd531c20baa6a5adfff6cbc51d86c20fd031a62da49c07760dca116",
+        "passed": false,
+        "answer_correct": false,
+        "format_correct": false,
+        "content": "8",
+        "reasoning_content": "",
+        "finish_reason": "stop",
+        "client_first_content_s": 1.6405550999988918,
+        "client_total_s": 1.6638492999991286,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2865,
+          "prompt_ms": 1597.105,
+          "prompt_per_token_ms": 0.5574537521815008,
+          "prompt_per_second": 1793.8707849515215,
+          "predicted_n": 2,
+          "predicted_ms": 23.21,
+          "predicted_per_token_ms": 23.21,
+          "predicted_per_second": 43.084877208099954
+        },
+        "usage": {
+          "completion_tokens": 2,
+          "prompt_tokens": 2865,
+          "total_tokens": 2867,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      {
+        "mode": "npu",
+        "case": "early-fact",
+        "expected": "ZEST-4827",
+        "prompt_sha256": "1fcc25d4b8f0d3e73ba86884ea463225558012b024870ce86d6a314fbaa84e66",
+        "passed": true,
+        "answer_correct": true,
+        "format_correct": true,
+        "content": "ZEST-4827",
+        "reasoning_content": "",
+        "finish_reason": "stop",
+        "client_first_content_s": 2.755814399999508,
+        "client_total_s": 2.8513898000019253,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2864,
+          "prompt_ms": 2747.832,
+          "prompt_per_token_ms": 0.9594385474860335,
+          "prompt_per_second": 1042.2762381397408,
+          "predicted_n": 6,
+          "predicted_ms": 95.159,
+          "predicted_per_token_ms": 19.0318,
+          "predicted_per_second": 52.54363749093622
+        },
+        "usage": {
+          "completion_tokens": 6,
+          "prompt_tokens": 2864,
+          "total_tokens": 2870,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      {
+        "mode": "npu",
+        "case": "late-fact",
+        "expected": "LIME-1935",
+        "prompt_sha256": "830805ab2a9b8b1146c54c3e07e1f3956094b5391d0bab0664c0dd5d00a24fd8",
+        "passed": true,
+        "answer_correct": true,
+        "format_correct": true,
+        "content": "LIME-1935",
+        "reasoning_content": "",
+        "finish_reason": "stop",
+        "client_first_content_s": 1.3789268999971682,
+        "client_total_s": 1.4760263999996823,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2864,
+          "prompt_ms": 1112.071,
+          "prompt_per_token_ms": 0.38829294692737426,
+          "prompt_per_second": 2575.375133422237,
+          "predicted_n": 6,
+          "predicted_ms": 96.677,
+          "predicted_per_token_ms": 19.3354,
+          "predicted_per_second": 51.718609390030714
+        },
+        "usage": {
+          "completion_tokens": 6,
+          "prompt_tokens": 2864,
+          "total_tokens": 2870,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      },
+      {
+        "mode": "npu",
+        "case": "ledger",
+        "expected": "34",
+        "prompt_sha256": "12179de21fd531c20baa6a5adfff6cbc51d86c20fd031a62da49c07760dca116",
+        "passed": false,
+        "answer_correct": false,
+        "format_correct": false,
+        "content": "8",
+        "reasoning_content": "",
+        "finish_reason": "stop",
+        "client_first_content_s": 1.157102199998917,
+        "client_total_s": 1.179139200001373,
+        "timings": {
+          "cache_n": 0,
+          "prompt_n": 2865,
+          "prompt_ms": 1132.211,
+          "prompt_per_token_ms": 0.3951870855148342,
+          "prompt_per_second": 2530.4470633124038,
+          "predicted_n": 2,
+          "predicted_ms": 21.94,
+          "predicted_per_token_ms": 21.94,
+          "predicted_per_second": 45.57885141294439
+        },
+        "usage": {
+          "completion_tokens": 2,
+          "prompt_tokens": 2865,
+          "total_tokens": 2867,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          }
+        }
+      }
+    ]
+  }
+}

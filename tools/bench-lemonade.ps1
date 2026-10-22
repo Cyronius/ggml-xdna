@@ -4,11 +4,14 @@ param(
     [Parameter(Mandatory = $true)][string]$Model,
     [string]$BaseUrl = 'http://127.0.0.1:13315/api/v1',
     [ValidateRange(1, 100)][int]$Rounds = 3,
-    [string]$Text = "$PSScriptRoot/../tests/prompts/prose.txt",
+    [string]$Text,
     [ValidateRange(1, 100)][int]$Copies = 8,
-    [string]$OutDir = "$PSScriptRoot/../third_party/lemonade-results"
+    [ValidateRange(1, 4096)][int]$MaxTokens = 48,
+    [string]$OutDir
 )
 $ErrorActionPreference = 'Stop'
+if (-not $Text) { $Text = "$PSScriptRoot/../tests/prompts/prose.txt" }
+if (-not $OutDir) { $OutDir = "$PSScriptRoot/../third_party/lemonade-results" }
 $BaseUrl = $BaseUrl.TrimEnd('/')
 New-Item -ItemType Directory -Force -Path $OutDir | Out-Null
 $OutDir = (Resolve-Path -LiteralPath $OutDir).Path
@@ -33,12 +36,29 @@ $prompt = ((1..$Copies | ForEach-Object { "Passage $_`:`n$passage" }) -join "`n"
 $request = @{
     model = $Model
     messages = @(@{ role = 'user'; content = $prompt })
-    max_tokens = 48
+    max_tokens = $MaxTokens
     temperature = 0
     stream = $false
     cache_prompt = $false
+    chat_template_kwargs = @{ enable_thinking = $false }
 }
 $request | ConvertTo-Json -Depth 6 | Set-Content -Encoding UTF8 "$OutDir/request.json"
+@{
+    model = $Model
+    rounds = $Rounds
+    copies = $Copies
+    max_tokens = $MaxTokens
+    context = 8192
+    batch = 2048
+    micro_batch = 2048
+    flash_attention = $true
+    parallel = 1
+    prompt_cache = $false
+    thinking = $false
+    warmup = 'One full uncached request after each load, before the measured request.'
+    text_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $Text).Hash.ToLowerInvariant()
+    script_sha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $PSCommandPath).Hash.ToLowerInvariant()
+} | ConvertTo-Json | Set-Content -Encoding UTF8 "$OutDir/settings.json"
 $rows = @()
 $responses = @()
 
