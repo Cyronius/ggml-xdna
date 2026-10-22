@@ -161,3 +161,5 @@ memory, accuracy, and model limits in more detail.
 
 MIT licensed. [License](LICENSE) · [Dependency and logo attribution](NOTICE).
 The Lemonade logos are from its [official brand kit](https://github.com/lemonade-sdk/assets/tree/main/brand-kit).
+
+<p><sub>♥️ Like this? <a href="https://www.kuaf.com/donate"><strong>Tip</strong> my local NPR station</a></sub></p>

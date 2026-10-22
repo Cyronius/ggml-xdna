@@ -636,6 +636,23 @@ details p {
   color: var(--muted);
   margin: 8px 0 0;
 }
+.footer .support-note {
+  margin-top: 14px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 13px;
+  color: #8a654e;
+}
+.support-note > span {
+  color: #b95135;
+  margin-right: 5px;
+}
+.support-note a {
+  color: #a44730;
+  text-decoration: none;
+}
+.support-note a:hover {
+  text-decoration: underline;
+}
 .footer nav {
   gap: 20px;
 }
