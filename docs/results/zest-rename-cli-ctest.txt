@@ -1,0 +1,12 @@
+Test project C:/code/npu-prefill-engine/build-zest-migration
+    Start 14: launcher-devices
+1/2 Test #14: launcher-devices .................   Passed    0.89 sec
+    Start 15: launcher-compat-devices
+2/2 Test #15: launcher-compat-devices ..........   Passed    0.72 sec
+
+100% tests passed, 0 tests failed out of 2
+
+Label Time Summary:
+host    =   1.61 sec*proc (2 tests)
+
+Total Test time (real) =   1.66 sec

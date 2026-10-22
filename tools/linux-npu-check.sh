@@ -8,14 +8,14 @@ tools/linux-npu-check.sh [--install] [--quick] [--models DIR]
 
   --install   install what's missing with apt (Ubuntu), asking for your password
   --quick     skip the slow parts: the second model, the failure test and the memory ceiling
-  --models    where to keep the downloaded models (default ~/.cache/ggml-xdna-check)
+  --models    where to keep the downloaded models (default ~/.cache/zest-check)
 
 Everything it prints also goes to npu-check-<date>.log in the repository: send that file back.
 EOF
 }
 
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)
-install=0 quick=0 models=${XDG_CACHE_HOME:-$HOME/.cache}/ggml-xdna-check
+install=0 quick=0 models=${XDG_CACHE_HOME:-$HOME/.cache}/zest-check
 while (($#)); do
     case $1 in
         --install) install=1 ;;
@@ -30,14 +30,14 @@ done
 log="$root/npu-check-$(date +%Y%m%d-%H%M%S).log"
 exec > >(tee -a "$log") 2>&1
 dist="$root/third_party/llama-b10944"
-addon="$dist/libggml-xdna.so"
+addon="$dist/libggml-zest.so"
 summary=()
 pass() { summary+=("PASS  $*"); echo ">>> PASS: $*"; }
 fail() { summary+=("FAIL  $*"); echo ">>> FAIL: $*"; }
 note() { summary+=("NOTE  $*"); echo ">>> NOTE: $*"; }
 section() { printf '\n===== %s (%s)\n' "$*" "$(date +%T)"; }
 # the add-on's own lines from a llama.cpp run's output
-xdna_lines() { grep -E '(xdna|npu): ' "$1" | sed -E 's/^[0-9.]+ [A-Z] //' | sort | uniq -c | sed 's/^ *//' | head -20; }
+xdna_lines() { grep -E '(xdna|zest): ' "$1" | sed -E 's/^[0-9.]+ [A-Z] //' | sort | uniq -c | sed 's/^ *//' | head -20; }
 
 finish() {
     section "summary"
@@ -183,7 +183,7 @@ fi
 
 section "npu on a 3,000-token prompt, with the trace on"
 start=$(date +%s)
-GGML_XDNA_TRACE=1 "$dist/npu" llama-completion -m "$small" -f "$work/long.txt" -n 32 --temp 0 -no-cnv -c 8192 \
+GGML_XDNA_TRACE=1 "$dist/zest" llama-completion -m "$small" -f "$work/long.txt" -n 32 --temp 0 -no-cnv -c 8192 \
     > "$work/launch.txt" 2> "$work/launch.err"
 code=$?
 echo "exit code $code, $(($(date +%s) - start)) s"
@@ -214,7 +214,7 @@ section "speed against the GPU alone"
 speed() {  # model, rounds
     local m=$1 rounds=$2 r
     for ((r = 1; r <= rounds; r++)); do
-        "$dist/npu" llama-bench -m "$m" -dev Vulkan0,XDNA0/Vulkan0 -p 2048 -n 0 -ub 2048 -b 2048 -r 3 -o json \
+        "$dist/zest" llama-bench -m "$m" -dev Vulkan0,XDNA0/Vulkan0 -p 2048 -n 0 -ub 2048 -b 2048 -r 3 -o json \
             > "$work/bench-$r.json" 2> "$work/bench-$r.err"
     done
     python3 - "$work" "$rounds" "$(basename "$m")" <<'EOF'

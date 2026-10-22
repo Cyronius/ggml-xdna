@@ -6,8 +6,8 @@ or per-model NPU kernel compilation is required. The Qwen examples below
 show the setup, rather than a model restriction. Coverage depends on the
 bundled llama.cpp build and supported operations, and speedups vary by model.
 
-Verified on Windows on 2026-10-21 with Lemonade **2026.43.3**, the unmodified
-llama.cpp **b10944 Vulkan** release, and this repository's `ggml-xdna.dll`.
+Verified on Windows with Lemonade **2026.43.3**, the unmodified
+llama.cpp **b10944 Vulkan** release, and this repository's `ggml-zest.dll`.
 Lemonade forwards chat requests to llama-server; the add-on sends eligible
 prompt work to the NPU while the Vulkan GPU handles attention and generation.
 Neither Lemonade nor llama.cpp needs a source patch for this setup.
@@ -25,7 +25,7 @@ screenshots; not a real-time latency recording).
 
 ## Start from the Windows ZIP
 
-1. Download the [Windows preview](https://github.com/Cyronius/ggml-xdna/releases/tag/lemonade-preview-20261021-r2)
+1. Download the [Windows preview](https://github.com/Cyronius/zest/releases/tag/v0.2.0-rc1)
    and extract it. Keep all the files together.
 2. Quit the existing Lemonade tray server. The desktop chat window can stay open.
 3. Double-click `Start-Lemonade.cmd`. It looks for an installed Lemonade server;
@@ -64,7 +64,7 @@ as GPU-only. Avoid another NPU backend running at the same time.
 ## Start from a terminal
 
 For the Windows desktop app, use the included launcher from an unpacked
-Zest release (currently named `ggml-xdna` in the ZIP filename) or the repository:
+Zest release or the repository:
 
 Quit any existing Lemonade tray server first: `LemonadeServer.exe` enforces a
 single running instance. The desktop chat window can remain open. Portable
@@ -131,7 +131,7 @@ New-Item -ItemType Directory -Force "$demo\cache", "$demo\config" | Out-Null
         vulkan_bin = "$llama\llama-server.exe"
     }
 } | ConvertTo-Json -Depth 4 | Set-Content "$demo\config\config.json"
-$env:GGML_BACKEND_PATH = "$llama\ggml-xdna.dll"
+$env:GGML_BACKEND_PATH = "$llama\ggml-zest.dll"
 $env:GGML_XDNA_TRACE = '1'
 & $lemond "$demo\cache" "$demo\config" --port 13315 --host 127.0.0.1 --no-broadcast
 ```

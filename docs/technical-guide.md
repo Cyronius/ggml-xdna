@@ -1,6 +1,6 @@
 # Technical guide: direct llama.cpp, Linux, and backend details
 
-Zest's `ggml-xdna` backend is an add-on for llama.cpp that reads prompts on the NPU of an
+Zest's `ggml-zest` backend is an add-on for llama.cpp that reads prompts on the NPU of an
 AMD Ryzen AI 300 laptop, next to the integrated GPU. It loads into an
 unmodified llama.cpp build for Windows or Linux. The GPU keeps doing
 everything else, including writing the reply.
@@ -32,11 +32,11 @@ llama.cpp use, building, architecture, tuning, and standalone measurements.
 
 ## Quick start
 
-Download `ggml-xdna-<version>-llama-b10944-win-x64.zip` from the
-[releases page](https://github.com/Cyronius/ggml-xdna/releases) and unzip it
+Download `zest-<version>-llama-b10944-win-x64.zip` from the
+[releases page](https://github.com/Cyronius/zest/releases) and unzip it
 into a folder of its own. It's llama.cpp's own Windows Vulkan release
-(b10944), unmodified, with the add-on (`ggml-xdna.dll`), its NPU kernel
-(`bfp16_gemm.xclbin`) and the launcher (`npu.exe`) next to it.
+(b10944), unmodified, with the add-on (`ggml-zest.dll`), its NPU kernel
+(`bfp16_gemm.xclbin`) and the launcher (`zest.exe`) next to it.
 
 The zip isn't signed, so Windows may warn the first time you run something
 from it ("Windows protected your PC": click "More info", then "Run
@@ -44,15 +44,15 @@ anyway"). To check the download, compare the zip's SHA-256 with the
 `.sha256` file next to it on the releases page; `SHA256SUMS.txt` inside the
 zip lists every file's.
 
-Open a terminal in that folder and put `npu` in front of the llama.cpp
+Open a terminal in that folder and put `zest` in front of the llama.cpp
 command:
 
 ```
-npu llama-server
-npu llama-cli -m model.gguf
+zest llama-server
+zest llama-cli -m model.gguf
 ```
 
-With no model given, `npu` lists the models it finds and asks which one:
+With no model given, `zest` lists the models it finds and asks which one:
 
 ```
 Models found:
@@ -63,12 +63,12 @@ Models found:
 Pick a number (Enter: granite-4.1-3b-Q4_K_S; q: quit):
 ```
 
-It looks in a `models` folder next to `npu`, LM Studio's models folder,
+It looks in a `models` folder next to `zest`, LM Studio's models folder,
 llama.cpp's download folder and the Hugging Face download folder. Enter
 picks the model you chose last time. "All of them" (llama-server only)
 serves every model in the list and loads each when a request names it.
 
-What `npu` does for you:
+What `zest` does for you:
 - points llama.cpp at the add-on next to it;
 - checks the NPU can run, and if so adds `-dev XDNA0,Vulkan0 -ts 0,1`
   (`-ts 0,1`: none of the model's layers belong to the NPU; see below). If
@@ -81,14 +81,14 @@ What `npu` does for you:
 
 Anything you give yourself (`-m`, `-dev`, `-ts`, `-ub`, `-b`) is kept, and the
 rest of your command reaches llama.cpp exactly as typed. If you give `-dev`
-yourself, `npu` adds none of the above, so pass `-ts 0,1` too. `npu server` works
-for `npu llama-server` too. Put the folder on your `PATH` to run `npu` from
+yourself, `zest` adds none of the above, so pass `-ts 0,1` too. `zest server` works
+for `zest llama-server` too. Put the folder on your `PATH` to run `zest` from
 anywhere.
 
-`npu`'s own options go before the program's name:
+`zest`'s own options go before the program's name:
 
 ```
-npu --memory-gb 20 llama-server -m model.gguf
+zest --memory-gb 20 llama-server -m model.gguf
 ```
 
 `--memory-gb` is the most memory the NPU's copies of the weights may take,
@@ -99,16 +99,16 @@ that don't fit stay on the GPU.
 
 `--min-chunk` is the smallest piece of a prompt, in tokens, the NPU takes.
 The default is 1,024: smaller pieces go to the GPU, which read them faster
-in our tests. `npu --min-chunk 512 llama-bench ...` puts llama.cpp's
+in our tests. `zest --min-chunk 512 llama-bench ...` puts llama.cpp's
 default 512-token chunks on the NPU too.
 
-`npu -h` lists the options.
+`zest -h` lists the options.
 
 **Without the launcher,** set `GGML_BACKEND_PATH` to the add-on and name
 the NPU yourself:
 
 ```
-set GGML_BACKEND_PATH=C:\path\to\llama-b10944\ggml-xdna.dll
+set GGML_BACKEND_PATH=C:\path\to\llama-b10944\ggml-zest.dll
 llama-server -m model.gguf -dev XDNA0,Vulkan0 -ts 0,1
 ```
 
@@ -163,28 +163,28 @@ Treat it as experimental until this section says otherwise.
   *    hard    memlock    unlimited
   ```
 
-**Quick start:** download `ggml-xdna-<version>-llama-b10944-ubuntu-x64.tar.gz`
-from the [releases page](https://github.com/Cyronius/ggml-xdna/releases),
-unpack it, and use `npu` as above:
+**Quick start:** download `zest-<version>-llama-b10944-ubuntu-x64.tar.gz`
+from the [releases page](https://github.com/Cyronius/zest/releases),
+unpack it, and use `zest` as above:
 
 ```
-tar -xzf ggml-xdna-<version>-llama-b10944-ubuntu-x64.tar.gz
-cd ggml-xdna-<version>-llama-b10944-ubuntu-x64
-./npu llama-server -m model.gguf
+tar -xzf zest-<version>-llama-b10944-ubuntu-x64.tar.gz
+cd zest-<version>-llama-b10944-ubuntu-x64
+./zest llama-server -m model.gguf
 ```
 
 It's llama.cpp's own Linux Vulkan release, unmodified, with the add-on
-(`libggml-xdna.so`, which reaches the NPU driver through
-`libggml-xdna-xrt.so` next to it), the NPU kernel and `npu`. Without the
+(`libggml-zest.so`, which reaches the NPU driver through
+`libggml-zest-xrt.so` next to it), the NPU kernel and `zest`. Without the
 launcher:
 
 ```
-GGML_BACKEND_PATH=$PWD/libggml-xdna.so ./llama-server -m model.gguf -dev XDNA0,Vulkan0 -ts 0,1
+GGML_BACKEND_PATH=$PWD/libggml-zest.so ./llama-server -m model.gguf -dev XDNA0,Vulkan0 -ts 0,1
 ```
 
-On Linux, `npu` finds llama.cpp's downloads in `~/.cache/llama.cpp` (or
+On Linux, `zest` finds llama.cpp's downloads in `~/.cache/llama.cpp` (or
 `$LLAMA_CACHE`) and Hugging Face's in `~/.cache/huggingface/hub` (or
-`$HF_HOME/hub`), and remembers your last pick in `~/.local/state/ggml-xdna`.
+`$HF_HOME/hub`), and remembers your last pick in `~/.local/state/ggml-zest`.
 It becomes the program it starts, so Ctrl+C, the exit code and stopping it
 work as they would for the program alone.
 
@@ -232,7 +232,7 @@ C:\Windows\System32\AMD\xrt-smi.exe configure --pmode default
 ## Results
 
 Prompt reading speed with the add-on, against the GPU alone, both reading in
-2,048-token chunks (what `npu` uses). Ryzen AI 9 HX 370, measured 2026-10-05.
+2,048-token chunks (what `zest` uses). Ryzen AI 9 HX 370, measured 2026-10-05.
 Each figure is the median of the per-round ratios, with the slowest and
 fastest round in brackets.
 
@@ -293,7 +293,7 @@ What the spread of results says:
 - **Smaller chunks are slower.** At llama.cpp's default 512-token chunks the
   add-on was slower than the GPU (median 0.80–0.87x over 20+ runs), which is
   why it takes only chunks of 1,024 tokens or more unless told otherwise
-  (`npu --min-chunk`).
+  (`zest --min-chunk`).
 
 **How it was measured:** one `llama-bench` process per round tests both
 devices (`-dev Vulkan0,XDNA0/Vulkan0 -p 2048 -n 0 -ub 2048 -b 2048 -r 3`), so
@@ -307,7 +307,7 @@ runs like these: on this machine a single run proves little.
 
 **To measure your own models:** `bench.ps1` runs the same paired
 measurement and prints a row of this table for each model you give it. It's
-in `tools\` in the repo and next to `npu` in the release zip. On Linux it
+in `tools\` in the repo and next to `zest` in the release zip. On Linux it
 runs under PowerShell 7 (`pwsh bench.ps1 -Model ...`).
 
 ```
@@ -421,7 +421,7 @@ contexts of 32,768 tokens, and two models served at once by its router.
 - **Prompt reading only.** Replies are written one token at a time, and that
   stays on the GPU.
 - **Pieces under 1,024 tokens stay on the GPU**, so short prompts don't use
-  the NPU. `npu --min-chunk` changes that.
+  the NPU. `zest --min-chunk` changes that.
 - **Narrow models are slower on the NPU.** Both models we tested with a width
   (embedding size) under 2,048 read prompts more slowly with the add-on than
   without it: 0.77x at width 1,536 and 0.89x at width 1,024 (see Results).
@@ -435,7 +435,7 @@ contexts of 32,768 tokens, and two models served at once by its router.
   ```
 
   For those models, use the GPU alone (`-dev Vulkan0`, or llama.cpp without
-  `npu`).
+  `zest`).
 - **Memory:** the NPU keeps its own 8-bit copy of each weight it uses,
   about 1.1 GB per billion parameters, on top of llama.cpp's. It's built
   in the background while the model loads, which takes a few seconds (4.4 s
@@ -446,7 +446,7 @@ contexts of 32,768 tokens, and two models served at once by its router.
   20 GB. When they don't all fit, the first layers that do go to the NPU
   and the rest stay on the GPU, and the add-on says so:
   `xdna: NPU weight copies limited to 20.0 GB (...): the first 49 layers on
-  the NPU, the rest on the GPU`. `npu --memory-gb` (or
+  the NPU, the rest on the GPU`. `zest --memory-gb` (or
   `GGML_XDNA_MAX_COPY_GB`) sets the limit.
 - **The NPU holds only so much.** On our 88 GB machine, once the NPU's
   memory passes 26 GB, some of it comes back damaged, with no error. That
@@ -503,37 +503,37 @@ part of the prompt, the CPU prepares the next.
 
 ## Troubleshooting
 
-When the NPU can't run, `npu` says why and runs llama.cpp on the GPU:
+When the NPU can't run, `zest` says why and runs llama.cpp on the GPU:
 
 ```
-npu: running on the GPU only: <reason>
+zest: running on the GPU only: <reason>
 ```
 
 Without the launcher, the add-on offers no XDNA0 device and logs
 `xdna: not offering XDNA0: <reason>`. A command that names
 `-dev XDNA0,Vulkan0` itself then stops with `invalid device: XDNA0`; use
-`npu`, or `-dev Vulkan0`, until the reason is fixed.
+`zest`, or `-dev Vulkan0`, until the reason is fixed.
 
 | reason | what to do |
 |---|---|
-| no bfp16_gemm.xclbin next to ggml-xdna.dll (or libggml-xdna.so) | copy it there, or set `GGML_XDNA_KERNELS` to it |
+| no bfp16_gemm.xclbin next to ggml-zest.dll (or libggml-zest.so) | copy it there, or set `GGML_XDNA_KERNELS` to it |
 | GGML_XDNA_KERNELS=... names no xclbin | fix the path |
 | no NPU driver (xrt_coreutil.dll not found) | install the AMD NPU driver |
 | no NPU driver (XRT's libxrt_coreutil.so.2 not found) | Linux: install XRT (see [Linux](#linux)) |
 | the NPU driver's xrt_coreutil.dll (or libxrt_coreutil.so.2) lacks a function this backend uses | the driver is older or newer than the add-on was built for; report it |
-| cannot load .../libggml-xdna-xrt.so (...) | Linux: that file must sit next to `libggml-xdna.so` |
+| cannot load .../libggml-zest-xrt.so (...) | Linux: that file must sit next to `libggml-zest.so` |
 | no NPU found (...) | the driver doesn't see an NPU; on Linux, check `ls /dev/accel` and `xrt-smi examine` |
 | the NPU won't load ... | another program may be holding the whole NPU, or this NPU can't take the add-on's program |
 | the NPU "..." couldn't run a test multiply (...) | this NPU can't run the add-on's program; report it with your chip |
 | the NPU "..." got a test multiply wrong (...) | this NPU runs the add-on's program wrong; report it with your chip |
 | this process may lock only ... MB of memory ... | Linux: lift the locked-memory cap (see [Linux](#linux)) |
-| the add-on didn't load | the add-on isn't next to `npu`, or `GGML_BACKEND_PATH` points elsewhere |
+| the add-on didn't load | the add-on isn't next to `zest`, or `GGML_BACKEND_PATH` points elsewhere |
 
-**Is it doing anything?** `npu` prints `npu: prompts on the NPU` when it
+**Is it doing anything?** `zest` prints `zest: prompts on the NPU` when it
 turns it on. `set GGML_XDNA_TRACE=1` (`export GGML_XDNA_TRACE=1` on Linux)
 prints where the time goes every few
 hundred multiplies. A prompt under 1,024 tokens never reaches the NPU
-(`npu --min-chunk` changes that).
+(`zest --min-chunk` changes that).
 
 **Slower than the Results table?** Speeds vary from run to run on the same
 machine, because the processor, GPU and NPU share one chip and its power
@@ -544,7 +544,7 @@ versions, the model, the command, and the output with `GGML_XDNA_TRACE=1`.
 
 ## Settings
 
-All optional, and none needed with `npu`. They're environment variables
+All optional, and none needed with `zest`. They're environment variables
 (`set GGML_XDNA_TRACE=1` in cmd, `$env:GGML_XDNA_TRACE = "1"` in
 PowerShell, `export GGML_XDNA_TRACE=1` on Linux), read once when llama.cpp
 starts: set them before starting it.
@@ -553,10 +553,10 @@ An empty value counts as unset.
 | variable | default | |
 |---|---|---|
 | `GGML_XDNA_KERNELS` | `bfp16_gemm.xclbin` next to the add-on | another xclbin |
-| `GGML_XDNA_MIN_BATCH` | 1024 | the smallest piece of a prompt, in tokens, the NPU takes (`npu --min-chunk` sets it) |
+| `GGML_XDNA_MIN_BATCH` | 1024 | the smallest piece of a prompt, in tokens, the NPU takes (`zest --min-chunk` sets it) |
 | `GGML_XDNA_MIN_MFLOP` | 256 | the smallest multiply the NPU takes, in millions of operations |
 | `GGML_XDNA_COPY_AT_LOAD` | 1 | 0 builds the NPU's weight copies during the first prompt instead of while the model loads |
-| `GGML_XDNA_MAX_COPY_GB` | memory free at load, less 4 GB or a tenth of memory, at most 20 | the most memory, in GB, the NPU's weight copies may take; 0 keeps the NPU out (`npu --memory-gb` sets it) |
+| `GGML_XDNA_MAX_COPY_GB` | memory free at load, less 4 GB or a tenth of memory, at most 20 | the most memory, in GB, the NPU's weight copies may take; 0 keeps the NPU out (`zest --memory-gb` sets it) |
 | `GGML_XDNA_BLOCKS` | 1 | 0 takes only the multiplies, not the steps between them |
 | `GGML_XDNA_STREAMS` | 2 | how many parts a piece is split into, so the CPU and NPU overlap |
 | `GGML_XDNA_N_THREADS` | all cores | CPU threads for the add-on's own work |
@@ -574,9 +574,9 @@ build.cmd
 ```
 
 It downloads llama.cpp b10944 and its matching headers into `third_party\`,
-builds the add-on and its tests, copies the DLL, the kernel and `npu.exe`
+builds the add-on and its tests, copies the DLL, the kernel and `zest.exe`
 next to the llama.cpp binaries in `third_party\llama-b10944`, and runs the
-tests. Run `npu` from there as in [Quick start](#quick-start). The NPU tests run only where the NPU
+tests. Run `zest` from there as in [Quick start](#quick-start). The NPU tests run only where the NPU
 driver is installed; the others need a Vulkan GPU. `build.cmd notest` skips
 the tests.
 

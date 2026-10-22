@@ -1,5 +1,5 @@
 @echo off
-rem Builds ggml-xdna from source and runs its tests, in one command:
+rem Builds Zest from source and runs its tests, in one command:
 rem   build.cmd           fetch llama.cpp, build, test
 rem   build.cmd notest    fetch llama.cpp, build
 rem Needs Visual Studio 2022 (or its Build Tools) with the C++ tools, which

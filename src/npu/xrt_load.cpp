@@ -57,7 +57,7 @@ std::string xrt_load() {
     void * xrt = dlopen("libxrt_coreutil.so.2", RTLD_NOW | RTLD_GLOBAL);
     if (!xrt) xrt = dlopen("/opt/xilinx/xrt/lib/libxrt_coreutil.so.2", RTLD_NOW | RTLD_GLOBAL);
     if (!xrt) return "no NPU driver (XRT's libxrt_coreutil.so.2 not found)";
-    const std::string path = (xdna_module_dir() / "libggml-xdna-xrt.so").string();
+    const std::string path = (xdna_module_dir() / "libggml-zest-xrt.so").string();
     void * shim = dlopen(path.c_str(), RTLD_NOW | RTLD_LOCAL);
     if (!shim) {
         const std::string e = dlerror();

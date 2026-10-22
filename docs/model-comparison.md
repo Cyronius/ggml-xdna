@@ -3,6 +3,8 @@
 Measured on 2026-10-21, using the official Lemonade 2026.43.3 server and the
 Windows preview's unmodified llama.cpp b10944 Vulkan backend plus `ggml-xdna.dll`.
 These are actual Lemonade API requests, not standalone `llama-bench` results.
+The measured backend predates the binary rename; current Zest packages call it
+`ggml-zest.dll`. Historical hashes and traces below retain the tested filename.
 
 **This is Strix Point: Ryzen AI 9 HX PRO 370 / Radeon 890M.** The laptop has
 96 GB of DDR5-5600 installed. Its 890M has 16 compute units; high-end Strix Halo's

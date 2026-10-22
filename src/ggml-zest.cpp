@@ -20,7 +20,7 @@
 // We write results with the plain set, a copy into mapped memory, which is
 // fast.
 
-#include "ggml-xdna.h"
+#include "ggml-zest.h"
 #include "ggml-backend-impl.h"
 #include "ggml-impl.h"
 
@@ -477,7 +477,7 @@ struct xdna_budget {
         char s[112];
         if (locked) snprintf(s, sizeof(s), "the locked-memory limit, less 2 GB for other NPU buffers; ulimit -l raises it");
         else if (overridden) snprintf(s, sizeof(s), "set by GGML_XDNA_MAX_COPY_GB");
-        else if (capped) snprintf(s, sizeof(s), "the most by default; npu --memory-gb raises it");
+        else if (capped) snprintf(s, sizeof(s), "the most by default; zest --memory-gb raises it");
         else snprintf(s, sizeof(s), "%.1f GB free, less %.1f GB kept back", free / GB, kept_back / GB);
         return s;
     }
